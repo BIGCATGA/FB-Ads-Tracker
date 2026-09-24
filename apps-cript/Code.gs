@@ -22,6 +22,7 @@ var SCHEMA = {
   Chats:  ['id', 'date', 'customer', 'ad', 'adset', 'campaign', 'status', 'product', 'amount', 'note',
            'created_by', 'created_at', 'updated_by', 'updated_at'],
   Ads:    ['id', 'ad_name', 'adset', 'campaign', 'post_url', 'creative_url', 'active', 'note'],
+  AdSets: ['id', 'campaign', 'name', 'active', 'note'],
   Campaigns: ['id', 'name', 'start_date', 'end_date', 'objective', 'note', 'created_by', 'created_at'],
   // งบที่ตั้งไว้ (แผน) — 1 แถว = งบ/วันที่เริ่มใช้ตั้งแต่ start_date จนกว่าจะมีแถวใหม่ของระดับเดียวกัน
   // adset ว่าง = งบระดับแคมเปญ (CBO)
@@ -63,6 +64,8 @@ function doPost(e) {
       case 'saveConfig':  return json_({ ok: true, data: saveConfig_(req.key, req.value, user) });
       case 'saveCampaign':   return json_({ ok: true, data: saveCampaign_(req.campaign, user) });
       case 'deleteCampaign': return json_({ ok: true, data: deleteCampaign_(req.id, user) });
+      case 'saveAdset':      return json_({ ok: true, data: saveAdset_(req.adset, user) });
+      case 'deleteAdset':    return json_({ ok: true, data: deleteAdset_(req.id, user) });
       case 'saveBudget':     return json_({ ok: true, data: saveBudget_(req.budget, user) });
       case 'deleteBudget':   return json_({ ok: true, data: deleteRow_('Budgets', req.id, user) });
       case 'saveUser':    return json_({ ok: true, data: saveUser_(req.name, req.pin, req.active, user) });
@@ -101,6 +104,7 @@ function setup() {
   if (first && ss.getSheets().length > 1 && first.getLastRow() === 0) ss.deleteSheet(first);
   secret_(); // สร้างกุญแจลับถ้ายังไม่มี
   var n = syncCampaigns_();
+  syncAdsets_();
   Logger.log('setup เสร็จ' + (n ? ' · สร้างแคมเปญจากข้อมูลเดิม ' + n + ' แคมเปญ' : '') + ' — ครั้งแรกให้รัน createFirstUser() ต่อ');
 }
 
@@ -193,6 +197,7 @@ function bootstrap_(user) {
     config: cfg,
     campaigns: readTable_('Campaigns'),
     budgets: readTable_('Budgets'),
+    adsets: readTable_('AdSets'),
     users: readTable_('Users').map(function (r) { return { name: r.name, active: isTrue_(r.active) }; }),
     statuses: STATUSES,
     serverTime: new Date().toISOString()
@@ -237,7 +242,7 @@ function saveCampaign_(cp, user) {
 
 /** เปลี่ยนชื่อแคมเปญ → แก้ชื่อใน Ads / Chats / Budgets ให้ตรงกัน */
 function renameCampaign_(from, to, user) {
-  ['Ads', 'Chats', 'Budgets'].forEach(function (name) {
+  ['Ads', 'Chats', 'Budgets', 'AdSets'].forEach(function (name) {
     var sh = sheet_(name), cols = SCHEMA[name], ci = cols.indexOf('campaign');
     var last = sh.getLastRow();
     if (last < 2) return;
@@ -259,6 +264,59 @@ function deleteCampaign_(id, user) {
   readTable_('Budgets').filter(function (b) { return b.campaign === cp.name; })
     .forEach(function (b) { deleteRow_('Budgets', b.id, user); });
   return deleteRow_('Campaigns', id, user);
+}
+
+// ---------- Ad set ----------
+function saveAdset_(a, user) {
+  var name = String(a && a.name || '').trim();
+  if (!a.campaign) throw new Error('ต้องเลือกแคมเปญ');
+  if (!name) throw new Error('ต้องใส่ชื่อ Ad set');
+  var all = readTable_('AdSets');
+  if (all.some(function (x) { return x.campaign === a.campaign && x.name === name && x.id !== a.id; })) throw new Error('แคมเปญนี้มี Ad set ชื่อนี้แล้ว');
+  var old = a.id ? all.filter(function (x) { return x.id === a.id; })[0] : null;
+  var saved = upsert_('AdSets', { id: a.id, campaign: a.campaign, name: name, active: a.active === false ? false : true, note: a.note || '' }, user, {});
+  if (old && old.name !== name) renameAdset_(a.campaign, old.name, name, user);
+  return saved;
+}
+
+/** เปลี่ยนชื่อ Ad set → แก้ใน Ads / Chats / Budgets ของแคมเปญเดียวกัน */
+function renameAdset_(campaign, from, to, user) {
+  ['Ads', 'Chats', 'Budgets'].forEach(function (name) {
+    var sh = sheet_(name), cols = SCHEMA[name], ai = cols.indexOf('adset'), ci = cols.indexOf('campaign');
+    var last = sh.getLastRow();
+    if (last < 2) return;
+    var rg = sh.getRange(2, 1, last - 1, cols.length);
+    var vals = rg.getValues(), changed = false;
+    vals.forEach(function (r) { if (r[ci] === campaign && r[ai] === from) { r[ai] = to; changed = true; } });
+    if (changed) sh.getRange(2, ai + 1, last - 1, 1).setValues(vals.map(function (r) { return [r[ai]]; }));
+  });
+  log_(user, 'renameAdset', 'AdSets', '', { campaign: campaign, from: from, to: to });
+}
+
+function deleteAdset_(id, user) {
+  var a = readTable_('AdSets').filter(function (x) { return x.id === id; })[0];
+  if (!a) throw new Error('ไม่พบ Ad set');
+  var used = readTable_('Ads').some(function (x) { return x.campaign === a.campaign && x.adset === a.name; }) ||
+             readTable_('Chats').some(function (x) { return x.campaign === a.campaign && x.adset === a.name; });
+  if (used) throw new Error('Ad set นี้มีโฆษณา/แชทอยู่ ลบไม่ได้ — ปิดแทน');
+  readTable_('Budgets').filter(function (b) { return b.campaign === a.campaign && b.adset === a.name; })
+    .forEach(function (b) { deleteRow_('Budgets', b.id, user); });
+  return deleteRow_('AdSets', id, user);
+}
+
+/** สร้างแถว Ad set จากชื่อที่มีใน Ads / Chats / Budgets แต่ยังไม่อยู่ในแท็บ AdSets */
+function syncAdsets_() {
+  var have = {};
+  readTable_('AdSets').forEach(function (a) { have[a.campaign + '|' + a.name] = true; });
+  var add = {};
+  readTable_('Ads').concat(readTable_('Chats')).concat(readTable_('Budgets')).forEach(function (x) {
+    if (x.campaign && x.adset && !have[x.campaign + '|' + x.adset]) add[x.campaign + '|' + x.adset] = { campaign: x.campaign, name: x.adset };
+  });
+  var rows = Object.keys(add).map(function (k, i) {
+    return { id: newId_('AdSets') + i, campaign: add[k].campaign, name: add[k].name, active: true, note: '' };
+  });
+  appendObjects_('AdSets', rows);
+  return rows.length;
 }
 
 function saveBudget_(b, user) {
@@ -298,7 +356,9 @@ function saveAd_(ad, user) {
     post_url: ad.post_url || '', creative_url: ad.creative_url || '',
     active: ad.active === false ? false : true, note: ad.note || ''
   };
-  return upsert_('Ads', rec, user, {});
+  var savedAd = upsert_('Ads', rec, user, {});
+  if (rec.campaign && rec.adset) syncAdsets_();
+  return savedAd;
 }
 
 function saveSpend_(sp, user) {
@@ -550,6 +610,7 @@ function importCore_() {
   appendObjects_('Spend', spends);
   appendObjects_('Chats', chats);
   var nc = syncCampaigns_();
+  syncAdsets_();
   log_(user, 'import', 'ALL', '', { ads: ads.length, spend: spends.length, chats: chats.length });
   Logger.log('นำเข้าแล้ว: โฆษณา ' + ads.length + ' · ค่า Ads ' + spends.length + ' · แชท ' + chats.length + ' · แคมเปญ ' + nc);
 }
