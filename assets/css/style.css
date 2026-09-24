@@ -356,3 +356,17 @@ table.t tbody tr.click:hover td { background: var(--bg-soft); }
   .bottom-nav button svg { width: 20px; height: 20px; }
   .bottom-nav button.active { background: var(--primary); color: #fff; }
 }
+
+/* Campaign drill-down */
+.crumbs { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; font-size: 15px; }
+.crumbs .linkish { font-size: 15px; color: var(--primary); padding: 0; }
+.crumbs .linkish:hover { color: var(--primary-2); text-decoration: underline; }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 18px; }
+.facts > div { display: grid; gap: 2px; }
+.facts span { font-size: 13px; color: var(--text-3); }
+.facts b { font-weight: 500; font-size: 16px; }
+details.hist { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 10px; }
+details.hist summary { cursor: pointer; color: var(--text-2); font-size: 14px; padding: 4px 0; }
+.bk { width: 100%; border: 1px solid var(--line-strong); background: var(--bg-soft); border-radius: 10px; padding: 8px 12px; text-align: right; outline: none; }
+.bk:focus { border-color: var(--primary); background: var(--card); }
+@media (max-width: 860px) { .card-head { flex-wrap: wrap; } table.t.wide td:first-child { min-width: 170px; } .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .bottom-nav button span { font-size: 11px; } }
