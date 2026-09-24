@@ -67,8 +67,8 @@
   }
 
   function actionFor(row, target) {
-    if (row.cbo) return { text: 'ดูที่ระดับแคมเปญ (CBO)', tone: '' };
-    if (!row.spend) return { text: 'ยังไม่ตั้งงบ', tone: 'info' };
+    if (row.cbo) return { text: 'ดูที่ระดับแคมเปญ', tone: '' };
+    if (!row.spend) return { text: 'ยังไม่กรอกค่า Ads', tone: 'info' };
     if (!row.closed) {
       if (row.spend >= target) return { text: 'ใช้เกินเป้า ยังไม่ปิด — พิจารณาหยุด', tone: 'bad' };
       return { text: 'รอข้อมูลเพิ่ม', tone: '' };
@@ -92,7 +92,7 @@
     data.chats.forEach(function (c) { if (c.adset && !adsetCamp[c.adset]) adsetCamp[c.adset] = c.campaign; });
 
     var chats = data.chats.filter(function (c) { return c.date >= from && c.date <= to && (!camp || c.campaign === camp); });
-    var spend = plannedSpend(data, opts.today).filter(function (s) { return s.date >= from && s.date <= to && (!camp || s.campaign === camp); });
+    var spend = spendDaily(data).filter(function (s) { return s.date >= from && s.date <= to && (!camp || s.campaign === camp); });
     var people = uniquePeople(chats);
 
     var funnelPeople = people.filter(function (p) { return stageOf(p.status) >= 1; });
@@ -197,120 +197,221 @@
     };
   }
 
-  // ---------- ค่า Ads = งบที่ตั้ง/วัน × จำนวนวันที่ยิง ----------
-  /**
-   * คืนรายการ {date, campaign, adset, amount} ต่อวัน
-   * adset = '' คืองบระดับแคมเปญ (CBO)
-   * นับตั้งแต่วันที่เริ่มยิงของแคมเปญ (หรือวันที่เริ่มใช้งบ) ถึงวันที่ปิด/วันนี้
-   */
-  function plannedSpend(data, today) {
-    today = today || iso(new Date());
-    var camps = {};
-    (data.campaigns || []).forEach(function (c) { camps[c.name] = c; });
-    var groups = {};
-    (data.budgets || []).forEach(function (b) {
-      var k = b.campaign + '|' + (b.adset || '');
-      (groups[k] = groups[k] || []).push(b);
-    });
-    var out = [];
-    Object.keys(groups).forEach(function (k) {
-      var list = groups[k].slice().sort(function (a, b) { return a.start_date < b.start_date ? -1 : 1; });
-      var cp = camps[list[0].campaign] || {};
-      var end = cp.end_date && cp.end_date < today ? cp.end_date : today;
-      list.forEach(function (b, i) {
-        var from = b.start_date;
-        if (cp.start_date && cp.start_date > from) from = cp.start_date;
-        var to = list[i + 1] ? addDays(list[i + 1].start_date, -1) : end;
-        if (to > end) to = end;
-        var amt = Number(b.daily_budget) || 0;
-        if (!amt) return;
-        var d = from, guard = 0;
-        while (d <= to && guard++ < 2000) { out.push({ date: d, campaign: b.campaign, adset: b.adset || '', amount: amt }); d = addDays(d, 1); }
-      });
-    });
-    return out;
-  }
-
-  // ---------- แคมเปญ + งบที่ตั้ง ----------
+  // ============================================================
+  // แคมเปญ: ไทม์ไลน์ เปิด / ปรับงบ / หยุด  (เก็บในแท็บ Budgets)
+  //   1 แถว = เหตุการณ์ 1 ครั้ง: date + daily_budget (0 = หยุดยิง)
+  //   adset ว่าง = ระดับแคมเปญ (CBO), มีชื่อ = งบราย Ad set (ABO)
+  // ============================================================
   function daysIncl(a, b) { return Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000) + 1; }
+  function findCampaign(data, camp) { return (data.campaigns || []).filter(function (c) { return c.name === camp; })[0] || null; }
 
-  /** Ad set ทั้งหมดของแคมเปญ (จากตาราง Ads และแชท) */
+  /** Ad set ทั้งหมดของแคมเปญ (จากแท็บ AdSets, โฆษณา, แชท, งบ) */
   function adsetsOf(data, camp) {
     var set = {};
     (data.adsets || []).forEach(function (a) { if (a.campaign === camp && a.name) set[a.name] = true; });
     data.ads.forEach(function (a) { if (a.campaign === camp && a.adset) set[a.adset] = true; });
     data.chats.forEach(function (c) { if (c.campaign === camp && c.adset) set[c.adset] = true; });
-    return Object.keys(set).sort();
-  }
-
-  /** งบ/วันที่ตั้งไว้ ณ วันที่ date ของ Ad set (หรือระดับแคมเปญ ถ้าไม่มีแถวของ Ad set) */
-  function budgetAt(data, camp, adset, date) {
-    var hit = null;
-    (data.budgets || []).forEach(function (b) {
-      if (b.campaign !== camp || b.start_date > date) return;
-      var lvlOk = adset ? (b.adset === adset) : !b.adset;
-      if (lvlOk && (!hit || b.start_date >= hit.start_date)) hit = b;
-    });
-    if (!hit && adset) { var c = budgetAt(data, camp, '', date); return c ? Object.assign({ level: 'campaign' }, c) : null; }
-    return hit ? Object.assign({ level: hit.adset ? 'adset' : 'campaign' }, hit) : null;
-  }
-
-  function campaignStatus(cp, today) {
-    if (cp.start_date && cp.start_date > today) return { text: 'ยังไม่เริ่ม', tone: 'info' };
-    if (cp.end_date && cp.end_date < today) return { text: 'จบแล้ว', tone: '' };
-    return { text: 'กำลังยิง', tone: 'good' };
+    (data.budgets || []).forEach(function (b) { if (b.campaign === camp && b.adset) set[b.adset] = true; });
+    return Object.keys(set).sort(function (a, b) { return a.localeCompare(b, 'th'); });
   }
 
   /**
-   * ช่วงงบ (ทดลองงบ): แต่ละแถวงบ = 1 ช่วง ตั้งแต่ start_date ถึงก่อนแถวถัดไปของระดับเดียวกัน
-   * opts = { from, to, campaign, today }
+   * เหตุการณ์ของ 1 ระดับ เรียงตามวันที่
+   * ถ้าแคมเปญมี end_date แบบเก่า → เติมเหตุการณ์ "หยุด" (virtual) วันถัดจาก end_date ให้
    */
+  function levelEvents(data, camp, adset) {
+    adset = adset || '';
+    var ev = (data.budgets || []).filter(function (b) { return b.campaign === camp && (b.adset || '') === adset; })
+      .map(function (b) { return { id: b.id, date: b.start_date, amount: Number(b.daily_budget) || 0, note: b.note || '', row: b }; })
+      .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    var cp = findCampaign(data, camp);
+    if (cp && cp.end_date && ev.length) {
+      var off = addDays(cp.end_date, 1);
+      var after = ev.some(function (e) { return e.date >= off; });
+      var before = ev.filter(function (e) { return e.date <= cp.end_date; });
+      if (!after && before.length && before[before.length - 1].amount > 0) {
+        ev.push({ id: '', date: off, amount: 0, note: 'ปิดแคมเปญ', virtual: true });
+      }
+    }
+    return ev;
+  }
+
+  /** วิธีตั้งงบของแคมเปญ: 'campaign' (CBO) หรือ 'adset' (ABO) — ดูจากเหตุการณ์ล่าสุดที่มีงบ */
+  function budgetMode(data, camp) {
+    var last = null;
+    (data.budgets || []).forEach(function (b) {
+      if (b.campaign !== camp || !(Number(b.daily_budget) > 0)) return;
+      if (!last || b.start_date >= last.start_date) last = b;
+    });
+    return last && last.adset ? 'adset' : 'campaign';
+  }
+
+  /** สถานะของ 1 ระดับ ณ วันที่ today */
+  function levelState(data, camp, adset, today) {
+    var ev = levelEvents(data, camp, adset);
+    var past = ev.filter(function (e) { return e.date <= today; });
+    var future = ev.filter(function (e) { return e.date > today; });
+    var cur = past[past.length - 1] || null;
+    var lastOn = null;
+    past.forEach(function (e) { if (e.amount > 0) lastOn = e; });
+    var st = !cur ? (future.length ? 'scheduled' : 'none') : cur.amount > 0 ? 'running' : 'paused';
+    return { state: st, amount: cur ? cur.amount : 0, since: cur ? cur.date : (future[0] ? future[0].date : ''), lastAmount: lastOn ? lastOn.amount : 0, next: future[0] || null, events: ev };
+  }
+
+  /** สถานะแคมเปญ (รวมทุก Ad set ถ้าแยกงบ) */
+  function campState(data, camp, today) {
+    var mode = budgetMode(data, camp);
+    if (mode === 'campaign') {
+      var s = levelState(data, camp, '', today);
+      s.mode = mode; s.levels = [''];
+      return s;
+    }
+    var sets = adsetsOf(data, camp).filter(function (a) { return levelEvents(data, camp, a).length; });
+    var states = sets.map(function (a) { return Object.assign({ adset: a }, levelState(data, camp, a, today)); });
+    var run = states.filter(function (x) { return x.state === 'running'; });
+    var out = {
+      mode: mode, levels: sets, perAdset: states,
+      state: run.length ? 'running' : states.some(function (x) { return x.state === 'paused'; }) ? 'paused' : states.some(function (x) { return x.state === 'scheduled'; }) ? 'scheduled' : 'none',
+      amount: run.reduce(function (a, x) { return a + x.amount; }, 0),
+      runningCount: run.length,
+      since: run.length ? run.map(function (x) { return x.since; }).sort().pop() : states.map(function (x) { return x.since; }).filter(Boolean).sort().pop() || ''
+    };
+    return out;
+  }
+
+  function campaignStatus(data, cp, today) {
+    var s = campState(data, cp.name, today);
+    if (s.state === 'running') return { text: 'กำลังยิง', tone: 'good', key: 'running' };
+    if (s.state === 'paused') return { text: 'หยุดอยู่', tone: '', key: 'paused' };
+    if (s.state === 'scheduled') return { text: 'ตั้งเวลาไว้', tone: 'info', key: 'scheduled' };
+    return { text: 'ยังไม่ตั้งงบ', tone: 'warn', key: 'none' };
+  }
+
+  /** วันแรกที่เปิดยิง */
+  function firstStart(data, camp) {
+    var d = '';
+    (data.budgets || []).forEach(function (b) { if (b.campaign === camp && Number(b.daily_budget) > 0 && (!d || b.start_date < d)) d = b.start_date; });
+    var cp = findCampaign(data, camp);
+    return d || (cp && cp.start_date) || '';
+  }
+
+  /** งบ/วัน ณ วันที่ date (ระดับ Ad set → ถ้าไม่มีใช้ระดับแคมเปญ) */
+  function budgetAt(data, camp, adset, date) {
+    function at(level) {
+      var ev = levelEvents(data, camp, level).filter(function (e) { return e.date <= date; });
+      return ev.length ? ev[ev.length - 1] : null;
+    }
+    var hit = adset ? at(adset) : null;
+    if (hit) return { daily_budget: hit.amount, start_date: hit.date, level: 'adset', note: hit.note };
+    hit = at('');
+    return hit ? { daily_budget: hit.amount, start_date: hit.date, level: 'campaign', note: hit.note } : null;
+  }
+
+  // ---------- ค่า Ads ที่ใช้จริง (กรอกเอง) ----------
+  /** แตกทุกแถวค่า Ads เป็นรายวัน (ยอดช่วงหารเท่า ๆ กัน) → {date, campaign, adset, amount} */
+  function spendDaily(data) {
+    var adsetCamp = {};
+    data.ads.forEach(function (a) { if (a.adset && a.campaign) adsetCamp[a.adset] = a.campaign; });
+    (data.adsets || []).forEach(function (a) { adsetCamp[a.name] = adsetCamp[a.name] || a.campaign; });
+    var out = [];
+    (data.spend || []).forEach(function (s) {
+      var from = s.date, to = s.date_to && s.date_to >= from ? s.date_to : from;
+      var camp = s.campaign || adsetCamp[s.adset] || '';
+      var n = daysIncl(from, to), per = (Number(s.amount) || 0) / n;
+      var d = from, guard = 0;
+      while (d <= to && guard++ < 1000) { out.push({ date: d, campaign: camp, adset: s.adset || '', amount: per }); d = addDays(d, 1); }
+    });
+    return out;
+  }
+
+  /** วันที่ยิงอยู่ (มีงบ > 0) ของแคมเปญ ตั้งแต่เริ่มถึง untilDate */
+  function runningDays(data, camp, untilDate) {
+    var days = {};
+    var levels = [''].concat(adsetsOf(data, camp));
+    levels.forEach(function (lv) {
+      var ev = levelEvents(data, camp, lv);
+      ev.forEach(function (e, i) {
+        if (!(e.amount > 0) || e.date > untilDate) return;
+        var to = ev[i + 1] ? addDays(ev[i + 1].date, -1) : untilDate;
+        if (to > untilDate) to = untilDate;
+        var d = e.date, guard = 0;
+        while (d <= to && guard++ < 2000) { days[d] = true; d = addDays(d, 1); }
+      });
+    });
+    return Object.keys(days).sort();
+  }
+
+  /** สถานะการกรอกค่า Ads ของแคมเปญ: กรอกถึงวันไหน, ขาดวันไหน (นับถึงเมื่อวาน) */
+  function spendCoverage(data, camp, today) {
+    var yesterday = addDays(today, -1);
+    var covered = {}, total = 0, lastTo = '', entries = [];
+    var adsetSet = {};
+    adsetsOf(data, camp).forEach(function (a) { adsetSet[a] = true; });
+    (data.spend || []).forEach(function (s) {
+      var c = s.campaign || (adsetSet[s.adset] ? camp : '');
+      if (c !== camp) return;
+      entries.push(s);
+      total += Number(s.amount) || 0;
+      var to = s.date_to && s.date_to >= s.date ? s.date_to : s.date;
+      if (!lastTo || to > lastTo) lastTo = to;
+      var d = s.date, guard = 0;
+      while (d <= to && guard++ < 1000) { covered[d] = true; d = addDays(d, 1); }
+    });
+    var missing = runningDays(data, camp, yesterday).filter(function (d) { return !covered[d]; });
+    return { total: total, lastTo: lastTo, missing: missing, entries: entries };
+  }
+
+  /**
+   * ช่วงเวลาตามไทม์ไลน์ของ 1 ระดับ พร้อมผลในช่วงนั้น
+   * running = ช่วงที่เปิดยิง, paused = ช่วงที่หยุด
+   */
+  function levelPeriods(data, camp, adset, today, daily) {
+    daily = daily || spendDaily(data);
+    var ev = levelEvents(data, camp, adset || '');
+    var out = [], prevRun = null;
+    ev.forEach(function (e, i) {
+      if (e.date > today) return;
+      var to = ev[i + 1] ? addDays(ev[i + 1].date, -1) : today;
+      if (to > today) to = today;
+      if (to < e.date) return;
+      var days = daysIncl(e.date, to);
+      var chats = data.chats.filter(function (c) { return c.campaign === camp && (!adset || c.adset === adset) && c.date >= e.date && c.date <= to; });
+      var people = uniquePeople(chats);
+      var leads = people.filter(function (p) { return stageOf(p.status) >= 1; }).length;
+      var closedP = people.filter(function (p) { return p.status === '5-ปิดการขาย'; });
+      var spend = daily.filter(function (s) { return s.campaign === camp && (!adset || s.adset === adset) && s.date >= e.date && s.date <= to; })
+        .reduce(function (a, s) { return a + s.amount; }, 0);
+      var row = {
+        campaign: camp, adset: adset || '', event: e, from: e.date, to: to, days: days, running: e.amount > 0,
+        ongoing: !ev[i + 1] || ev[i + 1].date > today,
+        daily: e.amount, spend: spend, leads: leads, closed: closedP.length,
+        amount: closedP.reduce(function (a, p) { return a + (Number(p.amount) || 0); }, 0),
+        leadsPerDay: leads / days, cpl: leads && spend ? spend / leads : null, cpc: closedP.length && spend ? spend / closedP.length : null,
+        note: e.note
+      };
+      if (row.running && prevRun) {
+        row.budgetChange = prevRun.daily ? (row.daily - prevRun.daily) / prevRun.daily : null;
+        row.lpdChange = prevRun.leadsPerDay ? (row.leadsPerDay - prevRun.leadsPerDay) / prevRun.leadsPerDay : null;
+        row.cplChange = prevRun.cpl && row.cpl != null ? (row.cpl - prevRun.cpl) / prevRun.cpl : null;
+      }
+      if (row.running) prevRun = row;
+      out.push(row);
+    });
+    return out;
+  }
+
+  /** ทุกช่วงที่เปิดยิง (สำหรับการ์ดทดลองงบบน Dashboard) opts = { from, to, campaign, today } */
   function budgetPeriods(data, opts) {
     var today = opts.today || iso(new Date());
+    var daily = spendDaily(data);
     var camps = {};
-    (data.campaigns || []).forEach(function (c) { camps[c.name] = c; });
-    var groups = {};
-    (data.budgets || []).forEach(function (b) {
-      if (opts.campaign && b.campaign !== opts.campaign) return;
-      var k = b.campaign + '|' + (b.adset || '');
-      (groups[k] = groups[k] || []).push(b);
-    });
+    (data.budgets || []).forEach(function (b) { if (!opts.campaign || b.campaign === opts.campaign) camps[b.campaign] = true; });
     var out = [];
-    Object.keys(groups).forEach(function (k) {
-      var list = groups[k].slice().sort(function (a, b) { return a.start_date < b.start_date ? -1 : 1; });
-      var prev = null;
-      list.forEach(function (b, i) {
-        var cp = camps[b.campaign] || {};
-        var from = b.start_date;
-        if (cp.start_date && cp.start_date > from) from = cp.start_date;
-        if (from > today) return;
-        var to = list[i + 1] ? addDays(list[i + 1].start_date, -1) : today;
-        if (cp.end_date && cp.end_date < to) to = cp.end_date;
-        if (to < from) return;
-        var scope = b.adset ? [b.adset] : adsetsOf(data, b.campaign);
-        var inScope = {};
-        scope.forEach(function (x) { inScope[x] = true; });
-        var chats = data.chats.filter(function (c) { return c.campaign === b.campaign && (!b.adset || c.adset === b.adset) && c.date >= from && c.date <= to; });
-        var people = uniquePeople(chats);
-        var leads = people.filter(function (p) { return stageOf(p.status) >= 1; }).length;
-        var closedP = people.filter(function (p) { return p.status === '5-ปิดการขาย'; });
-        var days = daysIncl(from, to);
-        var spend = (Number(b.daily_budget) || 0) * days;
-        var row = {
-          campaign: b.campaign, adset: b.adset || '', level: b.adset ? 'Ad set' : 'ทั้งแคมเปญ', from: from, to: to, days: days,
-          ongoing: !list[i + 1] && !(cp.end_date && cp.end_date < today),
-          daily: Number(b.daily_budget) || 0, planned: (Number(b.daily_budget) || 0) * days, spend: spend,
-          leads: leads, closed: closedP.length, amount: closedP.reduce(function (a, p) { return a + (Number(p.amount) || 0); }, 0),
-          leadsPerDay: leads / days, cpl: leads ? spend / leads : null, cpc: closedP.length ? spend / closedP.length : null,
-          note: b.note || '', budget: b
-        };
-        if (prev) {
-          row.budgetChange = prev.daily ? (row.daily - prev.daily) / prev.daily : null;
-          row.lpdChange = prev.leadsPerDay ? (row.leadsPerDay - prev.leadsPerDay) / prev.leadsPerDay : null;
-          row.cplChange = prev.cpl && row.cpl != null ? (row.cpl - prev.cpl) / prev.cpl : null;
-        }
-        prev = row;
-        if (opts.campaign || (to >= opts.from && from <= opts.to)) out.push(row);
+    Object.keys(camps).forEach(function (camp) {
+      [''].concat(adsetsOf(data, camp)).forEach(function (lv) {
+        levelPeriods(data, camp, lv, today, daily).forEach(function (r) {
+          if (r.running && (opts.campaign || (r.to >= opts.from && r.from <= opts.to))) out.push(r);
+        });
       });
     });
     return out.sort(function (a, b) { return a.campaign.localeCompare(b.campaign, 'th') || a.adset.localeCompare(b.adset, 'th') || (a.from < b.from ? -1 : 1); });
@@ -346,7 +447,7 @@
     L.push('ช่วงยิง ' + thRange(a, b) + ' · งบเฉลี่ย ' + baht(m.avgPerDay) + '/วัน');
     L.push('');
     L.push('ภาพรวม');
-    L.push('• งบที่ใช้รวม ' + baht(m.spend) + ' (เฉลี่ย ' + baht(m.avgPerDay) + '/วัน, ' + m.spendDays + ' วัน · คิดจากงบที่ตั้ง)');
+    L.push('• งบที่ใช้รวม ' + baht(m.spend) + ' (เฉลี่ย ' + baht(m.avgPerDay) + '/วัน, ' + m.spendDays + ' วัน)');
     L.push('• Lead ' + int(m.leads) + ' คน · ปิดได้ ' + int(m.closed) + ' เคส (' + pct(m.closeRate, 1) + ')');
     L.push('• ยอดรับซื้อรวม ' + baht(m.amount));
     L.push('• ค่า Ads ต่อยอดรับซื้อ ' + pct(m.adsPct, 1));
@@ -374,7 +475,9 @@
     STATUSES: STATUSES, BY_KEY: BY_KEY, STAGES: STAGES,
     stageOf: stageOf, dupMap: dupMap, uniquePeople: uniquePeople, compute: compute, presetRange: presetRange,
     summaryText: summaryText, iso: iso, addDays: addDays,
-    adsetsOf: adsetsOf, budgetAt: budgetAt, plannedSpend: plannedSpend, budgetPeriods: budgetPeriods, campaignStatus: campaignStatus,
+    adsetsOf: adsetsOf, budgetAt: budgetAt, budgetPeriods: budgetPeriods, campaignStatus: campaignStatus,
+    levelEvents: levelEvents, levelState: levelState, campState: campState, budgetMode: budgetMode, firstStart: firstStart,
+    spendDaily: spendDaily, spendCoverage: spendCoverage, levelPeriods: levelPeriods, runningDays: runningDays, daysIncl: daysIncl,
     fmt: { baht: baht, int: int, pct: pct, thDate: thDate, thRange: thRange }
   };
 })();

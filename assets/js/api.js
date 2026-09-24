@@ -3,7 +3,7 @@
  */
 (function () {
   var URL_ = (window.APP_CONFIG.API_URL || '').trim();
-  var DEMO_KEY = 'fbat_demo_v3';
+  var DEMO_KEY = 'fbat_demo_v4';
 
   function store(key, val) {
     try { if (val === undefined) return localStorage.getItem(key); if (val === null) localStorage.removeItem(key); else localStorage.setItem(key, val); } catch (e) { return null; }
@@ -70,7 +70,9 @@
               if (db.ads.some(function (a) { return a.ad_name === p.ad.ad_name && a.id !== p.ad.id; })) throw new Error('ชื่อโฆษณาซ้ำ — เติม (AS-1) (AS-2) ต่อท้ายถ้าใช้ครีเอทีฟเดียวกัน');
               return resolve(upsert(db.ads, Object.assign({}, p.ad), 'a'));
             case 'deleteAd': return resolve(remove(db.ads, p.id));
-            case 'saveSpend': return resolve(upsert(db.spend, Object.assign({}, p.spend, { amount: Number(p.spend.amount) }), 's', { created_by: me, created_at: now }));
+            case 'saveSpend':
+              if (p.spend.date_to && p.spend.date_to < p.spend.date) throw new Error('วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่ม');
+              return resolve(upsert(db.spend, Object.assign({}, p.spend, { amount: Number(p.spend.amount) }), 's', { created_by: me, created_at: now }));
             case 'deleteSpend': return resolve(remove(db.spend, p.id));
             case 'saveCampaign':
               var cp = p.campaign;
