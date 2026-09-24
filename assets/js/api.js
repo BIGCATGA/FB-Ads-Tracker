@@ -3,7 +3,7 @@
  */
 (function () {
   var URL_ = (window.APP_CONFIG.API_URL || '').trim();
-  var DEMO_KEY = 'fbat_demo_v2';
+  var DEMO_KEY = 'fbat_demo_v3';
 
   function store(key, val) {
     try { if (val === undefined) return localStorage.getItem(key); if (val === null) localStorage.removeItem(key); else localStorage.setItem(key, val); } catch (e) { return null; }
@@ -80,7 +80,7 @@
               if (db.campaigns.some(function (c) { return c.name === cp.name && c.id !== cp.id; })) throw new Error('มีแคมเปญชื่อนี้แล้ว');
               var old = cp.id && db.campaigns.find(function (c) { return c.id === cp.id; });
               if (old && old.name !== cp.name) {
-                [db.ads, db.chats, db.budgets].forEach(function (list) { list.forEach(function (x) { if (x.campaign === old.name) x.campaign = cp.name; }); });
+                [db.ads, db.chats, db.budgets, db.adsets].forEach(function (list) { list.forEach(function (x) { if (x.campaign === old.name) x.campaign = cp.name; }); });
               }
               return resolve(upsert(db.campaigns, Object.assign({}, cp), 'k', { created_by: me, created_at: now }));
             case 'deleteCampaign':
@@ -88,6 +88,20 @@
               if (db.ads.some(function (a) { return a.campaign === dc.name; }) || db.chats.some(function (c) { return c.campaign === dc.name; })) throw new Error('แคมเปญนี้มีโฆษณา/แชทอยู่ ลบไม่ได้ — ใส่วันที่ปิดแทน');
               db.budgets = db.budgets.filter(function (b) { return b.campaign !== dc.name; });
               return resolve(remove(db.campaigns, p.id));
+            case 'saveAdset':
+              var as = p.adset;
+              if (!String(as.name || '').trim()) throw new Error('ต้องใส่ชื่อ Ad set');
+              if (db.adsets.some(function (x) { return x.campaign === as.campaign && x.name === as.name && x.id !== as.id; })) throw new Error('แคมเปญนี้มี Ad set ชื่อนี้แล้ว');
+              var oa = as.id && db.adsets.find(function (x) { return x.id === as.id; });
+              if (oa && oa.name !== as.name) {
+                [db.ads, db.chats, db.budgets].forEach(function (list) { list.forEach(function (x) { if (x.campaign === as.campaign && x.adset === oa.name) x.adset = as.name; }); });
+              }
+              return resolve(upsert(db.adsets, Object.assign({}, as), 'g'));
+            case 'deleteAdset':
+              var da = db.adsets.find(function (x) { return x.id === p.id; });
+              if (db.ads.some(function (x) { return x.campaign === da.campaign && x.adset === da.name; }) || db.chats.some(function (x) { return x.campaign === da.campaign && x.adset === da.name; })) throw new Error('Ad set นี้มีโฆษณา/แชทอยู่ ลบไม่ได้ — ปิดแทน');
+              db.budgets = db.budgets.filter(function (b) { return !(b.campaign === da.campaign && b.adset === da.name); });
+              return resolve(remove(db.adsets, p.id));
             case 'saveBudget':
               if (!p.budget.start_date) throw new Error('ต้องใส่วันที่เริ่มใช้งบนี้');
               if (p.budget.daily_budget === '' || !(Number(p.budget.daily_budget) >= 0)) throw new Error('งบ/วัน ต้องเป็นตัวเลข');

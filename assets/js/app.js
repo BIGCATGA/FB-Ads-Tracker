@@ -1,5 +1,5 @@
 /**
- * App — หน้าจอทั้งหมด (Dashboard / บันทึกแชท / ค่า Ads / ตั้งค่า)
+ * App — หน้าจอทั้งหมด (Dashboard / บันทึกแชท / แคมเปญ → Ad set → โฆษณา / ตั้งค่า)
  */
 (function () {
   var C = window.Calc, F = C.fmt, esc = window.Charts.esc, CH = window.Charts;
@@ -18,6 +18,7 @@
   var I = {
     dash: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2.5"/><rect x="13" y="3" width="8" height="8" rx="2.5"/><rect x="3" y="13" width="8" height="8" rx="2.5"/><rect x="13" y="13" width="8" height="8" rx="2.5"/></svg>',
     chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>',
+    mega: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4a1 1 0 001 1h2l5 4V5L7 9H5a1 1 0 00-1 1z"/><path d="M16 8.5a5 5 0 010 7M18.5 6a8.5 8.5 0 010 12"/></svg>',
     money: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="3"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 9.5v5M17.5 9.5v5"/></svg>',
     gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.8 12h2.4M18.8 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/></svg>',
     search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
@@ -32,7 +33,7 @@
   var NAV = [
     { id: 'dashboard', label: 'Dashboard', icon: I.dash },
     { id: 'chats', label: 'บันทึกแชท', icon: I.chat },
-    { id: 'spend', label: 'ค่า Ads', icon: I.money },
+    { id: 'campaigns', label: 'แคมเปญ', icon: I.mega },
     { id: 'settings', label: 'ตั้งค่า', icon: I.gear }
   ];
 
@@ -53,7 +54,7 @@
     toast(e && e.message ? e.message : 'เกิดข้อผิดพลาด', true);
   }
   function normalize(d) {
-    d.campaigns = d.campaigns || []; d.budgets = d.budgets || [];
+    d.campaigns = d.campaigns || []; d.budgets = d.budgets || []; d.adsets = d.adsets || [];
     return d;
   }
   function campaigns() {
@@ -168,7 +169,9 @@
       '</main></div>' +
       '<nav class="bottom-nav">' + nav + '</nav>';
 
-    $$('[data-nav]').forEach(function (b) { b.onclick = function () { go(b.dataset.nav); }; });
+    $$('[data-nav]').forEach(function (b) {
+      b.onclick = function () { if (b.dataset.nav === 'campaigns' && S.page === 'campaigns') S.campNav = null; go(b.dataset.nav); };
+    });
     $$('[data-theme]').forEach(function (b) { b.onclick = function () { setTheme(b.dataset.theme); }; });
     if ($('#logout')) $('#logout').onclick = function () { API.token(null); boot(); };
     $('#globalSearch').onkeydown = function (e) {
@@ -176,7 +179,7 @@
     };
     if (S.page === 'chats') $('#globalSearch').oninput = function () { S.chatFilter.q = this.value.trim(); renderChatList(); };
 
-    ({ dashboard: pageDashboard, chats: pageChats, spend: pageSpend, settings: pageSettings })[S.page]();
+    ({ dashboard: pageDashboard, chats: pageChats, campaigns: pageCampaigns, settings: pageSettings })[S.page]();
   }
 
   function go(page) {
@@ -212,7 +215,7 @@
       '<button class="btn" id="btnSummary">' + I.copy + 'คัดลอกสรุป</button>' +
       '</div>';
 
-    if (!m.spend) html += '<div class="leak-note" style="margin:0 0 20px;background:var(--warn-bg);color:var(--warn)">ยังไม่มีค่า Ads ในช่วงนี้ — ต้นทุน/Lead และต้นทุน/เคส จะยังคำนวณไม่ได้ (ไปกรอกที่หน้า ค่า Ads)</div>';
+    if (!m.spend) html += '<div class="leak-note" style="margin:0 0 20px;background:var(--warn-bg);color:var(--warn)">ยังไม่ได้ตั้งงบของแคมเปญในช่วงนี้ — ค่า Ads, ต้นทุน/Lead และต้นทุน/เคส จะยังคำนวณไม่ได้ (ไปตั้งงบที่หน้า แคมเปญ)</div>';
 
     // --- KPI cards
     var got2 = m.funnel[1].n, reached3 = m.funnel[2].n, reached4 = m.funnel[3].n;
@@ -247,7 +250,7 @@
     var adsPctDaily = d.map(function (x) { cum += x.spend; cumAmt += x.amount; return cumAmt ? cum / cumAmt : 0; });
     html += '<div class="grid row-2-wide mt">' +
       '<div class="card tiles-card"><div class="grid tiles">' +
-      tile('blue', F.baht(m.spend), 'ค่า Ads รวม', 'เฉลี่ย ' + F.baht(m.avgPerDay) + '/วัน', d.map(function (x) { return x.spend; })) +
+      tile('blue', F.baht(m.spend), 'ค่า Ads รวม', 'คิดจากงบที่ตั้ง · เฉลี่ย ' + F.baht(m.avgPerDay) + '/วัน', d.map(function (x) { return x.spend; })) +
       tile('violet', F.baht(m.amount), 'ยอดรับซื้อรวม', m.closed + ' เคส', d.map(function (x) { return x.amount; })) +
       tile('red', F.baht(m.cpl), 'ต้นทุน/Lead', m.leads + ' Lead', cplDaily) +
       tile('orange', F.pct(m.adsPct, 1), 'ค่า Ads ต่อยอดรับซื้อ', 'ยิ่งต่ำยิ่งดี', adsPctDaily) +
@@ -271,15 +274,16 @@
       '</div>';
 
     // --- ทดลองงบ
+    html += campaignCard(m);
     html += budgetTestCard(f);
 
     // --- Ad set table
     html += '<div class="card mt"><div class="card-head"><div><h2 class="card-title">ผลตาม Ad set</h2><div class="card-sub">เป้าต้นทุน/เคส ' + F.baht(m.target) + ' · แก้ได้ที่หน้า ตั้งค่า</div></div></div>' +
-      '<div class="table-wrap"><table class="t wide"><thead><tr><th>Ad set</th><th class="r">งบตั้ง/วัน</th><th class="r">ใช้จ่ายจริง</th><th class="r">Lead</th><th class="r">ต้นทุน/Lead</th><th class="r">ปิดได้</th><th class="r">ยอดรับซื้อ</th><th class="r">ต้นทุน/เคส</th><th>ควรทำอะไร</th></tr></thead><tbody>' +
+      '<div class="table-wrap"><table class="t wide"><thead><tr><th>Ad set</th><th class="r">งบตั้ง/วัน</th><th class="r">ค่า Ads</th><th class="r">Lead</th><th class="r">ต้นทุน/Lead</th><th class="r">ปิดได้</th><th class="r">ยอดรับซื้อ</th><th class="r">ต้นทุน/เคส</th><th>ควรทำอะไร</th></tr></thead><tbody>' +
       (m.adsetRows.length ? m.adsetRows.map(function (r) {
         return '<tr><td><div>' + esc(r.adset) + '</div><div class="muted" style="font-size:12.5px">' + esc(r.campaign) + '</div></td>' +
           '<td class="r num">' + (r.dailyBudget == null ? '<span class="muted">–</span>' : r.budgetLevel === 'campaign' ? '<span class="muted">CBO ' + F.baht(r.dailyBudget) + '</span>' : F.baht(r.dailyBudget)) + '</td>' +
-          '<td class="r num">' + F.baht(r.spend) + '</td><td class="r num">' + r.leads + '</td><td class="r num">' + F.baht(r.cpl) + '</td>' +
+          '<td class="r num">' + (r.cbo ? '<span class="muted">รวมใน CBO</span>' : F.baht(r.spend)) + '</td><td class="r num">' + r.leads + '</td><td class="r num">' + F.baht(r.cpl) + '</td>' +
           '<td class="r num">' + r.closed + '</td><td class="r num">' + F.baht(r.amount) + '</td><td class="r num">' + F.baht(r.cpc) + '</td>' +
           '<td><span class="pill ' + r.action.tone + '">' + esc(r.action.text) + '</span></td></tr>';
       }).join('') : '<tr><td colspan="9" class="empty">ไม่มีข้อมูลในช่วงนี้</td></tr>') +
@@ -313,22 +317,31 @@
     return '<div class="chg ' + (good ? 'up' : 'down') + '">' + (up ? '▲ ' : '▼ ') + Math.abs(v * 100).toFixed(0) + '%</div>';
   }
 
+  function campaignCard(m) {
+    if (!m.campaignRows.length) return '';
+    return '<div class="card mt"><div class="card-head"><div><h2 class="card-title">ผลตามแคมเปญ</h2><div class="card-sub">ค่า Ads = งบที่ตั้ง/วัน × วันที่ยิงในช่วงที่เลือก</div></div></div>' +
+      '<div class="table-wrap"><table class="t wide"><thead><tr><th>แคมเปญ</th><th class="r">ค่า Ads</th><th class="r">Lead</th><th class="r">ต้นทุน/Lead</th><th class="r">ปิดได้</th><th class="r">ยอดรับซื้อ</th><th class="r">ต้นทุน/เคส</th><th>ควรทำอะไร</th></tr></thead><tbody>' +
+      m.campaignRows.map(function (r) {
+        return '<tr><td>' + esc(r.campaign) + '</td><td class="r num">' + F.baht(r.spend) + '</td><td class="r num">' + r.leads + '</td><td class="r num">' + F.baht(r.cpl) + '</td>' +
+          '<td class="r num">' + r.closed + '</td><td class="r num">' + F.baht(r.amount) + '</td><td class="r num">' + F.baht(r.cpc) + '</td><td><span class="pill ' + r.action.tone + '">' + esc(r.action.text) + '</span></td></tr>';
+      }).join('') + '</tbody></table></div></div>';
+  }
+
   function budgetTestCard(f) {
     var rows = C.budgetPeriods(S.data, { from: f.from, to: f.to, campaign: f.campaign, today: today() });
     var html = '<div class="card mt"><div class="card-head"><div><h2 class="card-title">ทดลองงบ — เทียบผลแต่ละช่วงงบ</h2>' +
-      '<div class="card-sub">1 แถว = 1 ช่วงงบที่ตั้งไว้ (ตั้ง/ปรับงบที่หน้า ตั้งค่า → แคมเปญ) · ▲▼ เทียบกับช่วงก่อนหน้าของระดับเดียวกัน · สีเขียว = ดีขึ้น</div></div></div>';
-    if (!rows.length) return html + '<div class="empty">ยังไม่มีช่วงงบในช่วงนี้ — ไปตั้งงบที่หน้า ตั้งค่า</div></div>';
+      '<div class="card-sub">1 แถว = 1 ช่วงงบที่ตั้งไว้ (ตั้ง/ปรับงบที่หน้า แคมเปญ) · ▲▼ เทียบกับช่วงก่อนหน้าของระดับเดียวกัน · สีเขียว = ดีขึ้น</div></div></div>';
+    if (!rows.length) return html + '<div class="empty">ยังไม่มีช่วงงบในช่วงนี้ — ไปตั้งงบที่หน้า แคมเปญ</div></div>';
     var lastCamp = null;
-    html += '<div class="table-wrap"><table class="t wide"><thead><tr><th>ระดับ</th><th>ช่วงวันที่</th><th class="r">งบตั้ง/วัน</th><th class="r">งบตามแผน</th><th class="r">ใช้จริง</th>' +
+    html += '<div class="table-wrap"><table class="t wide"><thead><tr><th>ระดับ</th><th>ช่วงวันที่</th><th class="r">งบตั้ง/วัน</th><th class="r">ค่า Ads</th>' +
       '<th class="r">Lead</th><th class="r">Lead/วัน</th><th class="r">ต้นทุน/Lead</th><th class="r">ปิดได้</th><th class="r">ต้นทุน/เคส</th><th>สิ่งที่ทดลอง</th></tr></thead><tbody>' +
       rows.map(function (r) {
-        var head = r.campaign !== lastCamp ? '<tr class="grp"><td colspan="11">' + esc(r.campaign) + '</td></tr>' : '';
+        var head = r.campaign !== lastCamp ? '<tr class="grp"><td colspan="10">' + esc(r.campaign) + '</td></tr>' : '';
         lastCamp = r.campaign;
         return head + '<tr><td>' + (r.adset ? esc(r.adset) : '<span class="pill info">ทั้งแคมเปญ</span>') + '</td>' +
           '<td class="num" style="white-space:nowrap">' + F.thRange(r.from, r.to) + '<div class="muted" style="font-size:12.5px">' + r.days + ' วัน' + (r.ongoing ? ' · ใช้อยู่' : '') + '</div></td>' +
           '<td class="r num">' + F.baht(r.daily) + chg(r.budgetChange, true).replace('chg up', 'chg').replace('chg down', 'chg') + '</td>' +
-          '<td class="r num muted">' + F.baht(r.planned) + '</td>' +
-          '<td class="r num">' + (r.spend ? F.baht(r.spend) : '<span class="muted">ยังไม่กรอก</span>') + '</td>' +
+          '<td class="r num">' + F.baht(r.spend) + '</td>' +
           '<td class="r num">' + r.leads + '</td>' +
           '<td class="r num">' + r.leadsPerDay.toFixed(1) + chg(r.lpdChange, true) + '</td>' +
           '<td class="r num">' + F.baht(r.cpl) + chg(r.cplChange, false) + '</td>' +
@@ -599,81 +612,256 @@
   }
 
   // ============================================================
-  // Spend
+  // Campaigns (แคมเปญ → Ad set → โฆษณา)
   // ============================================================
-  function pageSpend() {
-    var sp = S.data.spend;
-    var months = {};
-    sp.forEach(function (s) { months[s.date.slice(0, 7)] = true; });
-    var mList = Object.keys(months).sort().slice(-4);
-    var pivot = {};
-    sp.forEach(function (s) {
-      var m = s.date.slice(0, 7);
-      var r = pivot[s.adset] = pivot[s.adset] || { total: 0 };
-      r[m] = (r[m] || 0) + Number(s.amount || 0);
-      r.total += Number(s.amount || 0);
+  function statsAll() {
+    // Lead และค่า Ads ตลอดอายุ แยกตามแคมเปญ / Ad set / โฆษณา
+    var people = C.uniquePeople(S.data.chats).filter(function (p) { return C.stageOf(p.status) >= 1; });
+    var st = { camp: {}, adset: {}, ad: {} };
+    function add(map, k, f, v) { var r = map[k] = map[k] || { leads: 0, closed: 0, spend: 0 }; r[f] += v; }
+    people.forEach(function (p) {
+      add(st.camp, p.campaign, 'leads', 1); add(st.adset, p.campaign + '|' + p.adset, 'leads', 1); add(st.ad, p.ad, 'leads', 1);
+      if (p.status === '5-ปิดการขาย') { add(st.camp, p.campaign, 'closed', 1); add(st.adset, p.campaign + '|' + p.adset, 'closed', 1); add(st.ad, p.ad, 'closed', 1); }
     });
-    var TH_M = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-    function mLabel(m) { return TH_M[Number(m.slice(5)) - 1] + ' ' + m.slice(2, 4); }
-
-    var html = '<div class="card"><div class="card-head"><div><h2 class="card-title">กรอกค่า Ads</h2><div class="card-sub">กรอกรายวัน หรือยอดทั้งเดือนก้อนเดียว (ลงวันที่ 1 ของเดือน) ก็ได้ · ดูยอดใน Ads Manager</div></div></div>' +
-      '<form id="spForm" class="form-grid">' +
-      '<div class="f c3"><label for="spDate">วันที่</label><input type="date" id="spDate" value="' + today() + '" required></div>' +
-      '<div class="f c4"><label for="spAdset">Ad set</label><select id="spAdset" required><option value="">— เลือก Ad set —</option>' + adsets().map(function (a) { return opt(a, a); }).join('') + '</select><div class="hint" id="spHint"></div></div>' +
-      '<div class="f c2"><label for="spAmt">ยอด (บาท)</label><input type="number" id="spAmt" min="0" step="1" inputmode="numeric" required></div>' +
-      '<div class="f c3"><label for="spNote">หมายเหตุ</label><input id="spNote" placeholder="เช่น ยอดทั้งเดือน"></div>' +
-      '<div class="c12 actions"><button class="btn" type="submit">บันทึก</button></div></form></div>';
-
-    html += '<div class="card mt"><div class="card-head"><h2 class="card-title">รวมตามเดือน × Ad set</h2></div><div class="table-wrap"><table class="t"><thead><tr><th>Ad set</th>' +
-      mList.map(function (m) { return '<th class="r">' + mLabel(m) + '</th>'; }).join('') + '<th class="r">รวมทั้งหมด</th></tr></thead><tbody>' +
-      (Object.keys(pivot).length ? Object.keys(pivot).sort().map(function (a) {
-        return '<tr><td>' + esc(a) + '</td>' + mList.map(function (m) { return '<td class="r num">' + (pivot[a][m] ? F.baht(pivot[a][m]) : '<span class="muted">–</span>') + '</td>'; }).join('') +
-          '<td class="r num"><b>' + F.baht(pivot[a].total) + '</b></td></tr>';
-      }).join('') : '<tr><td colspan="' + (mList.length + 2) + '" class="empty">ยังไม่มีค่า Ads</td></tr>') + '</tbody></table></div></div>';
-
-    var recent = sp.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; }).slice(0, 60);
-    html += '<div class="card mt"><div class="card-head"><div><h2 class="card-title">รายการล่าสุด</h2><div class="card-sub">กดแถวเพื่อแก้หรือลบ</div></div></div><div class="table-wrap"><table class="t"><thead><tr><th>วันที่</th><th>Ad set</th><th class="r">ยอด</th><th>หมายเหตุ</th><th>บันทึกโดย</th></tr></thead><tbody>' +
-      (recent.length ? recent.map(function (s) {
-        return '<tr class="click" data-sid="' + esc(s.id) + '"><td class="num">' + F.thDate(s.date, true) + '</td><td>' + esc(s.adset) + '</td><td class="r num">' + F.baht(Number(s.amount)) + '</td><td class="muted">' + esc(s.note || '') + '</td><td class="muted">' + esc(s.created_by || '') + '</td></tr>';
-      }).join('') : '<tr><td colspan="5" class="empty">ยังไม่มีรายการ</td></tr>') + '</tbody></table></div></div>';
-    $('#page').innerHTML = html;
-
-    function spHint() {
-      var as = $('#spAdset').value, d = $('#spDate').value;
-      var ad = S.data.ads.filter(function (a) { return a.adset === as; })[0];
-      var b = ad && ad.campaign ? C.budgetAt(S.data, ad.campaign, as, d) : null;
-      $('#spHint').textContent = !as ? '' : b ? 'งบที่ตั้งไว้ ' + F.baht(b.daily_budget) + '/วัน' + (b.level === 'campaign' ? ' (ทั้งแคมเปญ)' : '') : 'ยังไม่ได้ตั้งงบ';
-    }
-    $('#spAdset').onchange = spHint; $('#spDate').onchange = spHint;
-    $('#spForm').onsubmit = function (e) {
-      e.preventDefault();
-      var rec = { date: $('#spDate').value, adset: $('#spAdset').value, amount: $('#spAmt').value, note: $('#spNote').value.trim() };
-      if (!rec.adset) return toast('ต้องเลือก Ad set', true);
-      API.call('saveSpend', { spend: rec }).then(function (saved) {
-        S.data.spend.push(saved); toast('บันทึกค่า Ads แล้ว'); pageSpend();
-      }).catch(fail);
-    };
-    $$('tr[data-sid]').forEach(function (tr) { tr.onclick = function () { editSpend(tr.dataset.sid); }; });
+    C.plannedSpend(S.data, today()).forEach(function (s) {
+      add(st.camp, s.campaign, 'spend', s.amount);
+      if (s.adset) add(st.adset, s.campaign + '|' + s.adset, 'spend', s.amount);
+    });
+    return st;
+  }
+  function g(map, k) { return map[k] || { leads: 0, closed: 0, spend: 0 }; }
+  function findCamp(id) { return S.data.campaigns.filter(function (c) { return c.id === id; })[0]; }
+  function adsetRows(camp) {
+    var rows = S.data.adsets.filter(function (a) { return a.campaign === camp; });
+    C.adsetsOf(S.data, camp).forEach(function (n) {
+      if (!rows.some(function (r) { return r.name === n; })) rows.push({ id: '', campaign: camp, name: n, active: true, note: '' });
+    });
+    return rows.sort(function (a, b) { return a.name.localeCompare(b.name, 'th'); });
+  }
+  function budgetCell(camp, adset, label) {
+    var b = C.budgetAt(S.data, camp, adset, today());
+    var own = b && (adset ? b.level === 'adset' : true);
+    return '<button class="btn ghost sm" data-bset="' + esc(camp) + '" data-bas="' + esc(adset || '') + '">' +
+      (own ? F.baht(b.daily_budget) + '/วัน' : (label || 'ตั้งงบ')) + '</button>';
+  }
+  function crumbs(parts) {
+    return '<div class="crumbs">' + parts.map(function (p, i) {
+      return i < parts.length - 1 ? '<button class="linkish" data-crumb="' + i + '">' + esc(p) + '</button><span class="muted">›</span>' : '<b>' + esc(p) + '</b>';
+    }).join('') + '</div>';
+  }
+  function budgetHistory(camp, adset) {
+    var bs = S.data.budgets.filter(function (b) { return b.campaign === camp && (b.adset || '') === (adset || ''); })
+      .sort(function (a, b) { return a.start_date < b.start_date ? 1 : -1; });
+    if (!bs.length) return '';
+    return '<details class="hist"><summary>ประวัติงบ / ทดลองงบ (' + bs.length + ')</summary><table class="t"><tbody>' + bs.map(function (b) {
+      return '<tr class="click" data-bid="' + esc(b.id) + '"><td class="num" style="white-space:nowrap">ตั้งแต่ ' + F.thDate(b.start_date, true) + '</td><td class="r num">' + F.baht(b.daily_budget) + '/วัน</td><td class="muted">' + esc(b.note || '') + '</td></tr>';
+    }).join('') + '</tbody></table></details>';
   }
 
-  function editSpend(id) {
-    var s = S.data.spend.filter(function (x) { return x.id === id; })[0];
-    modal('<h3>แก้ไขค่า Ads</h3><form id="esForm" class="form-grid">' +
-      '<div class="f c6"><label>วันที่</label><input type="date" id="esDate" value="' + esc(s.date) + '"></div>' +
-      '<div class="f c6"><label>ยอด (บาท)</label><input type="number" id="esAmt" value="' + esc(s.amount) + '"></div>' +
-      '<div class="f c12"><label>Ad set</label><select id="esAdset">' + adsets().map(function (a) { return opt(a, a, s.adset); }).join('') + '</select></div>' +
-      '<div class="f c12"><label>หมายเหตุ</label><input id="esNote" value="' + esc(s.note || '') + '"></div>' +
-      '<div class="c12 actions" style="justify-content:space-between"><button type="button" class="btn danger" id="esDel">ลบ</button><span class="actions"><button type="button" class="btn ghost" data-close>ยกเลิก</button><button class="btn" type="submit">บันทึก</button></span></div></form>',
+  function pageCampaigns() {
+    var nv = S.campNav || (S.campNav = { camp: null, adset: null, all: false });
+    var cp = nv.camp ? findCamp(nv.camp) : null;
+    if (!cp) { nv.camp = null; nv.adset = null; return campList(); }
+    if (nv.adset != null) return adsetView(cp, nv.adset);
+    return campView(cp);
+  }
+
+  function campList() {
+    var nv = S.campNav, td = today(), st = statsAll();
+    var list = S.data.campaigns.slice().sort(function (a, b) { return a.start_date < b.start_date ? 1 : -1; });
+    var running = list.filter(function (c) { return C.campaignStatus(c, td).text !== 'จบแล้ว'; });
+    var shown = nv.all ? list : running;
+    var html = '<div class="card"><div class="card-head"><div><h2 class="card-title">แคมเปญ</h2><div class="card-sub">กดแคมเปญเพื่อดู Ad set และโฆษณา · ค่า Ads คิดจากงบที่ตั้ง/วัน × จำนวนวันที่ยิง</div></div>' +
+      '<div class="actions"><div class="chip-group"><button data-all="0" class="' + (!nv.all ? 'on' : '') + '">กำลังยิง (' + running.length + ')</button><button data-all="1" class="' + (nv.all ? 'on' : '') + '">ทั้งหมด (' + list.length + ')</button></div>' +
+      '<button class="btn sm" id="addCamp">+ เพิ่มแคมเปญ</button></div></div>' +
+      '<div class="table-wrap"><table class="t wide"><thead><tr><th>แคมเปญ</th><th>ช่วงยิง</th><th>สถานะ</th><th class="r">งบที่ตั้ง/วัน</th><th class="r">Ad set</th><th class="r">โฆษณา</th><th class="r">Lead</th><th class="r">ค่า Ads รวม</th><th></th></tr></thead><tbody>' +
+      (shown.length ? shown.map(function (c) {
+        var s = C.campaignStatus(c, td), x = g(st.camp, c.name);
+        return '<tr class="click" data-open="' + esc(c.id) + '"><td><b style="font-weight:500">' + esc(c.name) + '</b>' + (c.objective ? '<div class="muted" style="font-size:13px">' + esc(c.objective) + '</div>' : '') + '</td>' +
+          '<td class="num">' + F.thDate(c.start_date, true) + ' – ' + (c.end_date ? F.thDate(c.end_date, true) : 'ปัจจุบัน') + '</td>' +
+          '<td><span class="pill ' + s.tone + '">' + s.text + '</span></td>' +
+          '<td class="r num">' + budgetSummary(c.name, c.end_date && c.end_date < td ? c.end_date : td) + '</td>' +
+          '<td class="r num">' + adsetRows(c.name).length + '</td><td class="r num">' + S.data.ads.filter(function (a) { return a.campaign === c.name; }).length + '</td>' +
+          '<td class="r num">' + x.leads + '</td><td class="r num">' + F.baht(x.spend) + '</td><td class="r muted">›</td></tr>';
+      }).join('') : '<tr><td colspan="9" class="empty">ไม่มีแคมเปญ — กด + เพิ่มแคมเปญ</td></tr>') + '</tbody></table></div></div>';
+    $('#page').innerHTML = html;
+    $$('[data-all]').forEach(function (b) { b.onclick = function () { nv.all = b.dataset.all === '1'; campList(); }; });
+    $('#addCamp').onclick = function () { editCampaign(null); };
+    $$('tr[data-open]').forEach(function (tr) { tr.onclick = function () { nv.camp = tr.dataset.open; nv.adset = null; pageCampaigns(); window.scrollTo(0, 0); }; });
+  }
+
+  function campView(cp) {
+    var nv = S.campNav, td = today(), st = statsAll(), s = C.campaignStatus(cp, td), x = g(st.camp, cp.name);
+    var cb = C.budgetAt(S.data, cp.name, '', td);
+    var rows = adsetRows(cp.name);
+    var html = crumbs(['แคมเปญทั้งหมด', cp.name]) +
+      '<div class="grid row-2">' +
+      '<div class="card"><div class="card-head"><div><h2 class="card-title">' + esc(cp.name) + '</h2><div class="card-sub">' + esc(cp.objective || '') + '</div></div><button class="btn ghost sm" id="editCp">แก้ไข</button></div>' +
+      '<div class="facts"><div><span>เริ่มยิง</span><b>' + F.thDate(cp.start_date, true) + '</b></div><div><span>ปิด</span><b>' + (cp.end_date ? F.thDate(cp.end_date, true) : '–') + '</b></div>' +
+      '<div><span>สถานะ</span><b><span class="pill ' + s.tone + '">' + s.text + '</span></b></div>' +
+      '<div><span>Lead</span><b>' + x.leads + '</b></div><div><span>ปิดได้</span><b>' + x.closed + '</b></div><div><span>ค่า Ads รวม</span><b>' + F.baht(x.spend) + '</b></div></div></div>' +
+      '<div class="card"><div class="card-head"><div><h2 class="card-title">งบที่ตั้ง</h2><div class="card-sub">ตั้งทั้งแคมเปญ (CBO) หรือแยกราย Ad set ด้านล่างก็ได้</div></div><button class="btn sm" id="bulkBudget">ตั้งงบทั้งหมด</button></div>' +
+      '<div class="facts"><div><span>งบทั้งแคมเปญ (CBO)</span><b>' + (cb && cb.level === 'campaign' ? F.baht(cb.daily_budget) + '/วัน' : '<span class="muted">ไม่ได้ใช้</span>') + '</b></div>' +
+      '<div><span>รวมงบ/วันตอนนี้</span><b>' + budgetSummary(cp.name, cp.end_date && cp.end_date < td ? cp.end_date : td) + '</b></div></div>' +
+      '<div class="actions" style="justify-content:flex-start;margin-top:12px">' + '<button class="btn ghost sm" data-bset="' + esc(cp.name) + '" data-bas="">' + (cb && cb.level === 'campaign' ? 'ปรับงบ CBO' : 'ตั้งงบ CBO') + '</button>' + '</div>' +
+      budgetHistory(cp.name, '') + '</div></div>';
+
+    html += '<div class="card mt"><div class="card-head"><div><h2 class="card-title">Ad set</h2><div class="card-sub">กด Ad set เพื่อดูโฆษณาข้างใน · กดปุ่มงบเพื่อตั้ง/ปรับงบรายวัน</div></div><button class="btn sm" id="addAs">+ เพิ่ม Ad set</button></div>' +
+      '<div class="table-wrap"><table class="t wide"><thead><tr><th>Ad set</th><th class="r">งบที่ตั้ง/วัน</th><th class="r">โฆษณา</th><th class="r">Lead</th><th class="r">ปิดได้</th><th class="r">ค่า Ads รวม</th><th>สถานะ</th><th></th></tr></thead><tbody>' +
+      (rows.length ? rows.map(function (a) {
+        var y = g(st.adset, cp.name + '|' + a.name);
+        var bd = C.budgetAt(S.data, cp.name, a.name, td);
+        return '<tr class="click" data-as="' + esc(a.name) + '"><td><b style="font-weight:500">' + esc(a.name) + '</b></td>' +
+          '<td class="r num">' + (bd && bd.level === 'campaign' ? '<span class="muted" style="margin-right:8px">ใช้ CBO</span>' : '') + budgetCell(cp.name, a.name, bd && bd.level === 'campaign' ? 'แยกงบ' : 'ตั้งงบ') + '</td>' +
+          '<td class="r num">' + S.data.ads.filter(function (d) { return d.campaign === cp.name && d.adset === a.name; }).length + '</td>' +
+          '<td class="r num">' + y.leads + '</td><td class="r num">' + y.closed + '</td><td class="r num">' + (y.spend ? F.baht(y.spend) : '<span class="muted">–</span>') + '</td>' +
+          '<td>' + (isTrue(a.active) ? '<span class="pill good">เปิด</span>' : '<span class="pill">ปิด</span>') + '</td><td class="r muted">›</td></tr>';
+      }).join('') : '<tr><td colspan="8" class="empty">ยังไม่มี Ad set — กด + เพิ่ม Ad set</td></tr>') + '</tbody></table></div></div>';
+    $('#page').innerHTML = html;
+
+    wireCrumbs();
+    $('#editCp').onclick = function () { editCampaign(cp.id); };
+    $('#bulkBudget').onclick = function () { bulkBudget(cp); };
+    $('#addAs').onclick = function () { editAdset({ campaign: cp.name, active: true }); };
+    $$('tr[data-as]').forEach(function (tr) { tr.onclick = function () { nv.adset = tr.dataset.as; pageCampaigns(); window.scrollTo(0, 0); }; });
+    wireBudgetButtons();
+  }
+
+  function adsetView(cp, asName) {
+    var nv = S.campNav, td = today(), st = statsAll();
+    var a = adsetRows(cp.name).filter(function (r) { return r.name === asName; })[0];
+    if (!a) { nv.adset = null; return campView(cp); }
+    var y = g(st.adset, cp.name + '|' + a.name), bd = C.budgetAt(S.data, cp.name, a.name, td);
+    var ads = S.data.ads.filter(function (d) { return d.campaign === cp.name && d.adset === a.name; });
+    var html = crumbs(['แคมเปญทั้งหมด', cp.name, a.name]) +
+      '<div class="card"><div class="card-head"><div><h2 class="card-title">' + esc(a.name) + '</h2><div class="card-sub">' + esc(cp.name) + '</div></div>' +
+      '<div class="actions">' + budgetCell(cp.name, a.name, bd && bd.level === 'campaign' ? 'แยกงบจาก CBO' : 'ตั้งงบ') + '<button class="btn ghost sm" id="editAs">แก้ไข</button></div></div>' +
+      '<div class="facts"><div><span>งบที่ตั้ง/วัน</span><b>' + (bd ? F.baht(bd.daily_budget) + (bd.level === 'campaign' ? ' <span class="muted">(CBO ทั้งแคมเปญ)</span>' : '') : '<span class="muted">ยังไม่ตั้ง</span>') + '</b></div>' +
+      '<div><span>สถานะ</span><b>' + (isTrue(a.active) ? '<span class="pill good">เปิด</span>' : '<span class="pill">ปิด</span>') + '</b></div>' +
+      '<div><span>Lead</span><b>' + y.leads + '</b></div><div><span>ปิดได้</span><b>' + y.closed + '</b></div><div><span>ค่า Ads รวม</span><b>' + (y.spend ? F.baht(y.spend) : '–') + '</b></div></div>' +
+      budgetHistory(cp.name, a.name) + '</div>';
+    html += '<div class="card mt"><div class="card-head"><div><h2 class="card-title">โฆษณา</h2><div class="card-sub">ชื่อโฆษณาคือชื่อที่แอดมินเลือกตอนบันทึกแชท · ปิดแล้วจะไม่โผล่ในหน้าบันทึกแชท</div></div><button class="btn sm" id="addAd">+ เพิ่มโฆษณา</button></div>' +
+      '<div class="table-wrap"><table class="t wide"><thead><tr><th></th><th>ชื่อโฆษณา</th><th>โพสต์</th><th class="r">Lead</th><th class="r">ปิดได้</th><th>สถานะ</th></tr></thead><tbody>' +
+      (ads.length ? ads.map(function (d) {
+        var z = g(st.ad, d.ad_name);
+        return '<tr class="click" data-aid="' + esc(d.id) + '"><td style="width:56px">' + (d.creative_url ? '<img class="thumb" src="' + esc(d.creative_url) + '" alt="" loading="lazy">' : '<div class="thumb"></div>') + '</td>' +
+          '<td>' + esc(d.ad_name) + '</td><td>' + (d.post_url ? '<a href="' + esc(d.post_url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">' + I.link + '</a>' : '<span class="muted">–</span>') + '</td>' +
+          '<td class="r num">' + z.leads + '</td><td class="r num">' + z.closed + '</td>' +
+          '<td>' + (isTrue(d.active) ? '<span class="pill good">กำลังยิง</span>' : '<span class="pill">ปิดแล้ว</span>') + '</td></tr>';
+      }).join('') : '<tr><td colspan="6" class="empty">ยังไม่มีโฆษณา — กด + เพิ่มโฆษณา</td></tr>') + '</tbody></table></div></div>';
+    $('#page').innerHTML = html;
+    wireCrumbs();
+    $('#editAs').onclick = function () { editAdset(a.id ? a : Object.assign({}, a)); };
+    $('#addAd').onclick = function () { editAd(null, { campaign: cp.name, adset: a.name }); };
+    $$('tr[data-aid]').forEach(function (tr) { tr.onclick = function () { editAd(tr.dataset.aid); }; });
+    wireBudgetButtons();
+  }
+
+  function wireCrumbs() {
+    $$('[data-crumb]').forEach(function (b) {
+      b.onclick = function () {
+        var i = Number(b.dataset.crumb);
+        if (i === 0) { S.campNav.camp = null; S.campNav.adset = null; } else { S.campNav.adset = null; }
+        pageCampaigns(); window.scrollTo(0, 0);
+      };
+    });
+  }
+  function wireBudgetButtons() {
+    $$('[data-bset]').forEach(function (b) {
+      b.onclick = function (e) { e.stopPropagation(); editBudget({ campaign: b.dataset.bset, adset: b.dataset.bas }, pageCampaigns); };
+    });
+    $$('tr[data-bid]').forEach(function (tr) {
+      tr.onclick = function () { editBudget(S.data.budgets.filter(function (x) { return x.id === tr.dataset.bid; })[0], pageCampaigns); };
+    });
+  }
+
+  /** บันทึกงบ: ถ้ามีแถวของระดับเดียวกันที่เริ่มวันเดียวกันอยู่แล้ว → แก้แถวนั้นแทนการเพิ่มใหม่ */
+  function saveBudgetSmart(rec) {
+    if (!rec.id) {
+      var same = S.data.budgets.filter(function (b) { return b.campaign === rec.campaign && (b.adset || '') === (rec.adset || '') && b.start_date === rec.start_date; })[0];
+      if (same) rec.id = same.id;
+    }
+    return API.call('saveBudget', { budget: rec }).then(function (saved) {
+      var i = S.data.budgets.findIndex(function (x) { return x.id === saved.id; });
+      if (i >= 0) S.data.budgets[i] = saved; else S.data.budgets.push(saved);
+      return saved;
+    });
+  }
+  /** วันที่ตั้งต้นของงบใหม่: ถ้ายังไม่เคยตั้งงบระดับนี้ = วันเริ่มแคมเปญ, ถ้าเคยแล้ว = วันนี้ */
+  function defaultBudgetDate(camp, adset) {
+    var has = S.data.budgets.some(function (b) { return b.campaign === camp && (b.adset || '') === (adset || ''); });
+    var cp = S.data.campaigns.filter(function (c) { return c.name === camp; })[0];
+    if (!has && cp && cp.start_date) return cp.start_date < today() ? cp.start_date : cp.start_date;
+    return today();
+  }
+
+  function bulkBudget(cp) {
+    var rows = adsetRows(cp.name), td = today();
+    var anyBudget = S.data.budgets.some(function (b) { return b.campaign === cp.name; });
+    function cur(as) { var b = C.budgetAt(S.data, cp.name, as, td); return b && (as ? b.level === 'adset' : true) ? b.daily_budget : ''; }
+    modal('<h3>ตั้งงบทั้งหมด — ' + esc(cp.name) + '</h3><form id="bkForm" class="form-grid">' +
+      '<div class="f c6"><label>เริ่มใช้งบนี้วันที่</label><input type="date" id="bkDate" value="' + (anyBudget ? td : esc(cp.start_date)) + '" required></div>' +
+      '<div class="f c6"><label>สิ่งที่ทดลอง / เหตุผล</label><input id="bkNote" placeholder="เช่น ทดลองเพิ่มงบ +30%"></div>' +
+      '<div class="f c12"><div class="hint">ใส่งบ/วันที่ตั้งไว้ใน Ads Manager · ช่องที่ไม่แก้จะไม่ถูกบันทึก · ใช้ CBO ให้ใส่ที่ "ทั้งแคมเปญ" แล้วเว้น Ad set ว่าง</div></div>' +
+      '<div class="c12"><table class="t"><tbody>' +
+      '<tr><td><span class="pill info">ทั้งแคมเปญ (CBO)</span></td><td class="r" style="width:180px"><input class="bk" data-as="" type="number" min="0" inputmode="numeric" value="' + esc(cur('')) + '" data-old="' + esc(cur('')) + '" placeholder="–"></td></tr>' +
+      rows.map(function (a) {
+        return '<tr><td>' + esc(a.name) + (isTrue(a.active) ? '' : ' <span class="pill">ปิด</span>') + '</td><td class="r"><input class="bk" data-as="' + esc(a.name) + '" type="number" min="0" inputmode="numeric" value="' + esc(cur(a.name)) + '" data-old="' + esc(cur(a.name)) + '" placeholder="–"></td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      '<div class="c12 actions"><button type="button" class="btn ghost" data-close>ยกเลิก</button><button class="btn" type="submit">บันทึก</button></div></form>',
       function (el, close) {
-        $('#esForm', el).onsubmit = function (e) {
+        $('#bkForm', el).onsubmit = function (e) {
           e.preventDefault();
-          API.call('saveSpend', { spend: { id: s.id, date: $('#esDate', el).value, adset: $('#esAdset', el).value, amount: $('#esAmt', el).value, note: $('#esNote', el).value } })
-            .then(function (saved) { Object.assign(s, saved); close(); toast('บันทึกแล้ว'); pageSpend(); }).catch(fail);
+          var date = $('#bkDate', el).value, note = $('#bkNote', el).value.trim();
+          var changes = $$('.bk', el).filter(function (i) { return i.value !== '' && String(i.value) !== String(i.dataset.old); });
+          if (!changes.length) return toast('ยังไม่ได้แก้งบช่องไหน', true);
+          var chain = Promise.resolve();
+          changes.forEach(function (i) {
+            chain = chain.then(function () { return saveBudgetSmart({ campaign: cp.name, adset: i.dataset.as, start_date: date, daily_budget: i.value, note: note }); });
+          });
+          chain.then(function () { close(); toast('บันทึกงบ ' + changes.length + ' รายการ'); pageCampaigns(); }).catch(fail);
         };
-        $('#esDel', el).onclick = function () {
-          if (!window.confirm('ลบรายการนี้?')) return;
-          API.call('deleteSpend', { id: s.id }).then(function () {
-            S.data.spend = S.data.spend.filter(function (x) { return x.id !== s.id; }); close(); toast('ลบแล้ว'); pageSpend();
+      });
+  }
+
+  function editAdset(a) {
+    var isNew = !a.id;
+    var used = !isNew && (S.data.ads.some(function (x) { return x.campaign === a.campaign && x.adset === a.name; }) || S.data.chats.some(function (x) { return x.campaign === a.campaign && x.adset === a.name; }));
+    modal('<h3>' + (isNew ? 'เพิ่ม Ad set' : 'แก้ไข Ad set') + '</h3><form id="asForm" class="form-grid">' +
+      '<div class="f c12"><label>แคมเปญ</label><input value="' + esc(a.campaign) + '" readonly></div>' +
+      '<div class="f c12"><label>ชื่อ Ad set (ตรงกับใน Ads Manager)</label><input id="asName" value="' + esc(a.name || '') + '" required>' + (used ? '<div class="hint">เปลี่ยนชื่อได้ — แชท/โฆษณา/งบเดิมจะเปลี่ยนชื่อตามให้</div>' : '') + '</div>' +
+      (isNew ? '<div class="f c6"><label>งบที่ตั้ง/วัน (ถ้าแยกงบราย Ad set)</label><input type="number" id="asBudget" min="0" inputmode="numeric" placeholder="ใช้ CBO ให้เว้นว่าง"></div>' : '') +
+      '<div class="f c12"><label>หมายเหตุ</label><input id="asNote" value="' + esc(a.note || '') + '"></div>' +
+      '<div class="f c12"><label><input type="checkbox" id="asActive"' + (isTrue(a.active) ? ' checked' : '') + ' style="width:auto;margin-right:8px">เปิดอยู่</label><div class="hint">ปิด Ad set ที่มีงบแยก → ระบบตั้งงบเป็น 0 ตั้งแต่วันนี้ให้ ค่า Ads จะหยุดนับ</div></div>' +
+      '<div class="c12 actions" style="justify-content:space-between">' + (!isNew && !used ? '<button type="button" class="btn danger" id="asDel">ลบ</button>' : '<span></span>') +
+      '<span class="actions"><button type="button" class="btn ghost" data-close>ยกเลิก</button><button class="btn" type="submit">บันทึก</button></span></div></form>',
+      function (el, close) {
+        $('#asForm', el).onsubmit = function (e) {
+          e.preventDefault();
+          var wasActive = isTrue(a.active);
+          var rec = { id: a.id || '', campaign: a.campaign, name: $('#asName', el).value.trim(), active: $('#asActive', el).checked, note: $('#asNote', el).value.trim() };
+          var first = $('#asBudget', el) ? $('#asBudget', el).value : '';
+          var oldName = a.name;
+          API.call('saveAdset', { adset: rec }).then(function (saved) {
+            var i = S.data.adsets.findIndex(function (x) { return x.id === saved.id; });
+            if (i >= 0) S.data.adsets[i] = saved; else S.data.adsets.push(saved);
+            if (oldName && oldName !== saved.name) {
+              [S.data.ads, S.data.chats, S.data.budgets].forEach(function (list) { list.forEach(function (x) { if (x.campaign === saved.campaign && x.adset === oldName) x.adset = saved.name; }); });
+              if (S.campNav && S.campNav.adset === oldName) S.campNav.adset = saved.name;
+            }
+            if (first !== '') return saveBudgetSmart({ campaign: saved.campaign, adset: saved.name, start_date: defaultBudgetDate(saved.campaign, saved.name), daily_budget: first, note: 'งบเริ่มต้น' });
+            var b = C.budgetAt(S.data, saved.campaign, saved.name, today());
+            if (wasActive && !rec.active && b && b.level === 'adset' && Number(b.daily_budget) > 0) {
+              return saveBudgetSmart({ campaign: saved.campaign, adset: saved.name, start_date: today(), daily_budget: 0, note: 'ปิด Ad set' });
+            }
+          }).then(function () { close(); toast('บันทึก Ad set แล้ว'); pageCampaigns(); }).catch(fail);
+        };
+        if ($('#asDel', el)) $('#asDel', el).onclick = function () {
+          if (!window.confirm('ลบ Ad set ' + a.name + ' ?')) return;
+          API.call('deleteAdset', { id: a.id }).then(function () {
+            S.data.adsets = S.data.adsets.filter(function (x) { return x.id !== a.id; });
+            S.data.budgets = S.data.budgets.filter(function (b) { return !(b.campaign === a.campaign && b.adset === a.name); });
+            S.campNav.adset = null; close(); toast('ลบแล้ว'); pageCampaigns();
           }).catch(fail);
         };
       });
@@ -683,45 +871,9 @@
   // Settings
   // ============================================================
   function pageSettings() {
-    var td = today();
-    var cps = (S.data.campaigns || []).slice().sort(function (a, b) {
-      var sa = C.campaignStatus(a, td).text === 'กำลังยิง' ? 0 : 1, sb = C.campaignStatus(b, td).text === 'กำลังยิง' ? 0 : 1;
-      return sa - sb || (a.start_date < b.start_date ? 1 : -1);
-    });
-    var html = '<div class="card"><div class="card-head"><div><h2 class="card-title">แคมเปญ</h2><div class="card-sub">ตั้งวันที่เริ่ม/ปิด และงบที่ตั้งไว้ต่อวัน · ปรับงบเพื่อทดลองได้ไม่จำกัดครั้ง แต่ละครั้งเป็น 1 ช่วงงบ · ค่าใช้จ่ายจริงไปกรอกที่หน้า ค่า Ads</div></div>' +
-      '<button class="btn sm" id="addCamp">+ เพิ่มแคมเปญ</button></div>' +
-      '<div class="table-wrap"><table class="t wide"><thead><tr><th>แคมเปญ</th><th>เริ่มยิง</th><th>ปิด</th><th>สถานะ</th><th class="r">งบที่ตั้ง/วัน</th><th class="r">ปรับงบ</th><th class="r">Ad set</th><th class="r">โฆษณา</th></tr></thead><tbody>' +
-      (cps.length ? cps.map(function (c) {
-        var st = C.campaignStatus(c, td);
-        var bs = (S.data.budgets || []).filter(function (b) { return b.campaign === c.name; });
-        return '<tr class="click" data-cid="' + esc(c.id) + '"><td><b style="font-weight:500">' + esc(c.name) + '</b>' + (c.objective ? '<div class="muted" style="font-size:12.5px">' + esc(c.objective) + '</div>' : '') + '</td>' +
-          '<td class="num" style="white-space:nowrap">' + F.thDate(c.start_date, true) + '</td><td class="num muted" style="white-space:nowrap">' + (c.end_date ? F.thDate(c.end_date, true) : '–') + '</td>' +
-          '<td><span class="pill ' + st.tone + '">' + st.text + '</span></td>' +
-          '<td class="r num">' + budgetSummary(c.name, c.end_date && c.end_date < td ? c.end_date : td) + '</td>' +
-          '<td class="r num">' + (bs.length ? bs.length + ' ช่วง' : '<span class="muted">ยังไม่ตั้ง</span>') + '</td>' +
-          '<td class="r num">' + C.adsetsOf(S.data, c.name).length + '</td>' +
-          '<td class="r num">' + S.data.ads.filter(function (a) { return a.campaign === c.name; }).length + '</td></tr>';
-      }).join('') : '<tr><td colspan="8" class="empty">ยังไม่มีแคมเปญ — กด + เพิ่มแคมเปญ</td></tr>') + '</tbody></table></div></div>';
-
-    var ads = S.data.ads.slice().sort(function (a, b) { return (a.campaign + a.adset + a.ad_name).localeCompare(b.campaign + b.adset + b.ad_name, 'th'); });
-    html += '<div class="card mt"><div class="card-head"><div><h2 class="card-title">โฆษณา</h2><div class="card-sub">1 แถว = 1 ตัวโฆษณา · Ad set เดียวมีหลายโฆษณาได้ · ชื่อโฆษณาห้ามซ้ำ · ปิดแล้วจะไม่โผล่ในหน้าบันทึกแชท</div></div>' +
-      '<button class="btn sm" id="addAd">+ เพิ่มโฆษณา</button></div>' +
-      '<div class="table-wrap"><table class="t wide"><thead><tr><th>แคมเปญ</th><th>Ad set</th><th>ชื่อโฆษณา</th><th class="r">งบที่ตั้ง/วัน</th><th></th><th>โพสต์</th><th>สถานะ</th></tr></thead><tbody>' +
-      (ads.length ? ads.map(function (a, i) {
-        var cp = (S.data.campaigns || []).filter(function (c) { return c.name === a.campaign; })[0];
-        var ended = cp && cp.end_date && cp.end_date < td;
-        var bd = a.campaign ? C.budgetAt(S.data, a.campaign, a.adset, ended ? cp.end_date : td) : null;
-        var first = i === 0 || ads[i - 1].campaign !== a.campaign;
-        return '<tr class="click' + (first && i ? ' grp-start' : '') + '" data-aid="' + esc(a.id) + '"><td>' + (first ? '<b style="font-weight:500">' + esc(a.campaign || '–') + '</b>' : '') + '</td><td>' + esc(a.adset) + '</td><td>' + esc(a.ad_name) + '</td>' +
-          '<td class="r num"><button class="btn ghost sm" data-setbudget="' + esc(a.id) + '">' + (bd ? F.baht(bd.daily_budget) + (bd.level === 'campaign' ? ' <span class="muted">(ทั้งแคมเปญ)</span>' : '') : 'ตั้งงบ') + '</button></td>' +
-          '<td>' + (a.creative_url ? '<img class="thumb" src="' + esc(a.creative_url) + '" alt="" loading="lazy">' : '') + '</td>' +
-          '<td>' + (a.post_url ? '<a href="' + esc(a.post_url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">' + I.link + '</a>' : '<span class="muted">–</span>') + '</td>' +
-          '<td>' + (ended ? '<span class="pill">แคมเปญจบแล้ว</span>' : isTrue(a.active) ? '<span class="pill good">กำลังยิง</span>' : '<span class="pill">ปิดแล้ว</span>') + '</td></tr>';
-      }).join('') : '<tr><td colspan="7" class="empty">ยังไม่มีโฆษณา</td></tr>') + '</tbody></table></div></div>';
-
-    html += '<div class="grid row-2 mt">' +
+    var html = '<div class="grid row-2">' +
       '<div class="card"><h2 class="card-title" style="margin-bottom:14px">เป้าหมาย</h2><form id="cfgForm" class="form-grid">' +
-      '<div class="f c8"><label for="cfgTarget">เป้าต้นทุน/เคส (บาท)</label><input type="number" id="cfgTarget" min="1" value="' + esc(S.data.config.target_cost_per_case) + '"><div class="hint">ใช้ตัดสิน "ควรทำอะไร" ในตาราง Ad set</div></div>' +
+      '<div class="f c8"><label for="cfgTarget">เป้าต้นทุน/เคส (บาท)</label><input type="number" id="cfgTarget" min="1" value="' + esc(S.data.config.target_cost_per_case) + '"><div class="hint">ใช้ตัดสิน "ควรทำอะไร" ในตาราง Dashboard</div></div>' +
       '<div class="f c4" style="align-self:start;padding-top:27px"><button class="btn" type="submit">บันทึก</button></div></form></div>' +
       '<div class="card"><div class="card-head"><h2 class="card-title">ผู้ใช้</h2><button class="btn sm" id="addUser">+ เพิ่มผู้ใช้</button></div>' +
       '<table class="t"><tbody>' + S.data.users.map(function (u) {
@@ -729,25 +881,11 @@
           '<td>' + (u.active ? '<span class="pill good">ใช้งาน</span>' : '<span class="pill">ปิด</span>') + '</td>' +
           '<td class="r"><button class="btn ghost sm" data-user="' + esc(u.name) + '">แก้</button></td></tr>';
       }).join('') + '</tbody></table></div></div>';
-
     if (API.isDemo) {
       html += '<div class="card mt"><h2 class="card-title">โหมดตัวอย่าง</h2><p class="muted">ตอนนี้ยังไม่ได้ใส่ API_URL ใน assets/js/config.js — ข้อมูลทั้งหมดเป็นข้อมูลจำลองที่เก็บในเบราว์เซอร์นี้เท่านั้น</p>' +
         '<button class="btn ghost" id="resetDemo">รีเซ็ตข้อมูลตัวอย่าง</button></div>';
     }
     $('#page').innerHTML = html;
-
-    $('#addCamp').onclick = function () { editCampaign(null); };
-    $$('tr[data-cid]').forEach(function (tr) { tr.onclick = function () { editCampaign(tr.dataset.cid); }; });
-    $('#addAd').onclick = function () { editAd(null); };
-    $$('tr[data-aid]').forEach(function (tr) { tr.onclick = function () { editAd(tr.dataset.aid); }; });
-    $$('[data-setbudget]').forEach(function (b) {
-      b.onclick = function (e) {
-        e.stopPropagation();
-        var a = S.data.ads.filter(function (x) { return x.id === b.dataset.setbudget; })[0];
-        if (!a.campaign) return toast('ใส่แคมเปญให้โฆษณานี้ก่อน', true);
-        editBudget({ campaign: a.campaign, adset: a.adset }, pageSettings);
-      };
-    });
     $('#cfgForm').onsubmit = function (e) {
       e.preventDefault();
       var v = Number($('#cfgTarget').value);
@@ -778,16 +916,6 @@
 
   function editCampaign(id) {
     var c = id ? S.data.campaigns.filter(function (x) { return x.id === id; })[0] : { start_date: today() };
-    function budgetRows() {
-      var bs = (S.data.budgets || []).filter(function (b) { return b.campaign === c.name; })
-        .sort(function (a, b) { return (a.adset || '').localeCompare(b.adset || '', 'th') || (a.start_date < b.start_date ? -1 : 1); });
-      if (!bs.length) return '<div class="empty" style="padding:14px 0">ยังไม่ได้ตั้งงบ</div>';
-      return '<div class="table-wrap"><table class="t"><thead><tr><th>ระดับ</th><th>เริ่มใช้</th><th class="r">งบ/วัน</th><th>สิ่งที่ทดลอง</th></tr></thead><tbody>' +
-        bs.map(function (b) {
-          return '<tr class="click" data-bid="' + esc(b.id) + '"><td>' + (b.adset ? esc(b.adset) : '<span class="pill info">ทั้งแคมเปญ</span>') + '</td><td class="num" style="white-space:nowrap">' + F.thDate(b.start_date, true) + '</td>' +
-            '<td class="r num">' + F.baht(b.daily_budget) + '</td><td class="muted">' + esc(b.note || '') + '</td></tr>';
-        }).join('') + '</tbody></table></div>';
-    }
     modal('<h3>' + (id ? 'แก้ไขแคมเปญ' : 'เพิ่มแคมเปญ') + '</h3><form id="cpForm" class="form-grid">' +
       '<div class="f c12"><label>ชื่อแคมเปญ (ตรงกับใน Ads Manager)</label><input id="cpName" value="' + esc(c.name || '') + '" required></div>' +
       '<div class="f c6"><label>วันที่เริ่มยิง</label><input type="date" id="cpStart" value="' + esc(c.start_date || '') + '" required></div>' +
@@ -797,22 +925,8 @@
       (id ? '' : '<div class="f c6"><label>งบที่ตั้ง/วัน ทั้งแคมเปญ (ถ้ามี)</label><input type="number" id="cpBudget" min="0" inputmode="numeric" placeholder="ถ้าตั้งงบราย Ad set ให้เว้นว่าง"></div>') +
       '<datalist id="dlObj"><option value="Message"><option value="Engagement"><option value="Traffic"><option value="Leads"></datalist>' +
       '<div class="c12 actions" style="justify-content:space-between">' + (id ? '<button type="button" class="btn danger" id="cpDel">ลบ</button>' : '<span></span>') +
-      '<span class="actions"><button type="button" class="btn ghost" data-close>ยกเลิก</button><button class="btn" type="submit">บันทึก</button></span></div></form>' +
-      (id ? '<div style="margin-top:22px;border-top:1px solid var(--line);padding-top:18px"><div class="card-head"><div><h3 style="margin:0">งบที่ตั้ง / ทดลองงบ</h3><div class="card-sub">ปรับงบ 1 ครั้ง = เพิ่ม 1 แถว (วันที่เริ่มใช้ + งบใหม่) · Dashboard จะเทียบผลแต่ละช่วงให้</div></div>' +
-        '<button class="btn sm" id="addBudget">+ ปรับงบ</button></div><div id="budgetList">' + budgetRows() + '</div></div>' : ''),
+      '<span class="actions"><button type="button" class="btn ghost" data-close>ยกเลิก</button><button class="btn" type="submit">บันทึก</button></span></div></form>',
       function (el, close) {
-        function wireRows() {
-          $$('tr[data-bid]', el).forEach(function (tr) {
-            tr.onclick = function () {
-              var b = S.data.budgets.filter(function (x) { return x.id === tr.dataset.bid; })[0];
-              editBudget(b, function () { $('#budgetList', el).innerHTML = budgetRows(); wireRows(); });
-            };
-          });
-        }
-        wireRows();
-        if ($('#addBudget', el)) $('#addBudget', el).onclick = function () {
-          editBudget({ campaign: c.name }, function () { $('#budgetList', el).innerHTML = budgetRows(); wireRows(); });
-        };
         $('#cpForm', el).onsubmit = function (e) {
           e.preventDefault();
           var rec = { id: c.id || '', name: $('#cpName', el).value.trim(), start_date: $('#cpStart', el).value, end_date: $('#cpEnd', el).value,
@@ -823,20 +937,18 @@
             var i = S.data.campaigns.findIndex(function (x) { return x.id === saved.id; });
             if (i >= 0) S.data.campaigns[i] = saved; else S.data.campaigns.push(saved);
             if (oldName && oldName !== saved.name) {
-              [S.data.ads, S.data.chats, S.data.budgets].forEach(function (list) { list.forEach(function (x) { if (x.campaign === oldName) x.campaign = saved.name; }); });
+              [S.data.ads, S.data.chats, S.data.budgets, S.data.adsets].forEach(function (list) { list.forEach(function (x) { if (x.campaign === oldName) x.campaign = saved.name; }); });
             }
-            if (firstBudget !== '') {
-              return API.call('saveBudget', { budget: { campaign: saved.name, adset: '', start_date: saved.start_date, daily_budget: firstBudget, note: 'งบเริ่มต้น' } })
-                .then(function (b) { S.data.budgets.push(b); });
-            }
-          }).then(function () { close(); toast('บันทึกแคมเปญแล้ว'); pageSettings(); }).catch(fail);
+            if (!id) S.campNav = { camp: saved.id, adset: null, all: (S.campNav || {}).all };
+            if (firstBudget !== '') return saveBudgetSmart({ campaign: saved.name, adset: '', start_date: saved.start_date, daily_budget: firstBudget, note: 'งบเริ่มต้น' });
+          }).then(function () { close(); toast('บันทึกแคมเปญแล้ว'); pageCampaigns(); }).catch(fail);
         };
         if ($('#cpDel', el)) $('#cpDel', el).onclick = function () {
           if (!window.confirm('ลบแคมเปญ ' + c.name + ' ?')) return;
           API.call('deleteCampaign', { id: c.id }).then(function () {
             S.data.campaigns = S.data.campaigns.filter(function (x) { return x.id !== c.id; });
             S.data.budgets = S.data.budgets.filter(function (x) { return x.campaign !== c.name; });
-            close(); toast('ลบแล้ว'); pageSettings();
+            S.campNav = { camp: null, adset: null }; close(); toast('ลบแล้ว'); pageCampaigns();
           }).catch(fail);
         };
       });
@@ -850,7 +962,7 @@
     modal('<h3>' + (isNew ? 'ตั้งงบ / ปรับงบ' : 'แก้ไขช่วงงบ') + '</h3><form id="bdForm" class="form-grid">' +
       '<div class="f c12"><label>แคมเปญ</label><input value="' + esc(b.campaign) + '" readonly></div>' +
       '<div class="f c12"><label>ใช้กับ</label><select id="bdLevel">' + opt('', 'ทั้งแคมเปญ (CBO)', b.adset || '') + sets.map(function (s) { return opt(s, 'Ad set: ' + s, b.adset || ''); }).join('') + '</select></div>' +
-      '<div class="f c6"><label>เริ่มใช้งบนี้วันที่</label><input type="date" id="bdStart" value="' + esc(b.start_date || today()) + '" required></div>' +
+      '<div class="f c6"><label>เริ่มใช้งบนี้วันที่</label><input type="date" id="bdStart" value="' + esc(b.start_date || defaultBudgetDate(b.campaign, b.adset)) + '" required><div class="hint">ปรับงบกลางแคมเปญ = ใส่วันที่เริ่มใช้งบใหม่ งบเดิมยังนับถึงวันก่อนหน้า</div></div>' +
       '<div class="f c6"><label>งบที่ตั้ง/วัน (บาท)</label><input type="number" id="bdAmt" min="0" inputmode="numeric" value="' + esc(b.daily_budget == null ? '' : b.daily_budget) + '" required>' +
       (isNew && cur ? '<div class="hint">ตอนนี้ตั้งไว้ ' + F.baht(cur.daily_budget) + '/วัน' + (cur.level === 'campaign' ? ' (ทั้งแคมเปญ)' : '') + '</div>' : '') + '</div>' +
       '<div class="f c12"><label>สิ่งที่ทดลอง / เหตุผลที่ปรับ</label><input id="bdNote" value="' + esc(b.note || '') + '" placeholder="เช่น ทดลองเพิ่มงบ +30% ดูว่า Lead/วัน ขึ้นตามไหม"></div>' +
@@ -861,9 +973,7 @@
           e.preventDefault();
           var rec = { id: b.id || '', campaign: b.campaign, adset: $('#bdLevel', el).value, start_date: $('#bdStart', el).value, daily_budget: $('#bdAmt', el).value, note: $('#bdNote', el).value.trim() };
           if (rec.daily_budget === '') return toast('ใส่งบ/วัน', true);
-          API.call('saveBudget', { budget: rec }).then(function (saved) {
-            var i = S.data.budgets.findIndex(function (x) { return x.id === saved.id; });
-            if (i >= 0) S.data.budgets[i] = saved; else S.data.budgets.push(saved);
+          saveBudgetSmart(rec).then(function () {
             close(); toast('บันทึกงบแล้ว'); if (after) after();
           }).catch(fail);
         };
@@ -876,10 +986,10 @@
       });
   }
 
-  function editAd(id) {
-    var a = id ? S.data.ads.filter(function (x) { return x.id === id; })[0] : { active: true };
+  function editAd(id, preset) {
+    var a = id ? S.data.ads.filter(function (x) { return x.id === id; })[0] : Object.assign({ active: true }, preset || {});
     var used = id ? S.data.chats.filter(function (c) { return c.ad === a.ad_name; }).length : 0;
-    var asList = adsets();
+    var asList = a.campaign ? C.adsetsOf(S.data, a.campaign) : adsets();
     if (!campaigns().length) return toast('เพิ่มแคมเปญก่อน แล้วค่อยเพิ่มโฆษณา', true);
     modal('<h3>' + (id ? 'แก้ไขโฆษณา' : 'เพิ่มโฆษณา') + '</h3><form id="adForm" class="form-grid">' +
       '<div class="f c12"><label>แคมเปญ</label><select id="adCamp" required>' + (a.campaign ? '' : '<option value="">— เลือกแคมเปญ —</option>') + campOptions(a.campaign) + '</select></div>' +
@@ -902,13 +1012,13 @@
           API.call('saveAd', { ad: rec }).then(function (saved) {
             var i = S.data.ads.findIndex(function (x) { return x.id === saved.id; });
             if (i >= 0) S.data.ads[i] = saved; else S.data.ads.push(saved);
-            close(); toast('บันทึกโฆษณาแล้ว'); pageSettings();
+            close(); toast('บันทึกโฆษณาแล้ว'); pageCampaigns();
           }).catch(fail);
         };
         if ($('#adDel', el)) $('#adDel', el).onclick = function () {
           if (!window.confirm('ลบโฆษณานี้?')) return;
           API.call('deleteAd', { id: a.id }).then(function () {
-            S.data.ads = S.data.ads.filter(function (x) { return x.id !== a.id; }); close(); toast('ลบแล้ว'); pageSettings();
+            S.data.ads = S.data.ads.filter(function (x) { return x.id !== a.id; }); close(); toast('ลบแล้ว'); pageCampaigns();
           }).catch(fail);
         };
       });
