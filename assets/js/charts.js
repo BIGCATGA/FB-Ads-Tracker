@@ -16,7 +16,7 @@
       '<circle cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '" fill="none" stroke="var(--line)" stroke-width="' + sw + '"/>' +
       (p > 0 ? '<circle cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="' + sw + '" stroke-linecap="round"' +
         ' stroke-dasharray="' + (c * p).toFixed(2) + ' ' + c.toFixed(2) + '" transform="rotate(-90 ' + size / 2 + ' ' + size / 2 + ')"/>' : '') +
-      '<text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" font-size="' + (opts.fontSize || 13) + '">' + esc(label) + '</text></svg>';
+      '<text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" font-size="' + (opts.fontSize || 14) + '">' + esc(label) + '</text></svg>';
   }
 
   /** วงแหวนหลายช่วง (segments = [{value,color,label}]) */
@@ -36,7 +36,7 @@
       off += len;
     });
     return '<svg class="ring" width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">' + out +
-      '<text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" font-size="' + (opts.fontSize || 15) + '">' + esc(opts.label || '') + '</text></svg>';
+      '<text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" font-size="' + (opts.fontSize || 16) + '">' + esc(opts.label || '') + '</text></svg>';
   }
 
   /** โดนัทใหญ่ (สถานะลูกค้า) */
@@ -95,8 +95,8 @@
     var pts = vals.map(function (v, i) { return [i / (vals.length - 1) * W, pad + (1 - (v - min) / span) * (H - pad * 2 - 14) + 10]; });
     var line = smooth(pts);
     return '<svg class="wave" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">' +
-      '<path d="' + line + 'L' + W + ' ' + H + 'L0 ' + H + 'Z" fill="rgba(255,255,255,.16)"/>' +
-      '<path d="' + line + '" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2.2" vector-effect="non-scaling-stroke"/></svg>';
+      '<path d="' + line + 'L' + W + ' ' + H + 'L0 ' + H + 'Z" fill="var(--primary)" fill-opacity=".08"/>' +
+      '<path d="' + line + '" fill="none" stroke="var(--primary)" stroke-opacity=".7" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>';
   }
 
   /** กราฟแท่งคู่ (series = [{key,label,color}]) ; rows = [{label, tipLabel, ...}] */

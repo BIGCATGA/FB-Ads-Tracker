@@ -139,6 +139,9 @@
       r.cpl = r.leads ? r.spend / r.leads : null;
       r.cpc = r.closed ? r.spend / r.closed : null;
       r.action = actionFor(r, target);
+      var bd = r.campaign ? budgetAt(data, r.campaign, r.adset, to) : null;
+      r.dailyBudget = bd ? Number(bd.daily_budget) : null;
+      r.budgetLevel = bd ? bd.level : '';
       return r;
     }).sort(function (a, b) { return b.spend - a.spend || b.leads - a.leads; });
 
@@ -175,6 +178,90 @@
       statusCounts: statusCounts, funnel: funnel, leak: leak, daily: daily,
       adsetRows: adsetRows, adRows: adRows
     };
+  }
+
+  // ---------- แคมเปญ + งบที่ตั้ง ----------
+  function daysIncl(a, b) { return Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000) + 1; }
+
+  /** Ad set ทั้งหมดของแคมเปญ (จากตาราง Ads และแชท) */
+  function adsetsOf(data, camp) {
+    var set = {};
+    data.ads.forEach(function (a) { if (a.campaign === camp && a.adset) set[a.adset] = true; });
+    data.chats.forEach(function (c) { if (c.campaign === camp && c.adset) set[c.adset] = true; });
+    return Object.keys(set).sort();
+  }
+
+  /** งบ/วันที่ตั้งไว้ ณ วันที่ date ของ Ad set (หรือระดับแคมเปญ ถ้าไม่มีแถวของ Ad set) */
+  function budgetAt(data, camp, adset, date) {
+    var hit = null;
+    (data.budgets || []).forEach(function (b) {
+      if (b.campaign !== camp || b.start_date > date) return;
+      var lvlOk = adset ? (b.adset === adset) : !b.adset;
+      if (lvlOk && (!hit || b.start_date >= hit.start_date)) hit = b;
+    });
+    if (!hit && adset) { var c = budgetAt(data, camp, '', date); return c ? Object.assign({ level: 'campaign' }, c) : null; }
+    return hit ? Object.assign({ level: hit.adset ? 'adset' : 'campaign' }, hit) : null;
+  }
+
+  function campaignStatus(cp, today) {
+    if (cp.start_date && cp.start_date > today) return { text: 'ยังไม่เริ่ม', tone: 'info' };
+    if (cp.end_date && cp.end_date < today) return { text: 'จบแล้ว', tone: '' };
+    return { text: 'กำลังยิง', tone: 'good' };
+  }
+
+  /**
+   * ช่วงงบ (ทดลองงบ): แต่ละแถวงบ = 1 ช่วง ตั้งแต่ start_date ถึงก่อนแถวถัดไปของระดับเดียวกัน
+   * opts = { from, to, campaign, today }
+   */
+  function budgetPeriods(data, opts) {
+    var today = opts.today || iso(new Date());
+    var camps = {};
+    (data.campaigns || []).forEach(function (c) { camps[c.name] = c; });
+    var groups = {};
+    (data.budgets || []).forEach(function (b) {
+      if (opts.campaign && b.campaign !== opts.campaign) return;
+      var k = b.campaign + '|' + (b.adset || '');
+      (groups[k] = groups[k] || []).push(b);
+    });
+    var out = [];
+    Object.keys(groups).forEach(function (k) {
+      var list = groups[k].slice().sort(function (a, b) { return a.start_date < b.start_date ? -1 : 1; });
+      var prev = null;
+      list.forEach(function (b, i) {
+        var cp = camps[b.campaign] || {};
+        var from = b.start_date;
+        if (from > today) return;
+        var to = list[i + 1] ? addDays(list[i + 1].start_date, -1) : today;
+        if (cp.end_date && cp.end_date < to) to = cp.end_date;
+        if (to < from) return;
+        var scope = b.adset ? [b.adset] : adsetsOf(data, b.campaign);
+        var inScope = {};
+        scope.forEach(function (x) { inScope[x] = true; });
+        var chats = data.chats.filter(function (c) { return c.campaign === b.campaign && (!b.adset || c.adset === b.adset) && c.date >= from && c.date <= to; });
+        var people = uniquePeople(chats);
+        var leads = people.filter(function (p) { return stageOf(p.status) >= 1; }).length;
+        var closedP = people.filter(function (p) { return p.status === '5-ปิดการขาย'; });
+        var spend = data.spend.filter(function (s) { return inScope[s.adset] && s.date >= from && s.date <= to; })
+          .reduce(function (a, s) { return a + (Number(s.amount) || 0); }, 0);
+        var days = daysIncl(from, to);
+        var row = {
+          campaign: b.campaign, adset: b.adset || '', level: b.adset ? 'Ad set' : 'ทั้งแคมเปญ', from: from, to: to, days: days,
+          ongoing: !list[i + 1] && !(cp.end_date && cp.end_date < today),
+          daily: Number(b.daily_budget) || 0, planned: (Number(b.daily_budget) || 0) * days, spend: spend,
+          leads: leads, closed: closedP.length, amount: closedP.reduce(function (a, p) { return a + (Number(p.amount) || 0); }, 0),
+          leadsPerDay: leads / days, cpl: leads ? spend / leads : null, cpc: closedP.length ? spend / closedP.length : null,
+          note: b.note || '', budget: b
+        };
+        if (prev) {
+          row.budgetChange = prev.daily ? (row.daily - prev.daily) / prev.daily : null;
+          row.lpdChange = prev.leadsPerDay ? (row.leadsPerDay - prev.leadsPerDay) / prev.leadsPerDay : null;
+          row.cplChange = prev.cpl && row.cpl != null ? (row.cpl - prev.cpl) / prev.cpl : null;
+        }
+        prev = row;
+        if (opts.campaign || (to >= opts.from && from <= opts.to)) out.push(row);
+      });
+    });
+    return out.sort(function (a, b) { return a.campaign.localeCompare(b.campaign, 'th') || a.adset.localeCompare(b.adset, 'th') || (a.from < b.from ? -1 : 1); });
   }
 
   function sum(list, key) { return list.reduce(function (a, x) { return a + (Number(x[key]) || 0); }, 0); }
@@ -235,6 +322,7 @@
     STATUSES: STATUSES, BY_KEY: BY_KEY, STAGES: STAGES,
     stageOf: stageOf, dupMap: dupMap, uniquePeople: uniquePeople, compute: compute, presetRange: presetRange,
     summaryText: summaryText, iso: iso, addDays: addDays,
+    adsetsOf: adsetsOf, budgetAt: budgetAt, budgetPeriods: budgetPeriods, campaignStatus: campaignStatus,
     fmt: { baht: baht, int: int, pct: pct, thDate: thDate, thRange: thRange }
   };
 })();

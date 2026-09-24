@@ -3,7 +3,7 @@
  */
 (function () {
   var URL_ = (window.APP_CONFIG.API_URL || '').trim();
-  var DEMO_KEY = 'fbat_demo_v1';
+  var DEMO_KEY = 'fbat_demo_v2';
 
   function store(key, val) {
     try { if (val === undefined) return localStorage.getItem(key); if (val === null) localStorage.removeItem(key); else localStorage.setItem(key, val); } catch (e) { return null; }
@@ -72,6 +72,27 @@
             case 'deleteAd': return resolve(remove(db.ads, p.id));
             case 'saveSpend': return resolve(upsert(db.spend, Object.assign({}, p.spend, { amount: Number(p.spend.amount) }), 's', { created_by: me, created_at: now }));
             case 'deleteSpend': return resolve(remove(db.spend, p.id));
+            case 'saveCampaign':
+              var cp = p.campaign;
+              if (!String(cp.name || '').trim()) throw new Error('ต้องใส่ชื่อแคมเปญ');
+              if (!cp.start_date) throw new Error('ต้องใส่วันที่เริ่มยิง');
+              if (cp.end_date && cp.end_date < cp.start_date) throw new Error('วันที่ปิดต้องไม่ก่อนวันที่เริ่ม');
+              if (db.campaigns.some(function (c) { return c.name === cp.name && c.id !== cp.id; })) throw new Error('มีแคมเปญชื่อนี้แล้ว');
+              var old = cp.id && db.campaigns.find(function (c) { return c.id === cp.id; });
+              if (old && old.name !== cp.name) {
+                [db.ads, db.chats, db.budgets].forEach(function (list) { list.forEach(function (x) { if (x.campaign === old.name) x.campaign = cp.name; }); });
+              }
+              return resolve(upsert(db.campaigns, Object.assign({}, cp), 'k', { created_by: me, created_at: now }));
+            case 'deleteCampaign':
+              var dc = db.campaigns.find(function (c) { return c.id === p.id; });
+              if (db.ads.some(function (a) { return a.campaign === dc.name; }) || db.chats.some(function (c) { return c.campaign === dc.name; })) throw new Error('แคมเปญนี้มีโฆษณา/แชทอยู่ ลบไม่ได้ — ใส่วันที่ปิดแทน');
+              db.budgets = db.budgets.filter(function (b) { return b.campaign !== dc.name; });
+              return resolve(remove(db.campaigns, p.id));
+            case 'saveBudget':
+              if (!p.budget.start_date) throw new Error('ต้องใส่วันที่เริ่มใช้งบนี้');
+              if (p.budget.daily_budget === '' || !(Number(p.budget.daily_budget) >= 0)) throw new Error('งบ/วัน ต้องเป็นตัวเลข');
+              return resolve(upsert(db.budgets, Object.assign({}, p.budget, { daily_budget: Number(p.budget.daily_budget) }), 'b', { created_by: me, created_at: now }));
+            case 'deleteBudget': return resolve(remove(db.budgets, p.id));
             case 'saveConfig': db.config[p.key] = p.value; demoSave(); return resolve({ key: p.key, value: p.value });
             case 'saveUser':
               var u = db.users.find(function (x) { return x.name === p.name; });
