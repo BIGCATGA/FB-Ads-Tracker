@@ -8,6 +8,7 @@
  *   setup()               – สร้างแท็บ + หัวคอลัมน์ + กุญแจลับ (รันซ้ำได้ ไม่ลบข้อมูล — อัปเดตโค้ดแล้วให้รันอีกรอบ)
  *   createFirstUser()     – เพิ่มผู้ใช้คนแรกจาก FIRST_USER ด้านล่าง
  *   importFromOldSheet()  – ย้ายข้อมูลจากชีตเดิม (OLD_SHEET_ID)
+ *   reimportFromOldSheet() – ล้างแถวที่นำเข้ารอบก่อน (แชท/ค่า Ads ที่ created_by = import + โฆษณาชื่อซ้ำ) แล้วนำเข้าใหม่
  */
 
 // ====== ตั้งค่าที่แก้ได้ ======
@@ -425,6 +426,39 @@ function pad_(n) { return ('0' + n).slice(-2); }
 // Import จากชีตเดิม
 // ============================================================
 function importFromOldSheet() {
+  var already = readTable_('Chats').some(function (c) { return c.created_by === 'import'; });
+  if (already) throw new Error('นำเข้าไปแล้ว — ถ้าจะนำเข้าใหม่ให้รัน reimportFromOldSheet() แทน (จะลบแถวที่นำเข้ารอบก่อนออกก่อน)');
+  importCore_();
+}
+
+/**
+ * ล้างข้อมูลที่นำเข้ารอบก่อน แล้วนำเข้าใหม่
+ * - ลบแชท/ค่า Ads ที่ created_by = import (แชทที่คนกรอกเองในเว็บไม่โดนลบ)
+ * - ลบโฆษณาที่ชื่อซ้ำ (เก็บแถวแรก)
+ * หมายเหตุ: ถ้าเคยแก้แชทที่นำเข้ามา (เช่น เติมยอดรับซื้อ) การแก้นั้นจะหาย
+ */
+function reimportFromOldSheet() {
+  var chats = readTable_('Chats');
+  var keepChats = chats.filter(function (c) { return c.created_by !== 'import'; });
+  var spend = readTable_('Spend');
+  var keepSpend = spend.filter(function (x) { return x.created_by !== 'import'; });
+  var seen = {};
+  var ads = readTable_('Ads');
+  var keepAds = ads.filter(function (a) { if (seen[a.ad_name]) return false; seen[a.ad_name] = true; return true; });
+  rewriteTable_('Chats', keepChats);
+  rewriteTable_('Spend', keepSpend);
+  rewriteTable_('Ads', keepAds);
+  Logger.log('ลบแถวนำเข้าเดิม: แชท ' + (chats.length - keepChats.length) + ' · ค่า Ads ' + (spend.length - keepSpend.length) + ' · โฆษณาซ้ำ ' + (ads.length - keepAds.length));
+  importCore_();
+}
+
+function rewriteTable_(name, objs) {
+  var sh = sheet_(name), cols = SCHEMA[name];
+  if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, cols.length).clearContent();
+  appendObjects_(name, objs);
+}
+
+function importCore_() {
   var old = SpreadsheetApp.openById(OLD_SHEET_ID);
   var user = 'import';
   var now = new Date().toISOString();
@@ -447,6 +481,7 @@ function importFromOldSheet() {
   }
   if (hdrRow < 0) throw new Error('หาตารางโฆษณาในแท็บ ตั้งค่า ไม่เจอ');
   var seenAds = {};
+  readTable_('Ads').forEach(function (a) { seenAds[a.ad_name] = true; }); // ไม่สร้างโฆษณาที่มีอยู่แล้วซ้ำ
   for (r = hdrRow + 1; r < setVals.length; r++) {
     var row = setVals[r];
     var name = String(row[cAd] || '').trim();
@@ -470,6 +505,8 @@ function importFromOldSheet() {
   // ---- 2) แชท → Chats
   var chatSh = old.getSheetByName('แชท');
   var cv = chatSh.getDataRange().getValues();
+  // วันที่ใช้ "ค่าที่แสดงในชีต" (d/m/yy) — ชีตเดิมบางช่องถูกแปลงเป็นวันที่แบบ ด/ว สลับกัน (เช่น 11/9 กลายเป็น 9 พ.ย.)
+  var cvShow = chatSh.getDataRange().getDisplayValues();
   var h = -1, cName = -1, cAdC = -1, cAdsetC = -1, cCampC = -1, cStatus = -1;
   for (r = 0; r < Math.min(cv.length, 10) && h < 0; r++) {
     for (c = 0; c < cv[r].length; c++) {
@@ -491,7 +528,7 @@ function importFromOldSheet() {
     var rr = cv[r];
     var cust = String(rr[cName] || '').trim();
     if (!cust) continue;
-    var dt = normDate_(rr[cDate]);
+    var dt = normDate_(String(cvShow[r][cDate] || '').trim());
     var note = '';
     if (dt) lastDate = dt; else { dt = lastDate; note = 'ชีตเดิมไม่มีวันที่ — ใช้วันที่ของแถวก่อนหน้า'; }
     var st = String(rr[cStatus] || '').trim();
