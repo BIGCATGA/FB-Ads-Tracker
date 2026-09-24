@@ -108,7 +108,10 @@
       S.data = normalize(d);
       var hash = location.hash.replace('#', '');
       if (NAV.some(function (n) { return n.id === hash; })) S.page = hash;
-      render();
+      try { render(); } catch (err) {
+        console.error(err);
+        root.innerHTML = '<div class="loading"><div style="text-align:center;max-width:560px"><p>แสดงหน้าไม่ได้: ' + esc(err.message) + '</p><p class="muted">ลองกด Ctrl + F5 · ถ้ายังเป็น แคปข้อความนี้มาให้ดู</p></div></div>';
+      }
     }).catch(function (e) {
       if (e.code === 'AUTH') { API.token(null); return renderLogin(); }
       root.innerHTML = '<div class="loading"><div style="text-align:center"><p>โหลดข้อมูลไม่ได้: ' + esc(e.message) + '</p><button class="btn" id="retry">ลองใหม่</button></div></div>';
