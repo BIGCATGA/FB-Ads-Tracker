@@ -12,7 +12,7 @@
  */
 
 // ====== ตั้งค่าที่แก้ได้ ======
-var OLD_SHEET_ID = 'https://script.google.com/macros/s/AKfycbxqHjyxjO19MLQqM3-y_1ODIEs85GXjHOpS1i48KH-jNahTUkQa6arBWV1B1u7SlqYVDw/exec';
+var OLD_SHEET_ID = '10RES0HrYE5Ff13bp2LRKf9cZWmK7jh1-KGu8O3z-IQE';
 var FIRST_USER = { name: 'Admin', pin: '1234' }; // เปลี่ยนก่อนรัน createFirstUser()
 var TOKEN_DAYS = 30;
 var TZ = 'Asia/Bangkok';
