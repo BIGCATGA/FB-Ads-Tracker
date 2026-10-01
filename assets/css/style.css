@@ -631,3 +631,11 @@ table.runs tr.gap td { color: var(--text-3); font-size: 14px; padding: 6px 12px;
 .chart.big .val { font-size: 12.5px; }
 .chart-legend span:last-child i[style*="transparent"] { border-top: 2px dashed var(--text-2); height: 0; border-radius: 0; width: 16px; }
 @media (prefers-reduced-motion: reduce) { .chart.anim .bar, .chart.anim .val, .hb-track i, .xp-tr i { animation: none; } }
+.ib-sum { display: flex; flex-wrap: wrap; gap: 10px; }
+.ib-num { border: 1px solid var(--line); background: var(--card); border-radius: var(--radius-sm); padding: 10px 16px; cursor: pointer; display: grid; text-align: left; min-width: 120px; max-width: 280px; font-family: inherit; color: var(--text); }
+.ib-num b { font-size: 26px; font-weight: 700; color: var(--primary-text); font-variant-numeric: tabular-nums; }
+.ib-num span { font-size: 13.5px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ib-num:hover { border-color: var(--primary); }
+.ib-num.on { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 0 2px var(--primary-soft); }
+.ib-foot { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 12px; font-size: 14.5px; }
+.muted-link { color: var(--text-3) !important; }
