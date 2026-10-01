@@ -124,7 +124,7 @@
     });
     return {
       me: 'ผู้ใช้ตัวอย่าง',
-      chats: chats.map(function (c, i) { if (i % 3 === 0 && c.campaign) { c.source = 'fb'; c.review = 'auto'; } return c; }), ads: ads, spend: spend, campaigns: campaigns, budgets: budgets,
+      chats: chats, ads: ads, spend: spend, campaigns: campaigns, budgets: budgets,
       adsets: (function () {
         var seen = {}, out = [];
         ads.forEach(function (a, i) {
@@ -141,7 +141,7 @@
           ['Golf Chanin', 1, 'สนใจขายครับ', 'Ad Set B : iPhone 14 / 15 / 16 / 17:4|Ad Set A : Comset:1'],
           ['Mew Arisa', 2, 'มีโน๊ตบุ๊ครับซื้อไหม', 'Ad Set A : Comset:2'],
           ['Bank Teerapat', 3, 'PS5 รับไหมครับ', '']];
-        var out = P.slice(0, 2).map(function (x, i) { return { psid: 'd' + i, name: x[0], pic: '', first_date: iso(0), last_date: iso(x[1]), first_text: x[2], status: 'pending', suggest: x[3], chat_id: '', approx: '' }; });
+        var out = P.map(function (x, i) { return { psid: 'd' + i, name: x[0], pic: '', first_date: iso(x[1]), last_date: iso(x[1]), first_text: x[2], status: 'pending', suggest: x[3], chat_id: '', approx: '' }; });
         [['Jane Doe', 4, 'เปิดกี่โมงคะ'], ['Toey Pakorn', 6, 'ร้านอยู่ไหนครับ'], ['Fah Sirin', 9, 'ขอเบอร์ติดต่อหน่อย']].forEach(function (x, i) {
           out.push({ psid: 'o' + i, name: x[0], pic: '', first_date: iso(x[1]), last_date: iso(x[1]), first_text: x[2], status: 'other', suggest: '', chat_id: '', approx: '' });
         });
