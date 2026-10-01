@@ -74,29 +74,67 @@
           id: 'c' + (n++), date: addDays(rg[0], Math.floor(r() * (span + 1))), customer: name,
           ad: ad[0], adset: ad[1], campaign: ad[2], status: c[1],
           product: closed || c[1] === '4-นัดรับของ' ? p[0] : '', amount: closed ? p[1] + Math.round(r() * 20) * 100 : '',
-          note: '', created_by: 'ตัวอย่าง', created_at: '', updated_by: '', updated_at: ''
+          note: '', created_by: 'ตัวอย่าง', created_at: '', updated_by: '', updated_at: '',
+          closed_date: '', closed_by: closed ? ['แอดมิน มิ้นท์', 'แอดมิน บีม', 'แอดมิน ต้น'][n % 3] : ''
         });
       }
     });
     // แชทซ้ำ 2 คู่ ให้เห็นป้าย ⚠️ ซ้ำ
     chats.push(Object.assign({}, chats[20], { id: 'c' + (n++), date: addDays(chats[20].date, 1), status: '3-ประเมินราคาแล้ว' }));
     chats.push(Object.assign({}, chats[90], { id: 'c' + (n++), date: addDays(chats[90].date, 1) }));
+    chats.forEach(function (c, i) { if (c.status === '5-ปิดการขาย') c.closed_date = addDays(c.date, [0, 1, 2, 3, 5, 9, 1][i % 7]); });
     chats.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
 
+    // แคมเปญ + งบที่ตั้ง (มีการทดลองปรับงบ 2 แคมเปญ)
+    var ENDED = {}; ENDED[CAMP.ENG] = 1; ENDED[CAMP.MSG01] = 1;
+    var campaigns = Object.keys(RANGE).map(function (name, i) {
+      return { id: 'k' + i, name: name, start_date: RANGE[name][0], end_date: ENDED[name] ? RANGE[name][1] : '', objective: 'Message', note: '', created_by: 'ตัวอย่าง', created_at: '' };
+    });
+    var budgets = [
+      [CAMP.ENG, 'AS-1', '2026-08-24', 180, ''], [CAMP.ENG, 'AS-2', '2026-08-24', 180, ''],
+      [CAMP.MSG01, 'ADS-01', '2026-08-29', 300, ''],
+      [CAMP.BIRD, '', '2026-09-04', 350, 'เริ่มยิง CBO 350/วัน'],
+      [CAMP.BIRD, '', '2026-09-14', 500, 'ทดลองเพิ่มงบ +43% ดูว่า Lead/วัน ขึ้นตามไหม'],
+      [CAMP.PS, 'AD-SET PS', '2026-09-07', 120, ''],
+      [CAMP.PS, 'AD-SET PS', '2026-09-13', 0, 'หยุดยิง — คนทักมาขอซื้อมากกว่าขาย'],
+      [CAMP.COM, 'Ad Set A : Comset', '2026-09-15', 150, 'ทดสอบกลุ่ม Comset'],
+      [CAMP.COM, 'Ad Set A : Comset', '2026-09-19', 250, 'ทดลองเพิ่มงบ']
+    ].map(function (b, i) {
+      return { id: 'b' + i, campaign: b[0], adset: b[1], start_date: b[2], daily_budget: b[3], note: b[4], created_by: 'ตัวอย่าง', created_at: '' };
+    });
+
+    // ค่า Ads จริง = งบที่ตั้ง ±15% (งบระดับแคมเปญหารเท่า ๆ กันตาม Ad set ที่เปิด)
     var spend = [], s = 0;
     var adsets = {};
     ads.forEach(function (a) { if (a.active) adsets[a.adset] = a.campaign; });
+    function planned(as, camp, date) {
+      var n = Object.keys(adsets).filter(function (x) { return adsets[x] === camp; }).length || 1;
+      var hit = null;
+      budgets.forEach(function (b) {
+        if (b.campaign === camp && (b.adset === as || !b.adset) && b.start_date <= date && (!hit || b.start_date >= hit.start_date)) hit = b;
+      });
+      return hit ? (hit.adset ? hit.daily_budget : hit.daily_budget / n) : 0;
+    }
     Object.keys(adsets).forEach(function (as) {
-      var rg = RANGE[adsets[as]], span = daysBetween(rg[0], rg[1]);
+      var camp = adsets[as], rg = RANGE[camp], span = daysBetween(rg[0], rg[1]);
       for (var d = 0; d <= span; d++) {
-        spend.push({ id: 's' + (s++), date: addDays(rg[0], d), adset: as, amount: Math.round(rg[2] * (0.85 + r() * 0.3)), note: '', created_by: 'ตัวอย่าง', created_at: '' });
+        var date = addDays(rg[0], d);
+        spend.push({ id: 's' + (s++), date: date, date_to: date, campaign: camp, adset: as, amount: Math.round(planned(as, camp, date) * (0.85 + r() * 0.3)), note: '', created_by: 'ตัวอย่าง', created_at: '' });
       }
     });
     return {
       me: 'ผู้ใช้ตัวอย่าง',
-      chats: chats, ads: ads, spend: spend,
+      chats: chats, ads: ads, spend: spend, campaigns: campaigns, budgets: budgets,
+      adsets: (function () {
+        var seen = {}, out = [];
+        ads.forEach(function (a, i) {
+          var k = a.campaign + '|' + a.adset;
+          if (!seen[k]) { seen[k] = 1; out.push({ id: 'g' + i, campaign: a.campaign, name: a.adset, active: a.active, note: '' }); }
+        });
+        return out;
+      })(),
       config: { target_cost_per_case: 1000, brand: 'BIGCAT' },
-      users: [{ name: 'ผู้ใช้ตัวอย่าง', active: true }]
+      users: [{ name: 'ผู้ใช้ตัวอย่าง', active: true }, { name: 'แอดมิน มิ้นท์', active: true }, { name: 'แอดมิน บีม', active: true }, { name: 'แอดมิน ต้น', active: true }]
     };
   };
 })();
