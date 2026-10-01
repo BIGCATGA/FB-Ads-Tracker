@@ -106,6 +106,7 @@
     root.innerHTML = '<div class="loading">กำลังโหลดข้อมูล…</div>';
     API.call('bootstrap').then(function (d) {
       S.data = normalize(d);
+      API.outdated = !API.isDemo && (Number(d.backend_version) || 0) < API.MIN_BACKEND;
       var hash = location.hash.replace('#', '');
       if (NAV.some(function (n) { return n.id === hash; })) S.page = hash;
       try { render(); } catch (err) {
@@ -166,6 +167,7 @@
       '<label class="search">' + I.search + '<input id="globalSearch" placeholder="ค้นหาชื่อลูกค้า…" value="' + esc(S.page === 'chats' ? S.chatFilter.q : '') + '"></label>' +
       '<span class="spacer"></span>' +
       (API.isDemo ? '<span class="demo-badge">โหมดตัวอย่าง · ข้อมูลจำลอง</span>' : '') +
+      (API.outdated ? '<div class="outdated">⚠️ หลังบ้าน (Apps Script) ยังเป็นเวอร์ชันเก่า — ถ้าบันทึกตอนนี้ข้อมูลบางส่วนจะหายหลังรีเฟรช จึงปิดการบันทึกไว้ก่อน · แก้: วาง Code.gs ใหม่ → Run <b>setup</b> → Deploy → Manage deployments → ✎ → <b>New version</b></div>' : '') +
       '<div class="avatar" title="' + esc(S.data.me) + '" style="width:40px;height:40px">' + esc(initials(S.data.me)) + '</div>' +
       '</div>' +
       '<div id="page"></div>' +
@@ -277,6 +279,7 @@
       '</div>';
 
     // --- ทดลองงบ
+    html += closeTimeCard(m);
     html += campaignCard(m);
     html += budgetTestCard(f);
 
@@ -311,6 +314,7 @@
     $('#fCamp').onchange = function () { f.campaign = this.value; pageDashboard(); };
     $$('[data-ctab]').forEach(function (b) { b.onclick = function () { S.chartTab = b.dataset.ctab; pageDashboard(); }; });
     $('#btnSummary').onclick = function () { openSummary(m); };
+    $$('[data-chat]').forEach(function (r) { r.onclick = function () { editChat(r.dataset.chat, pageDashboard); }; });
   }
 
   function chg(v, goodWhenUp) {
@@ -318,6 +322,29 @@
     var up = v > 0, good = goodWhenUp ? up : !up;
     if (Math.abs(v) < 0.005) return '<div class="chg">0%</div>';
     return '<div class="chg ' + (good ? 'up' : 'down') + '">' + (up ? '▲ ' : '▼ ') + Math.abs(v * 100).toFixed(0) + '%</div>';
+  }
+
+  function closeTimeCard(m) {
+    var L = m.closeList, st = m.closeStats;
+    var html = '<div class="card mt"><div class="card-head"><div><h2 class="card-title">ระยะเวลา ทัก → ปิดได้</h2>' +
+      '<div class="card-sub">นับจากวันที่ลูกค้าทักครั้งแรก ถึงวันที่ปิดได้ · ทุกเคสที่ปิดได้ในช่วงนี้</div></div></div>';
+    if (!L.length) return html + '<div class="empty">ยังไม่มีเคสที่ปิดได้ในช่วงนี้</div></div>';
+    var maxB = st.known ? Math.max.apply(null, st.buckets.map(function (b) { return b.n; })) || 1 : 1;
+    html += (st.known ? '<div class="dur-stats">' +
+      '<div><span>เฉลี่ย</span><b>' + st.avg.toFixed(1) + ' วัน</b></div><div><span>ค่ากลาง</span><b>' + st.median + ' วัน</b></div>' +
+      '<div><span>เร็วสุด</span><b>' + st.min + ' วัน</b></div><div><span>ช้าสุด</span><b>' + st.max + ' วัน</b></div>' +
+      '<div class="dur-bars">' + st.buckets.map(function (b) {
+        return '<div class="dur-bar" data-tip="' + esc('<b>' + b.label + '</b><br>' + b.n + ' เคส') + '"><span>' + b.label + '</span><i><em style="width:' + (b.n / maxB * 100) + '%"></em></i><b>' + b.n + '</b></div>';
+      }).join('') + '</div></div>' : '') +
+      (st.known < L.length ? '<div class="nudge" style="margin:0 0 14px">มี ' + (L.length - st.known) + ' เคสที่ยังไม่มีวันปิด หรือวันปิดไม่ถูกต้อง — กดแถวเพื่อแก้</div>' : '') +
+      '<div class="table-wrap"><table class="t wide"><thead><tr><th>ลูกค้า</th><th>ทักครั้งแรก</th><th>ปิดได้</th><th class="r">ใช้เวลา</th><th>สินค้า</th><th class="r">ยอดรับซื้อ</th><th>Ad set</th><th>ปิดโดย</th></tr></thead><tbody>' +
+      L.map(function (p) {
+        return '<tr class="click" data-chat="' + esc(p.id) + '"><td>' + esc(p.customer) + '</td><td class="num">' + F.thDate(p.firstDate, true) + '</td>' +
+          '<td class="num">' + (p.closed_date ? F.thDate(p.closed_date, true) : '<span class="muted">ยังไม่ใส่</span>') + '</td>' +
+          '<td class="r num"><b>' + (p.badDate ? '<span class="dup">วันปิดก่อนวันทัก</span>' : p.closeDays == null ? '–' : p.closeDays === 0 ? 'วันเดียวกัน' : p.closeDays + ' วัน') + '</b></td>' +
+          '<td>' + esc(p.product || '') + '</td><td class="r num">' + F.baht(Number(p.amount) || 0) + '</td><td class="muted">' + esc(p.adset || '') + '</td><td>' + esc(p.closed_by || '–') + '</td></tr>';
+      }).join('') + '</tbody></table></div></div>';
+    return html;
   }
 
   function campaignCard(m) {
@@ -441,6 +468,9 @@
       }).join('') + '</div></div>' +
       '<div class="f c5 closeOnly"><label for="' + prefix + 'Product">สินค้า</label><input id="' + prefix + 'Product" value="' + esc(c.product || '') + '" placeholder="เช่น iPhone 14 Pro 256GB"></div>' +
       '<div class="f c3 closeOnly"><label for="' + prefix + 'Amount">ยอดรับซื้อ (บาท)</label><input id="' + prefix + 'Amount" type="number" min="0" step="1" inputmode="numeric" value="' + esc(c.amount || '') + '"></div>' +
+      '<div class="f c4 closedOnly"><label for="' + prefix + 'Closed">วันที่ปิดได้</label><input type="date" id="' + prefix + 'Closed" value="' + esc(c.closed_date || today()) + '"><div class="hint" id="' + prefix + 'Dur"></div></div>' +
+      '<div class="f c4 closedOnly"><label for="' + prefix + 'By">ปิดโดย</label><select id="' + prefix + 'By">' + S.data.users.map(function (u) { return opt(u.name, u.name, c.closed_by || S.data.me); }).join('') +
+        (c.closed_by && !S.data.users.some(function (u) { return u.name === c.closed_by; }) ? opt(c.closed_by, c.closed_by, c.closed_by) : '') + '</select></div>' +
       '<div class="f c4"><label for="' + prefix + 'Note">หมายเหตุ</label><input id="' + prefix + 'Note" value="' + esc(c.note || '') + '"></div>' +
       '</div>';
   }
@@ -453,6 +483,16 @@
     function closeFields() {
       var show = state.status === '5-ปิดการขาย' || state.status === '4-นัดรับของ';
       $$('.closeOnly', el).forEach(function (x) { x.style.display = show ? '' : 'none'; });
+      $$('.closedOnly', el).forEach(function (x) { x.style.display = state.status === '5-ปิดการขาย' ? '' : 'none'; });
+      dur();
+    }
+    function dur() {
+      var d = $('#' + prefix + 'Date', el).value, cd = $('#' + prefix + 'Closed', el).value, h = $('#' + prefix + 'Dur', el);
+      if (!h) return;
+      var first = d;
+      var name = $('#' + prefix + 'Name', el).value.trim().toLowerCase().replace(/[\s'’"`.]+/g, '');
+      S.data.chats.forEach(function (c) { if (name && String(c.customer).toLowerCase().replace(/[\s'’"`.]+/g, '') === name && c.date && c.date < first) first = c.date; });
+      h.textContent = d && cd ? (cd < first ? 'วันปิดอยู่ก่อนวันที่ทัก' : 'ทักครั้งแรก ' + F.thDate(first) + ' → ใช้เวลา ' + (C.daysIncl(first, cd) - 1) + ' วัน') : '';
     }
     function dup() {
       var name = $('#' + prefix + 'Name', el).value.trim().toLowerCase().replace(/[\s'’"`.]+/g, '');
@@ -466,7 +506,9 @@
       hint.textContent = hits.length ? '⚠️ ซ้ำ — มีแล้ว ' + hits.length + ' แถว (ล่าสุด ' + F.thDate(hits[hits.length - 1].date) + ' · ' + hits[hits.length - 1].status + ')' : '';
     }
     $('#' + prefix + 'Ad', el).onchange = function () { adMeta(); dup(); };
-    $('#' + prefix + 'Name', el).oninput = dup;
+    $('#' + prefix + 'Name', el).oninput = function () { dup(); dur(); };
+    $('#' + prefix + 'Date', el).onchange = dur;
+    $('#' + prefix + 'Closed', el).onchange = dur;
     $$('#' + prefix + 'Status button', el).forEach(function (b) {
       b.onclick = function () {
         state.status = b.dataset.st;
@@ -489,6 +531,8 @@
       status: state.status || '',
       product: showClose ? $('#' + prefix + 'Product', el).value.trim() : '',
       amount: showClose ? $('#' + prefix + 'Amount', el).value : '',
+      closed_date: state.status === '5-ปิดการขาย' ? $('#' + prefix + 'Closed', el).value : '',
+      closed_by: state.status === '5-ปิดการขาย' ? $('#' + prefix + 'By', el).value : '',
       note: $('#' + prefix + 'Note', el).value.trim()
     };
   }
@@ -498,6 +542,7 @@
     if (!c.ad) return 'ต้องเลือกโฆษณา';
     if (!c.status) return 'ต้องเลือกสถานะ';
     if (c.status === '5-ปิดการขาย' && !(Number(c.amount) > 0)) return 'เคสปิดการขายต้องใส่ยอดรับซื้อ';
+    if (c.status === '5-ปิดการขาย' && c.closed_date && c.closed_date < c.date) return 'วันที่ปิดต้องไม่ก่อนวันที่ทัก';
     return '';
   }
 
@@ -561,7 +606,7 @@
         return '<tr class="click" data-id="' + esc(c.id) + '"><td class="num" style="white-space:nowrap">' + F.thDate(c.date) + '</td>' +
           '<td>' + esc(c.customer) + (dups[c.id] ? ' <span class="dup">⚠️ ซ้ำ</span>' : '') + '</td>' +
           '<td><div>' + esc(c.ad || '-') + '</div><div class="muted" style="font-size:12.5px">' + esc(c.adset || '') + '</div></td>' +
-          '<td>' + statusPill(c.status) + '</td><td>' + esc(c.product || '') + '</td>' +
+          '<td>' + statusPill(c.status) + (c.status === '5-ปิดการขาย' ? '<div class="muted small">' + (c.closed_date ? 'ปิด ' + F.thDate(c.closed_date) + ' · ' + (C.daysIncl(c.date, c.closed_date) - 1) + ' วัน' : 'ยังไม่ใส่วันปิด') + (c.closed_by ? ' · ' + esc(c.closed_by) : '') + '</div>' : '') + '</td><td>' + esc(c.product || '') + '</td>' +
           '<td class="r num">' + (c.amount ? F.baht(Number(c.amount)) : '') + '</td><td class="muted">' + esc(c.updated_by || c.created_by || '') + '</td></tr>';
       }).join('') + '</tbody></table></div>' +
       (list.length > lim ? '<div class="actions" style="justify-content:center;margin-top:12px"><button class="btn ghost sm" id="more">แสดงเพิ่ม (' + (list.length - lim) + ')</button></div>' : '');
@@ -569,7 +614,7 @@
     if ($('#more')) $('#more').onclick = function () { S.chatFilter.limit += 200; renderChatList(); };
   }
 
-  function editChat(id) {
+  function editChat(id, after) {
     var c = S.data.chats.filter(function (x) { return x.id === id; })[0];
     if (!c) return;
     var st = { id: c.id, status: c.status, adset: c.adset, campaign: c.campaign };
@@ -588,14 +633,14 @@
           API.call('saveChat', { chat: nc }).then(function (saved) {
             var i = S.data.chats.findIndex(function (x) { return x.id === saved.id; });
             if (i >= 0) S.data.chats[i] = saved;
-            close(); toast('บันทึกแล้ว'); renderChatList();
+            close(); toast('บันทึกแล้ว'); (after || renderChatList)();
           }).catch(fail);
         };
         $('#delChat', el).onclick = function () {
           if (!window.confirm('ลบแชทของ ' + c.customer + ' ?')) return;
           API.call('deleteChat', { id: c.id }).then(function () {
             S.data.chats = S.data.chats.filter(function (x) { return x.id !== c.id; });
-            close(); toast('ลบแล้ว'); renderChatList();
+            close(); toast('ลบแล้ว'); (after || renderChatList)();
           }).catch(fail);
         };
       });
@@ -615,7 +660,7 @@
   }
 
   // ============================================================
-  // Campaigns — รายการ → หน้าแคมเปญ (ไทม์ไลน์ · ค่า Ads · Ad set/โฆษณา)
+  // Campaigns — รายการ → หน้าแคมเปญ (รอบการยิง · ค่า Ads · Ad set/โฆษณา)
   // ============================================================
   var MODE_LABEL = { campaign: 'งบทั้งแคมเปญ (CBO)', adset: 'แยกงบราย Ad set' };
 
@@ -638,15 +683,15 @@
   function statusHtml(camp, big) {
     var s = C.campState(S.data, camp, today());
     var cls = big ? 'status-line big' : 'status-line';
+    var nxt = s.next ? ' <span class="pill info">รอบถัดไป ' + F.thDate(s.next.from) + '</span>' : '';
     if (s.state === 'running') {
       return '<div class="' + cls + '"><span class="sdot on"></span><b>กำลังยิง</b> · ' + F.baht(s.amount) + '/วัน' +
-        (s.mode === 'adset' ? ' <span class="muted">(' + s.runningCount + ' Ad set)</span>' : '') + ' <span class="muted">· ตั้งแต่ ' + F.thDate(s.since, true) + '</span>' +
-        (s.next ? ' <span class="pill info">ตั้งเวลา ' + F.thDate(s.next.date) + '</span>' : '') + '</div>';
+        (s.mode === 'adset' ? ' <span class="muted">(' + s.runningCount + ' Ad set)</span>' : '') + ' <span class="muted">· ตั้งแต่ ' + F.thDate(s.since, true) +
+        (s.endsOn ? ' ถึง ' + F.thDate(s.endsOn, true) : '') + '</span>' + nxt + '</div>';
     }
-    if (s.state === 'paused') return '<div class="' + cls + '"><span class="sdot off"></span><b>หยุดอยู่</b> <span class="muted">· ตั้งแต่ ' + F.thDate(s.since, true) + '</span>' +
-      (s.next ? ' <span class="pill info">ตั้งเวลาเปิด ' + F.thDate(s.next.date) + '</span>' : '') + '</div>';
-    if (s.state === 'scheduled') return '<div class="' + cls + '"><span class="sdot wait"></span><b>ตั้งเวลาเปิดยิง</b> <span class="muted">· ' + F.thDate(s.since, true) + '</span></div>';
-    return '<div class="' + cls + '"><span class="sdot none"></span><b>ยังไม่เปิดยิง</b> <span class="muted">· กด "เปิดยิง" เพื่อใส่วันที่และงบ</span></div>';
+    if (s.state === 'paused') return '<div class="' + cls + '"><span class="sdot off"></span><b>หยุดแล้ว</b> <span class="muted">· ยิงวันสุดท้าย ' + F.thDate(s.lastDay || C.addDays(s.since, -1), true) + (s.lastDay === today() ? ' (วันนี้)' : '') + '</span>' + nxt + '</div>';
+    if (s.state === 'scheduled') return '<div class="' + cls + '"><span class="sdot wait"></span><b>ตั้งเวลาเริ่มยิง</b> <span class="muted">· ' + F.thDate(s.since, true) + '</span></div>';
+    return '<div class="' + cls + '"><span class="sdot none"></span><b>ยังไม่มีรอบยิง</b> <span class="muted">· กด "เพิ่มรอบยิง" ใส่วันที่และงบ (ย้อนหลังได้)</span></div>';
   }
   function missingHtml(camp, cov) {
     cov = cov || C.spendCoverage(S.data, camp, today());
@@ -658,14 +703,19 @@
   function actionButtons(camp) {
     var s = C.campState(S.data, camp, today());
     var h = '';
-    if (s.state === 'running') h += '<button class="btn sm" data-act="adjust" data-camp="' + esc(camp) + '">ปรับงบ</button><button class="btn ghost sm" data-act="off" data-camp="' + esc(camp) + '">หยุดยิง</button>';
-    else h += '<button class="btn sm" data-act="on" data-camp="' + esc(camp) + '">เปิดยิง</button>';
+    if (s.state === 'running') h += '<button class="btn sm" data-act="adjust" data-camp="' + esc(camp) + '">ปรับงบ</button><button class="btn ghost sm" data-act="stop" data-camp="' + esc(camp) + '">หยุดยิง</button>';
+    else h += '<button class="btn sm" data-act="new" data-camp="' + esc(camp) + '">' + (s.state === 'none' ? 'เพิ่มรอบยิง' : 'เปิดยิงรอบใหม่') + '</button>';
     h += '<button class="btn ghost sm" data-spend="' + esc(camp) + '">กรอกค่า Ads</button>';
     return h;
   }
   function wireActions(root) {
     $$('[data-act]', root).forEach(function (b) {
-      b.onclick = function (e) { e.stopPropagation(); eventDialog(b.dataset.camp, b.dataset.act, b.dataset.level != null ? [b.dataset.level] : null); };
+      b.onclick = function (e) {
+        e.stopPropagation();
+        var lv = b.dataset.level != null ? [b.dataset.level] : null;
+        if (b.dataset.act === 'new') runDialog({ campaign: b.dataset.camp, adset: lv ? lv[0] : null });
+        else changeDialog(b.dataset.camp, b.dataset.act, lv);
+      };
     });
     $$('[data-spend]', root).forEach(function (b) {
       b.onclick = function (e) { e.stopPropagation(); spendDialog({ campaign: b.dataset.spend, date: b.dataset.from, date_to: b.dataset.to }); };
@@ -689,17 +739,17 @@
     list.forEach(function (x) { if (x.st.key === 'paused') counts.paused++; else counts.active++; });
     var shown = list.filter(function (x) { return nv.filter === 'all' || (nv.filter === 'paused' ? x.st.key === 'paused' : x.st.key !== 'paused'); });
 
-    var html = '<div class="card-head" style="margin-bottom:16px"><div><div class="chip-group">' +
+    var html = '<div class="card-head" style="margin-bottom:18px"><div class="chip-group">' +
       '<button data-f="active" class="' + (nv.filter === 'active' ? 'on' : '') + '">กำลังใช้งาน (' + counts.active + ')</button>' +
-      '<button data-f="paused" class="' + (nv.filter === 'paused' ? 'on' : '') + '">หยุดอยู่ (' + counts.paused + ')</button>' +
-      '<button data-f="all" class="' + (nv.filter === 'all' ? 'on' : '') + '">ทั้งหมด (' + counts.all + ')</button></div></div>' +
+      '<button data-f="paused" class="' + (nv.filter === 'paused' ? 'on' : '') + '">หยุดแล้ว (' + counts.paused + ')</button>' +
+      '<button data-f="all" class="' + (nv.filter === 'all' ? 'on' : '') + '">ทั้งหมด (' + counts.all + ')</button></div>' +
       '<button class="btn" id="newCamp">+ สร้างแคมเปญ</button></div>';
     html += shown.length ? shown.map(function (x) {
       var c = x.c, st = campStats(c.name), mode = C.budgetMode(S.data, c.name);
       return '<div class="card camp-card">' +
         '<div class="cc-main" data-open="' + esc(c.id) + '">' +
         '<div class="cc-name">' + esc(c.name) + '</div>' + statusHtml(c.name) +
-        '<div class="cc-meta">' + (C.firstStart(S.data, c.name) ? 'เริ่ม ' + F.thDate(C.firstStart(S.data, c.name), true) + ' · ' : '') + MODE_LABEL[mode] + ' · ' + C.adsetsOf(S.data, c.name).length + ' Ad set</div></div>' +
+        '<div class="cc-meta">' + (C.firstStart(S.data, c.name) ? 'เริ่ม ' + F.thDate(C.firstStart(S.data, c.name), true) + ' · ' : '') + MODE_LABEL[mode] + ' · ' + C.adsetsOf(S.data, c.name).length + ' Ad set · กดเพื่อดูรายละเอียด ›</div></div>' +
         '<div class="cc-stats">' +
         '<div><span>Lead</span><b>' + st.leads + '</b></div><div><span>ปิดได้</span><b>' + st.closed + '</b></div>' +
         '<div><span>ค่า Ads</span><b>' + (st.spend ? F.baht(st.spend) : '–') + '</b></div><div><span>ต้นทุน/Lead</span><b>' + F.baht(st.cpl) + '</b></div></div>' +
@@ -715,9 +765,9 @@
 
   // ---------- หน้าแคมเปญ ----------
   function campDetail(cp) {
-    var td = today(), st = campStats(cp.name), mode = C.budgetMode(S.data, cp.name);
+    var st = campStats(cp.name), mode = C.budgetMode(S.data, cp.name);
     var html = '<button class="linkish back" id="back">← แคมเปญทั้งหมด</button>';
-    html += '<div class="card"><div class="card-head"><div><h2 class="card-title">' + esc(cp.name) + ' <button class="linkish" id="editCp" title="แก้ชื่อ">✎</button></h2>' +
+    html += '<div class="card"><div class="card-head"><div><h2 class="card-title big">' + esc(cp.name) + ' <button class="linkish" id="editCp" title="แก้ชื่อ">✎</button></h2>' +
       statusHtml(cp.name, true) + '</div><div class="actions">' + actionButtons(cp.name) + '</div></div>' +
       '<div class="facts six">' +
       '<div><span>เริ่มยิง</span><b>' + (C.firstStart(S.data, cp.name) ? F.thDate(C.firstStart(S.data, cp.name), true) : '–') + '</b></div>' +
@@ -727,15 +777,15 @@
       '<div><span>ต้นทุน/Lead</span><b>' + F.baht(st.cpl) + '</b></div>' +
       '<div><span>ต้นทุน/เคส</span><b>' + F.baht(st.cpc) + '</b></div></div>' +
       missingHtml(cp.name, st.cov) + '</div>';
-
-    html += '<div class="grid row-2 mt">' + timelineCard(cp, mode) + spendCard(cp, st.cov) + '</div>';
-    html += adsetCard(cp, mode);
+    html += runsCard(cp, mode);
+    html += '<div class="grid row-2 mt">' + spendCard(cp, st.cov) + adsetCard(cp, mode) + '</div>';
     $('#page').innerHTML = html;
 
     $('#back').onclick = function () { S.campNav.camp = null; pageCampaigns(); };
     $('#editCp').onclick = function () { editCampaign(cp.id); };
+    $('#addRun').onclick = function () { runDialog({ campaign: cp.name, adset: mode === 'adset' ? null : '' }); };
     wireActions($('#page'));
-    $$('[data-ev]').forEach(function (r) { r.onclick = function () { editEvent(r.dataset.ev); }; });
+    $$('[data-run]').forEach(function (r) { r.onclick = function () { runDialog(S.data.budgets.filter(function (b) { return b.id === r.dataset.run; })[0]); }; });
     $$('[data-sp]').forEach(function (r) { r.onclick = function () { spendDialog(S.data.spend.filter(function (x) { return x.id === r.dataset.sp; })[0]); }; });
     $('#addAs').onclick = function () { editAdset({ campaign: cp.name }); };
     if ($('#spendAll')) $('#spendAll').onclick = function () { S.spendAll = true; campDetail(cp); };
@@ -744,76 +794,66 @@
     $$('[data-aid]').forEach(function (r) { r.onclick = function () { editAd(r.dataset.aid); }; });
   }
 
-  function timelineCard(cp, mode) {
+  /** ตาราง "รอบการยิง" — หัวใจของการทดลองงบ */
+  function runsCard(cp, mode) {
     var td = today(), daily = C.spendDaily(S.data);
-    var levels = mode === 'adset' ? C.adsetsOf(S.data, cp.name).concat(['']) : [''].concat(C.adsetsOf(S.data, cp.name));
-    var items = [];
-    levels.forEach(function (lv) {
-      var periods = C.levelPeriods(S.data, cp.name, lv, td, daily);
-      var ev = C.levelEvents(S.data, cp.name, lv);
-      ev.forEach(function (e, i) {
-        var prev = null;
-        for (var k = i - 1; k >= 0; k--) { if (ev[k].amount > 0) { prev = ev[k]; break; } }
-        var p = periods.filter(function (x) { return x.event.date === e.date && x.event.id === e.id && x.event.amount === e.amount; })[0] || null;
-        items.push({ e: e, lv: lv, prev: i > 0 ? ev[i - 1] : null, prevOn: prev, p: p });
+    var levels = [''].concat(C.adsetsOf(S.data, cp.name));
+    var groups = levels.map(function (lv) { return { lv: lv, rows: C.runResults(S.data, cp.name, lv, td, daily) }; }).filter(function (g) { return g.rows.length; });
+    var html = '<div class="card mt"><div class="card-head"><div><h2 class="card-title">รอบการยิง</h2>' +
+      '<div class="card-sub">1 แถว = ยิงด้วยงบ/วันเดียวกัน 1 ช่วง · ปรับงบ = จบรอบเดิม + เริ่มรอบใหม่ให้อัตโนมัติ · ▲▼ เทียบกับรอบก่อน (เขียว = ดีขึ้น) · กดแถวเพื่อแก้วันที่/งบ</div></div>' +
+      '<button class="btn sm" id="addRun">+ เพิ่มรอบยิง (ย้อนหลังได้)</button></div>';
+    if (!groups.length) return html + '<div class="empty">ยังไม่มีรอบยิง — กด "+ เพิ่มรอบยิง" ใส่วันเริ่ม วันจบ และงบ/วัน</div></div>';
+    html += '<div class="table-wrap"><table class="t wide runs"><thead><tr><th>รอบ</th><th>ช่วงวันที่</th><th class="r">งบ/วัน</th><th class="r">วัน</th><th class="r">ค่า Ads</th><th class="r">Lead</th><th class="r">Lead/วัน</th><th class="r">ต้นทุน/Lead</th><th class="r">ปิดได้</th><th>สิ่งที่ทดลอง</th></tr></thead><tbody>';
+    groups.forEach(function (g) {
+      if (groups.length > 1 || g.lv) html += '<tr class="grp"><td colspan="10">' + (g.lv ? 'Ad set: ' + esc(g.lv) : 'ทั้งแคมเปญ (CBO)') + '</td></tr>';
+      var prevTo = null;
+      g.rows.forEach(function (r, i) {
+        if (prevTo && r.from > C.addDays(prevTo, 1)) {
+          var gapTo = C.addDays(r.from, -1), gapFrom = C.addDays(prevTo, 1);
+          html += '<tr class="gap"><td></td><td colspan="9">หยุด ' + C.daysIncl(gapFrom, gapTo) + ' วัน (' + F.thRange(gapFrom, gapTo) + ')</td></tr>';
+        }
+        prevTo = r.plannedTo || (r.future ? null : td);
+        var range = F.thDate(r.from, true) + ' – ' + (r.plannedTo ? F.thDate(r.plannedTo, true) : '<b class="live">ยังยิงอยู่</b>');
+        html += '<tr class="click' + (r.ongoing ? ' live-row' : '') + '" data-run="' + esc(r.run.id) + '">' +
+          '<td class="num"><span class="run-no">' + (i + 1) + '</span></td>' +
+          '<td class="num">' + range + (r.future ? ' <span class="pill info">ตั้งเวลาไว้</span>' : '') + (r.run.legacy ? ' <span class="pill warn" title="วันจบมาจากข้อมูลเก่า กดเพื่อตรวจ">ตรวจวันจบ</span>' : '') + '</td>' +
+          '<td class="r num"><b>' + F.baht(r.daily) + '</b>' + (r.budgetChange != null ? '<div class="chg">' + (r.budgetChange >= 0 ? '+' : '') + Math.round(r.budgetChange * 100) + '%</div>' : '') + '</td>' +
+          '<td class="r num">' + (r.future ? '–' : r.days) + '</td>' +
+          '<td class="r num">' + (r.future ? '–' : r.spend ? F.baht(r.spend) : '<span class="muted">ยังไม่กรอก</span>') + '</td>' +
+          '<td class="r num">' + (r.future ? '–' : r.leads) + '</td>' +
+          '<td class="r num">' + (r.future ? '–' : r.leadsPerDay.toFixed(1)) + chgHtml(r.lpdChange, true) + '</td>' +
+          '<td class="r num">' + (r.future ? '–' : F.baht(r.cpl)) + chgHtml(r.cplChange, false) + '</td>' +
+          '<td class="r num">' + (r.future ? '–' : r.closed) + '</td>' +
+          '<td class="muted" style="min-width:180px">' + esc(r.note || '') + '</td></tr>';
       });
     });
-    items.sort(function (a, b) { return a.e.date < b.e.date ? 1 : a.e.date > b.e.date ? -1 : 0; });
-    var html = '<div class="card"><div class="card-head"><div><h2 class="card-title">ไทม์ไลน์ เปิด · ปรับงบ · หยุด</h2>' +
-      '<div class="card-sub">' + MODE_LABEL[mode] + ' · ลืมบันทึก? กดปุ่มด้านบนแล้วเลือกวันย้อนหลังได้ · กดรายการเพื่อแก้</div></div></div>';
-    if (!items.length) return html + '<div class="empty">ยังไม่มี — กด "เปิดยิง" ด้านบน</div></div>';
-    html += '<div class="tl">' + items.map(function (it) {
-      var e = it.e, kind, title;
-      if (!(e.amount > 0)) { kind = 'off'; title = 'หยุดยิง'; }
-      else if (!it.prev || !(it.prev.amount > 0)) { kind = 'on'; title = (it.prevOn ? 'เปิดยิงอีกครั้ง ' : 'เปิดยิง ') + F.baht(e.amount) + '/วัน'; }
-      else {
-        kind = 'adj';
-        var ch = it.prev.amount ? (e.amount - it.prev.amount) / it.prev.amount : 0;
-        title = 'ปรับงบ ' + F.baht(it.prev.amount) + ' → ' + F.baht(e.amount) + '/วัน <span class="chg ' + (ch >= 0 ? 'up' : 'down') + '" style="display:inline">(' + (ch >= 0 ? '+' : '') + Math.round(ch * 100) + '%)</span>';
-      }
-      var future = e.date > today();
-      var res = '';
-      if (it.p && it.p.running) {
-        res = '<div class="tl-res">' + it.p.days + ' วัน' + (it.p.ongoing ? ' (ยังใช้อยู่)' : '') +
-          ' · ค่า Ads ' + (it.p.spend ? F.baht(it.p.spend) : '<span class="muted">ยังไม่กรอก</span>') +
-          ' · Lead ' + it.p.leads + ' (' + it.p.leadsPerDay.toFixed(1) + '/วัน' + inlineChg(it.p.lpdChange, true) + ')' +
-          ' · ต้นทุน/Lead ' + F.baht(it.p.cpl) + inlineChg(it.p.cplChange, false) +
-          ' · ปิดได้ ' + it.p.closed + '</div>';
-      } else if (it.p && !it.p.running) {
-        res = '<div class="tl-res muted">หยุด ' + it.p.days + ' วัน' + (it.p.ongoing ? ' (ถึงวันนี้)' : '') + (it.p.leads ? ' · ยังมี Lead เข้ามา ' + it.p.leads : '') + '</div>';
-      }
-      return '<div class="tl-item ' + kind + (e.virtual ? '' : ' click') + '"' + (e.virtual ? '' : ' data-ev="' + esc(e.id) + '"') + '>' +
-        '<div class="tl-dot"></div><div class="tl-body">' +
-        '<div class="tl-date">' + F.thDate(e.date, true) + (future ? ' <span class="pill info">ตั้งเวลาไว้</span>' : '') + (it.lv ? ' · <span class="muted">' + esc(it.lv) + '</span>' : '') + '</div>' +
-        '<div class="tl-title">' + title + '</div>' +
-        (e.note ? '<div class="tl-note">' + esc(e.note) + (e.virtual ? ' (จากวันที่ปิดเดิม)' : '') + '</div>' : '') + res + '</div></div>';
-    }).join('') + '</div></div>';
-    return html;
+    return html + '</tbody></table></div></div>';
   }
-  function inlineChg(v, goodUp) {
+  function chgHtml(v, goodUp) {
     if (v == null || !isFinite(v) || Math.abs(v) < 0.005) return '';
     var up = v > 0, good = goodUp ? up : !up;
-    return ' <span class="chg ' + (good ? 'up' : 'down') + '" style="display:inline">' + (up ? '▲' : '▼') + Math.abs(v * 100).toFixed(0) + '%</span>';
+    return '<div class="chg ' + (good ? 'up' : 'down') + '">' + (up ? '▲ ' : '▼ ') + Math.abs(v * 100).toFixed(0) + '%</div>';
   }
 
   function spendCard(cp, cov) {
     var list = cov.entries.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
     return '<div class="card"><div class="card-head"><div><h2 class="card-title">ค่า Ads ที่ใช้จริง</h2>' +
-      '<div class="card-sub">รวม ' + F.baht(cov.total) + (cov.lastTo ? ' · กรอกถึง ' + F.thDate(cov.lastTo, true) : ' · ยังไม่ได้กรอก') + ' · ดูยอด Amount spent ใน Ads Manager</div></div>' +
+      '<div class="card-sub">รวม ' + F.baht(cov.total) + (cov.lastTo ? ' · กรอกถึง ' + F.thDate(cov.lastTo, true) : ' · ยังไม่ได้กรอก') + ' · ยอด Amount spent จาก Ads Manager</div></div>' +
       '<button class="btn sm" data-spend="' + esc(cp.name) + '">+ กรอกค่า Ads</button></div>' +
       (list.length ? '<div class="table-wrap"><table class="t"><thead><tr><th>ช่วงวันที่</th><th>ระดับ</th><th class="r">ยอด</th><th class="r">เฉลี่ย/วัน</th></tr></thead><tbody>' +
         list.slice(0, S.spendAll ? 500 : 8).map(function (s) {
           var to = s.date_to || s.date, n = C.daysIncl(s.date, to);
-          return '<tr class="click" data-sp="' + esc(s.id) + '"><td class="num">' + F.thRange(s.date, to) + (s.note ? '<div class="muted" style="font-size:12.5px">' + esc(s.note) + '</div>' : '') + '</td>' +
+          return '<tr class="click" data-sp="' + esc(s.id) + '"><td class="num">' + F.thRange(s.date, to) + (s.note ? '<div class="muted small">' + esc(s.note) + '</div>' : '') + '</td>' +
             '<td class="muted">' + (s.adset ? esc(s.adset) : 'ทั้งแคมเปญ') + '</td><td class="r num">' + F.baht(Number(s.amount)) + '</td><td class="r num muted">' + F.baht(Number(s.amount) / n) + '</td></tr>';
-        }).join('') + '</tbody></table></div>' + (list.length > 8 && !S.spendAll ? '<button class="linkish" id="spendAll" style="margin-top:8px">ดูทั้งหมด (' + list.length + ' รายการ)</button>' : '') : '<div class="empty">ยังไม่มี — กด "+ กรอกค่า Ads"</div>') + '</div>';
+        }).join('') + '</tbody></table></div>' + (list.length > 8 && !S.spendAll ? '<button class="linkish" id="spendAll" style="margin-top:8px">ดูทั้งหมด (' + list.length + ' รายการ)</button>' : '')
+        : '<div class="empty">ยังไม่มี — กด "+ กรอกค่า Ads"</div>') + '</div>';
   }
 
   function adsetCard(cp, mode) {
     var td = today(), sets = adsetRecs(cp.name);
     var people = C.uniquePeople(S.data.chats.filter(function (c) { return c.campaign === cp.name; })).filter(function (p) { return C.stageOf(p.status) >= 1; });
     function leadsOf(f) { return people.filter(f).length; }
-    var html = '<div class="card mt"><div class="card-head"><div><h2 class="card-title">Ad set และโฆษณา</h2><div class="card-sub">โฆษณาที่ "แสดงในบันทึกแชท" คือรายการที่แอดมินเลือกตอนบันทึกแชท</div></div>' +
+    var html = '<div class="card"><div class="card-head"><div><h2 class="card-title">Ad set และโฆษณา</h2><div class="card-sub">โฆษณาที่ "แสดงในบันทึกแชท" = รายการที่แอดมินเลือกตอนบันทึกแชท</div></div>' +
       '<button class="btn sm" id="addAs">+ Ad set</button></div>';
     if (!sets.length) return html + '<div class="empty">ยังไม่มี Ad set</div></div>';
     html += sets.map(function (a) {
@@ -823,16 +863,16 @@
       if (ls) {
         ctl = '<span class="as-state">' + (ls.state === 'running' ? '<span class="sdot on"></span>' + F.baht(ls.amount) + '/วัน' : '<span class="sdot off"></span>หยุด') + '</span>' +
           (ls.state === 'running'
-            ? '<button class="btn ghost sm" data-act="adjust" data-camp="' + esc(cp.name) + '" data-level="' + esc(a.name) + '">ปรับงบ</button><button class="btn ghost sm" data-act="off" data-camp="' + esc(cp.name) + '" data-level="' + esc(a.name) + '">หยุด</button>'
-            : '<button class="btn ghost sm" data-act="on" data-camp="' + esc(cp.name) + '" data-level="' + esc(a.name) + '">เปิด</button>');
+            ? '<button class="btn ghost sm" data-act="adjust" data-camp="' + esc(cp.name) + '" data-level="' + esc(a.name) + '">ปรับงบ</button><button class="btn ghost sm" data-act="stop" data-camp="' + esc(cp.name) + '" data-level="' + esc(a.name) + '">หยุด</button>'
+            : '<button class="btn ghost sm" data-act="new" data-camp="' + esc(cp.name) + '" data-level="' + esc(a.name) + '">เปิดยิง</button>');
       }
       return '<div class="as-block"><div class="as-head"><div class="as-name">' + esc(a.name) + ' <button class="linkish" data-eas="' + esc(a.name) + '">✎</button>' +
-        '<div class="muted" style="font-size:13px">' + ads.length + ' โฆษณา · Lead ' + leadsOf(function (p) { return p.adset === a.name; }) + '</div></div>' +
+        '<div class="muted small">' + ads.length + ' โฆษณา · Lead ' + leadsOf(function (p) { return p.adset === a.name; }) + '</div></div>' +
         '<div class="actions">' + ctl + '</div></div>' +
         '<div class="as-ads">' + ads.map(function (d) {
           return '<div class="ad-row click" data-aid="' + esc(d.id) + '">' + (d.creative_url ? '<img class="thumb" src="' + esc(d.creative_url) + '" alt="" loading="lazy">' : '<div class="thumb"></div>') +
             '<div class="ad-name">' + esc(d.ad_name) + '</div>' +
-            (d.post_url ? '<a href="' + esc(d.post_url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">' + I.link + '</a>' : '') +
+            (d.post_url ? '<a href="' + esc(d.post_url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">' + I.link + '</a>' : '<span></span>') +
             '<span class="muted num">Lead ' + leadsOf(function (p) { return p.ad === d.ad_name; }) + '</span>' +
             (isTrue(d.active) ? '<span class="pill good">แสดงในบันทึกแชท</span>' : '<span class="pill">ซ่อน</span>') + '</div>';
         }).join('') + '<button class="linkish addad" data-addad="' + esc(a.name) + '">+ โฆษณา</button></div></div>';
@@ -840,42 +880,42 @@
     return html;
   }
 
-  // ---------- บันทึกงบ ----------
-  function saveBudgetSmart(rec) {
-    if (!rec.id) {
-      var same = S.data.budgets.filter(function (b) { return b.campaign === rec.campaign && (b.adset || '') === (rec.adset || '') && b.start_date === rec.start_date; })[0];
-      if (same) rec.id = same.id;
-    }
-    return API.call('saveBudget', { budget: rec }).then(function (saved) {
-      var i = S.data.budgets.findIndex(function (x) { return x.id === saved.id; });
-      if (i >= 0) S.data.budgets[i] = saved; else S.data.budgets.push(saved);
-      return saved;
-    });
+  // ---------- บันทึก + ตรวจกับชีต ----------
+  function upsertLocal(list, saved) {
+    var i = list.findIndex(function (x) { return x.id === saved.id; });
+    if (i >= 0) list[i] = saved; else list.push(saved);
+    return saved;
   }
+  function saveRun(rec) { return API.call('saveBudget', { budget: rec }).then(function (s) { return upsertLocal(S.data.budgets, s); }); }
   function saveCampRec(cp, patch) {
-    return API.call('saveCampaign', { campaign: Object.assign({}, cp, patch) }).then(function (saved) {
-      var i = S.data.campaigns.findIndex(function (x) { return x.id === saved.id; });
-      if (i >= 0) S.data.campaigns[i] = saved; else S.data.campaigns.push(saved);
-      return saved;
-    });
+    return API.call('saveCampaign', { campaign: Object.assign({}, cp, patch) }).then(function (s) { return upsertLocal(S.data.campaigns, s); });
   }
-  /** แปลงวันที่ปิดแบบเก่า (end_date) เป็นเหตุการณ์ "หยุด" จริง แล้วล้าง end_date */
-  function materialize(camp) {
-    var cp = S.data.campaigns.filter(function (c) { return c.name === camp; })[0];
-    if (!cp || !cp.end_date) return Promise.resolve();
+  /** โหลดข้อมูลใหม่จากชีตหลังบันทึก — สิ่งที่เห็นบนจอ = สิ่งที่อยู่ในชีตจริง */
+  function reloadAfterSave(msg) {
+    return refresh().then(function () { toast(msg); render(); }).catch(function () { toast(msg); render(); });
+  }
+  /**
+   * เขียนข้อมูลแบบเก่าของแคมเปญให้เป็น "รอบ" ที่มีวันจบชัดเจน (ทำครั้งแรกที่แก้แคมเปญนั้น)
+   */
+  function normalizeCamp(camp) {
+    if (!C.needsNormalize(S.data, camp)) return Promise.resolve();
     var chain = Promise.resolve();
     [''].concat(C.adsetsOf(S.data, camp)).forEach(function (lv) {
-      C.levelEvents(S.data, camp, lv).filter(function (e) { return e.virtual; }).forEach(function (v) {
-        chain = chain.then(function () { return saveBudgetSmart({ campaign: camp, adset: lv, start_date: v.date, daily_budget: 0, note: 'ปิดแคมเปญ' }); });
+      C.runsOf(S.data, camp, lv).forEach(function (r) {
+        if (r.legacy || (r.row.end_date || '') !== (r.to || '')) chain = chain.then(function () { return saveRun(Object.assign({}, r.row, { end_date: r.to || '' })); });
       });
     });
-    return chain.then(function () { return saveCampRec(cp, { end_date: '' }); });
+    S.data.budgets.filter(function (b) { return b.campaign === camp && !(Number(b.daily_budget) > 0); }).forEach(function (b) {
+      chain = chain.then(function () { return API.call('deleteBudget', { id: b.id }); }).then(function () { S.data.budgets = S.data.budgets.filter(function (x) { return x.id !== b.id; }); });
+    });
+    var cp = S.data.campaigns.filter(function (c) { return c.name === camp; })[0];
+    if (cp && cp.end_date) chain = chain.then(function () { return saveCampRec(cp, { end_date: '' }); });
+    return chain;
   }
-  /** ให้วันที่เริ่มยิงในชีต = วันแรกที่เปิดยิง */
   function syncStart(camp) {
     var cp = S.data.campaigns.filter(function (c) { return c.name === camp; })[0];
     var first = C.firstStart(S.data, camp);
-    if (cp && first && (cp.start_date !== first || cp.end_date)) return saveCampRec(cp, { start_date: first, end_date: '' });
+    if (cp && first && cp.start_date !== first) return saveCampRec(cp, { start_date: first });
     return Promise.resolve();
   }
 
@@ -888,92 +928,123 @@
     $$('[data-d]', el).forEach(function (b) { b.onclick = function () { $('#' + b.dataset.d, el).value = b.dataset.v; }; });
   }
 
-  /**
-   * เปิดยิง / ปรับงบ / หยุดยิง
-   * kind: 'on' | 'adjust' | 'off' · levels: null = ตามวิธีตั้งงบของแคมเปญ
-   */
-  function eventDialog(camp, kind, levels) {
+  /** เพิ่ม/แก้ 1 รอบ: วันเริ่ม · วันจบ (ว่าง = ยังยิง) · งบ/วัน · ระดับ · สิ่งที่ทดลอง */
+  function runDialog(b) {
+    var isNew = !b.id, camp = b.campaign, sets = C.adsetsOf(S.data, camp);
+    var mode = C.budgetMode(S.data, camp);
+    var lv = b.adset != null ? b.adset : (mode === 'adset' && sets.length ? sets[0] : '');
+    var lastRun = C.runsOf(S.data, camp, lv).slice(-1)[0];
+    var amount = b.daily_budget != null ? b.daily_budget : lastRun ? lastRun.amount : '';
+    modal('<h3>' + (isNew ? 'เพิ่มรอบยิง' : 'แก้รอบยิง') + ' — ' + esc(camp) + '</h3><form id="rnForm" class="form-grid">' +
+      '<div class="f c6"><label>เริ่มยิงวันที่</label><input type="date" id="rnFrom" value="' + esc(b.start_date || today()) + '" required>' + dateChips('rnFrom') + '</div>' +
+      '<div class="f c6"><label>ยิงถึงวันที่ <span class="muted">(ว่าง = ยังยิงอยู่)</span></label><input type="date" id="rnTo" value="' + esc(b.end_date || '') + '">' +
+      '<div class="chips-row"><button type="button" class="chip" id="rnOpen">ยังยิงอยู่</button><button type="button" class="chip" data-plus="6">7 วัน</button><button type="button" class="chip" data-plus="13">14 วัน</button></div></div>' +
+      '<div class="f c6"><label>งบที่ตั้ง/วัน (บาท)</label><input type="number" id="rnAmt" min="1" inputmode="numeric" value="' + esc(amount) + '" required></div>' +
+      '<div class="f c6"><label>ใช้กับ</label><select id="rnLv">' + opt('', 'ทั้งแคมเปญ (CBO)', lv) + sets.map(function (s) { return opt(s, 'Ad set: ' + s, lv); }).join('') + '</select></div>' +
+      '<div class="f c12"><label>สิ่งที่ทดลอง / หมายเหตุ</label><input id="rnNote" value="' + esc(b.note || '') + '" placeholder="เช่น ทดลองเพิ่มงบ +30% · ครีเอทีฟใหม่ · กลับมายิงหลังหยุด"></div>' +
+      '<div class="c12 hint" id="rnWarn"></div>' +
+      '<div class="c12 actions" style="justify-content:space-between">' + (!isNew ? '<button type="button" class="btn danger" id="rnDel">ลบรอบนี้</button>' : '<span></span>') +
+      '<span class="actions"><button type="button" class="btn ghost" data-close>ยกเลิก</button><button class="btn" type="submit">บันทึก</button></span></div></form>',
+      function (el, close) {
+        wireDateChips(el);
+        $('#rnOpen', el).onclick = function () { $('#rnTo', el).value = ''; check(); };
+        $$('[data-plus]', el).forEach(function (x) { x.onclick = function () { $('#rnTo', el).value = C.addDays($('#rnFrom', el).value, Number(x.dataset.plus)); check(); }; });
+        function overlaps() {
+          var f = $('#rnFrom', el).value, t = $('#rnTo', el).value || '9999-12-31', l = $('#rnLv', el).value;
+          return C.runsOf(S.data, camp, l).filter(function (r) { return r.id !== b.id && r.from <= t && (r.to || '9999-12-31') >= f; });
+        }
+        function check() {
+          var o = overlaps(), w = $('#rnWarn', el);
+          w.className = 'c12 hint' + (o.length ? ' warn' : '');
+          w.textContent = o.length ? '⚠️ ทับกับรอบ ' + o.map(function (r) { return F.thDate(r.from) + '–' + (r.to ? F.thDate(r.to) : 'ปัจจุบัน'); }).join(', ') + ' — บันทึกแล้วระบบจะตัดวันจบของรอบเก่าให้ก่อนวันเริ่มรอบนี้' : '';
+        }
+        ['#rnFrom', '#rnTo', '#rnLv'].forEach(function (s) { $(s, el).onchange = check; });
+        check();
+        $('#rnForm', el).onsubmit = function (e) {
+          e.preventDefault();
+          var rec = { id: b.id || '', campaign: camp, adset: $('#rnLv', el).value, start_date: $('#rnFrom', el).value, end_date: $('#rnTo', el).value,
+            daily_budget: $('#rnAmt', el).value, note: $('#rnNote', el).value.trim() };
+          if (rec.end_date && rec.end_date < rec.start_date) return toast('วันจบต้องไม่ก่อนวันเริ่ม', true);
+          if (!(Number(rec.daily_budget) > 0)) return toast('ใส่งบ/วัน', true);
+          var chain = normalizeCamp(camp).then(function () {
+            // รอบเก่าที่ทับ: ตัดวันจบให้จบก่อนวันเริ่มรอบนี้
+            var fix = Promise.resolve();
+            C.runsOf(S.data, camp, rec.adset).forEach(function (r) {
+              if (r.id === rec.id || r.from >= rec.start_date) return;
+              if (!r.to || r.to >= rec.start_date) fix = fix.then(function () { return saveRun(Object.assign({}, r.row, { end_date: C.addDays(rec.start_date, -1) })); });
+            });
+            return fix;
+          }).then(function () { return saveRun(rec); }).then(function () { return syncStart(camp); });
+          chain.then(function () { close(); return reloadAfterSave('บันทึกรอบยิงแล้ว'); }).catch(fail);
+        };
+        if ($('#rnDel', el)) $('#rnDel', el).onclick = function () {
+          if (!window.confirm('ลบรอบนี้?')) return;
+          API.call('deleteBudget', { id: b.id }).then(function () {
+            S.data.budgets = S.data.budgets.filter(function (x) { return x.id !== b.id; });
+            return syncStart(camp);
+          }).then(function () { close(); return reloadAfterSave('ลบรอบแล้ว'); }).catch(fail);
+        };
+      });
+  }
+
+  /** ปรับงบ (จบรอบเดิม + เริ่มรอบใหม่) / หยุดยิง (ใส่วันจบให้รอบที่ยิงอยู่) */
+  function changeDialog(camp, kind, levels) {
     var td = today(), mode = C.budgetMode(S.data, camp);
     if (!levels) {
-      if (mode === 'campaign') levels = [''];
-      else {
-        levels = C.adsetsOf(S.data, camp);
-        if (kind !== 'on') levels = levels.filter(function (a) { return C.levelState(S.data, camp, a, td).state === 'running'; });
-        if (!levels.length) levels = [''];
-      }
+      levels = mode === 'campaign' ? [''] : C.adsetsOf(S.data, camp);
     }
+    levels = levels.filter(function (lv) { return C.levelState(S.data, camp, lv, td).state === 'running'; });
+    if (!levels.length) return toast('ไม่มีรอบที่กำลังยิงอยู่', true);
     var states = levels.map(function (lv) { return C.levelState(S.data, camp, lv, td); });
-    var T = { on: 'เปิดยิง', adjust: 'ปรับงบ', off: 'หยุดยิง' }[kind];
-    var ph = { on: 'รอบนี้ทดลองอะไร เช่น ครีเอทีฟใหม่', adjust: 'ทดลองอะไร เช่น เพิ่มงบดูว่า Lead/วัน ขึ้นตามไหม', off: 'เหตุผลที่หยุด' }[kind];
+    var isAdj = kind === 'adjust';
     var rows = '';
-    if (kind !== 'off') {
+    if (isAdj) {
       rows = '<div class="c12"><table class="t"><tbody>' + levels.map(function (lv, i) {
-        var cur = kind === 'adjust' ? states[i].amount : states[i].lastAmount;
-        return '<tr><td>' + (lv ? esc(lv) : '<span class="pill info">ทั้งแคมเปญ</span>') +
-          (kind === 'adjust' ? '<div class="muted" style="font-size:12.5px">ตอนนี้ ' + F.baht(cur) + '/วัน</div>' : '') + '</td>' +
-          '<td class="r" style="width:270px"><input class="bk" data-lv="' + esc(lv) + '" data-old="' + esc(kind === 'adjust' ? cur : '') + '" type="number" min="1" inputmode="numeric" value="' + esc(cur || '') + '" placeholder="งบ/วัน">' +
-          (kind === 'adjust' && cur ? '<div class="chips-row r"><button type="button" class="chip" data-pct="-0.2" data-i="' + i + '">−20%</button><button type="button" class="chip" data-pct="0.2" data-i="' + i + '">+20%</button><button type="button" class="chip" data-pct="0.5" data-i="' + i + '">+50%</button></div>' : '') +
-          '</td></tr>';
+        var cur = states[i].amount;
+        return '<tr><td>' + (lv ? esc(lv) : '<span class="pill info">ทั้งแคมเปญ</span>') + '<div class="muted small">ตอนนี้ ' + F.baht(cur) + '/วัน</div></td>' +
+          '<td class="r" style="width:280px"><input class="bk" data-lv="' + esc(lv) + '" data-old="' + cur + '" type="number" min="1" inputmode="numeric" value="' + cur + '">' +
+          '<div class="chips-row r"><button type="button" class="chip" data-pct="-0.2" data-i="' + i + '">−20%</button><button type="button" class="chip" data-pct="0.2" data-i="' + i + '">+20%</button><button type="button" class="chip" data-pct="0.5" data-i="' + i + '">+50%</button></div></td></tr>';
       }).join('') + '</tbody></table></div>';
     } else {
       rows = '<div class="c12 muted">หยุด: ' + levels.map(function (lv) { return lv ? esc(lv) : 'ทั้งแคมเปญ'; }).join(', ') + '</div>';
     }
-    modal('<h3>' + T + ' — ' + esc(camp) + '</h3><form id="evForm" class="form-grid">' +
-      '<div class="f c12"><label>' + (kind === 'off' ? 'หยุดตั้งแต่วันที่' : kind === 'on' ? 'เริ่มยิงวันที่' : 'ใช้งบใหม่ตั้งแต่วันที่') + '</label>' +
-      '<div class="date-line"><input type="date" id="evDate" value="' + td + '" required>' + dateChips('evDate') + '</div></div>' +
-      (kind !== 'off' ? '<div class="f c12"><label>งบที่ตั้ง/วัน (บาท)' + (levels.length > 1 ? ' — เว้นว่าง = ไม่เปลี่ยน' : '') + '</label></div>' : '') + rows +
-      '<div class="f c12"><label>' + (kind === 'off' ? 'หมายเหตุ' : 'สิ่งที่ทดลอง / เหตุผล') + '</label><input id="evNote" placeholder="' + ph + '"></div>' +
-      '<div class="c12 actions"><button type="button" class="btn ghost" data-close>ยกเลิก</button><button class="btn" type="submit">' + T + '</button></div></form>',
+    modal('<h3>' + (isAdj ? 'ปรับงบ' : 'หยุดยิง') + ' — ' + esc(camp) + '</h3><form id="cgForm" class="form-grid">' +
+      '<div class="f c12"><label>' + (isAdj ? 'ใช้งบใหม่ตั้งแต่วันที่' : 'ยิงวันสุดท้ายวันที่') + '</label><div class="date-line"><input type="date" id="cgDate" value="' + td + '" required>' + dateChips('cgDate') + '</div>' +
+      '<div class="hint">' + (isAdj ? 'รอบเดิมจะจบวันก่อนหน้า แล้วเริ่มรอบใหม่วันนี้ — ผลของแต่ละรอบแยกให้เทียบกันในตาราง' : 'รอบที่ยิงอยู่จะจบวันนี้ · กลับมายิงเมื่อไหร่กด "เปิดยิงรอบใหม่"') + '</div></div>' +
+      rows +
+      '<div class="f c12"><label>' + (isAdj ? 'สิ่งที่ทดลอง / เหตุผล' : 'หมายเหตุ') + '</label><input id="cgNote" placeholder="' + (isAdj ? 'เช่น เพิ่มงบดูว่า Lead/วัน ขึ้นตามไหม' : 'เหตุผลที่หยุด') + '"></div>' +
+      '<div class="c12 actions"><button type="button" class="btn ghost" data-close>ยกเลิก</button><button class="btn" type="submit">' + (isAdj ? 'ปรับงบ' : 'หยุดยิง') + '</button></div></form>',
       function (el, close) {
         wireDateChips(el);
         $$('[data-pct]', el).forEach(function (b) {
           b.onclick = function () { var inp = $$('.bk', el)[Number(b.dataset.i)]; inp.value = Math.round(Number(inp.dataset.old) * (1 + Number(b.dataset.pct))); };
         });
-        $('#evForm', el).onsubmit = function (e) {
+        $('#cgForm', el).onsubmit = function (e) {
           e.preventDefault();
-          var date = $('#evDate', el).value, note = $('#evNote', el).value.trim();
-          var todo = [];
-          if (kind === 'off') levels.forEach(function (lv) { todo.push({ adset: lv, amount: 0 }); });
-          else $$('.bk', el).forEach(function (i) {
-            if (i.value === '') return;
-            if (kind === 'adjust' && String(i.value) === String(i.dataset.old)) return;
-            if (!(Number(i.value) > 0)) return;
-            todo.push({ adset: i.dataset.lv, amount: Number(i.value) });
+          var date = $('#cgDate', el).value, note = $('#cgNote', el).value.trim();
+          var chain = normalizeCamp(camp), n = 0;
+          levels.forEach(function (lv, i) {
+            chain = chain.then(function () {
+              var cur = C.levelState(S.data, camp, lv, date < td ? date : td).run || C.levelState(S.data, camp, lv, td).run;
+              if (!cur) return;
+              if (!isAdj) {
+                if (date < cur.from) throw new Error('วันหยุดต้องไม่ก่อนวันเริ่มรอบ (' + F.thDate(cur.from, true) + ')');
+                n++;
+                return saveRun(Object.assign({}, cur.row, { end_date: date, note: note ? (cur.note ? cur.note + ' · ' : '') + 'หยุด: ' + note : cur.note }));
+              }
+              var inp = $$('.bk', el)[i], amt = Number(inp.value);
+              if (!(amt > 0) || amt === Number(inp.dataset.old)) return;
+              n++;
+              if (date <= cur.from) return saveRun(Object.assign({}, cur.row, { daily_budget: amt, note: note || cur.note }));
+              return saveRun(Object.assign({}, cur.row, { end_date: C.addDays(date, -1) })).then(function () {
+                return saveRun({ id: '', campaign: camp, adset: lv, start_date: date, end_date: cur.to || '', daily_budget: amt, note: note });
+              });
+            });
           });
-          if (!todo.length) return toast(kind === 'adjust' ? 'ยังไม่ได้เปลี่ยนงบ' : 'ใส่งบ/วันก่อน', true);
-          var chain = materialize(camp);
-          todo.forEach(function (t) {
-            chain = chain.then(function () { return saveBudgetSmart({ campaign: camp, adset: t.adset, start_date: date, daily_budget: t.amount, note: note }); });
-          });
-          chain.then(function () { return syncStart(camp); })
-            .then(function () { close(); toast(T + 'แล้ว'); pageCampaigns(); }).catch(fail);
-        };
-      });
-  }
-
-  function editEvent(id) {
-    var b = S.data.budgets.filter(function (x) { return x.id === id; })[0];
-    if (!b) return;
-    var off = !(Number(b.daily_budget) > 0);
-    modal('<h3>แก้รายการ — ' + (off ? 'หยุดยิง' : 'งบ ' + F.baht(b.daily_budget) + '/วัน') + '</h3><form id="eeForm" class="form-grid">' +
-      '<div class="f c12"><label>' + esc(b.campaign) + (b.adset ? ' · ' + esc(b.adset) : '') + '</label></div>' +
-      '<div class="f c6"><label>วันที่</label><input type="date" id="eeDate" value="' + esc(b.start_date) + '" required></div>' +
-      '<div class="f c6"><label>งบ/วัน (0 = หยุดยิง)</label><input type="number" id="eeAmt" min="0" value="' + esc(b.daily_budget) + '" required></div>' +
-      '<div class="f c12"><label>หมายเหตุ / สิ่งที่ทดลอง</label><input id="eeNote" value="' + esc(b.note || '') + '"></div>' +
-      '<div class="c12 actions" style="justify-content:space-between"><button type="button" class="btn danger" id="eeDel">ลบรายการนี้</button>' +
-      '<span class="actions"><button type="button" class="btn ghost" data-close>ยกเลิก</button><button class="btn" type="submit">บันทึก</button></span></div></form>',
-      function (el, close) {
-        $('#eeForm', el).onsubmit = function (e) {
-          e.preventDefault();
-          saveBudgetSmart(Object.assign({}, b, { start_date: $('#eeDate', el).value, daily_budget: $('#eeAmt', el).value, note: $('#eeNote', el).value.trim() }))
-            .then(function () { return syncStart(b.campaign); }).then(function () { close(); toast('บันทึกแล้ว'); pageCampaigns(); }).catch(fail);
-        };
-        $('#eeDel', el).onclick = function () {
-          if (!window.confirm('ลบรายการนี้ออกจากไทม์ไลน์?')) return;
-          API.call('deleteBudget', { id: b.id }).then(function () {
-            S.data.budgets = S.data.budgets.filter(function (x) { return x.id !== b.id; });
-            return syncStart(b.campaign);
-          }).then(function () { close(); toast('ลบแล้ว'); pageCampaigns(); }).catch(fail);
+          chain.then(function () {
+            if (!n) { toast(isAdj ? 'ยังไม่ได้เปลี่ยนงบ' : 'ไม่มีอะไรเปลี่ยน', true); return; }
+            close(); return reloadAfterSave(isAdj ? 'ปรับงบแล้ว' : 'หยุดยิงแล้ว');
+          }).catch(fail);
         };
       });
   }
@@ -1009,15 +1080,13 @@
           });
           if (overlap.length && !window.confirm('ช่วงวันที่นี้ทับกับที่กรอกไว้แล้ว ' + overlap.length + ' รายการ — ยอดจะนับซ้ำ บันทึกต่อไหม?')) return;
           API.call('saveSpend', { spend: rec }).then(function (saved) {
-            var i = S.data.spend.findIndex(function (x) { return x.id === saved.id; });
-            if (i >= 0) S.data.spend[i] = saved; else S.data.spend.push(saved);
-            close(); toast('บันทึกค่า Ads แล้ว'); render();
+            upsertLocal(S.data.spend, saved); close(); return reloadAfterSave('บันทึกค่า Ads แล้ว');
           }).catch(fail);
         };
         if ($('#spDel', el)) $('#spDel', el).onclick = function () {
           if (!window.confirm('ลบรายการค่า Ads นี้?')) return;
           API.call('deleteSpend', { id: sp.id }).then(function () {
-            S.data.spend = S.data.spend.filter(function (x) { return x.id !== sp.id; }); close(); toast('ลบแล้ว'); render();
+            S.data.spend = S.data.spend.filter(function (x) { return x.id !== sp.id; }); close(); return reloadAfterSave('ลบแล้ว');
           }).catch(fail);
         };
       });
@@ -1025,18 +1094,19 @@
 
   // ---------- สร้างแคมเปญ (ครบในหน้าเดียว) ----------
   function newCampaignDialog() {
-    function asRow(i) {
+    function asRow() {
       return '<tr><td><input class="nc-as" placeholder="ชื่อ Ad set เช่น Ad Set A : iPhone 11–13"></td>' +
-        '<td><input class="nc-ad" placeholder="ชื่อโฆษณา (เว้นว่าง = ชื่อเดียวกับ Ad set)"></td>' +
+        '<td><input class="nc-ad" placeholder="ชื่อโฆษณา (ว่าง = ชื่อเดียวกับ Ad set)"></td>' +
         '<td class="abo-only" style="width:120px"><input class="nc-bd" type="number" min="1" inputmode="numeric" placeholder="งบ/วัน"></td>' +
         '<td style="width:36px"><button type="button" class="linkish nc-del">✕</button></td></tr>';
     }
     modal('<h3>สร้างแคมเปญ</h3><form id="ncForm" class="form-grid">' +
       '<div class="f c12"><label>ชื่อแคมเปญ (ตรงกับใน Ads Manager)</label><input id="ncName" required></div>' +
-      '<div class="f c12"><label>เริ่มยิงวันที่</label><div class="date-line"><input type="date" id="ncDate" value="' + today() + '" required>' + dateChips('ncDate') + '</div></div>' +
+      '<div class="f c6"><label>เริ่มยิงวันที่</label><input type="date" id="ncDate" value="' + today() + '" required>' + dateChips('ncDate') + '</div>' +
+      '<div class="f c6"><label>ยิงถึงวันที่ <span class="muted">(ว่าง = ยังยิงอยู่ · แคมเปญที่จบแล้วใส่วันจบได้)</span></label><input type="date" id="ncEnd"></div>' +
       '<div class="f c12"><label>ตั้งงบที่</label><div class="seg2"><label><input type="radio" name="ncMode" value="campaign" checked> ทั้งแคมเปญ (CBO)</label><label><input type="radio" name="ncMode" value="adset"> แยกราย Ad set</label></div></div>' +
       '<div class="f c6 cbo-only"><label>งบ/วัน ทั้งแคมเปญ (บาท)</label><input type="number" id="ncBudget" min="1" inputmode="numeric"></div>' +
-      '<div class="f c12"><label>Ad set และโฆษณา</label><table class="t nc-table"><tbody id="ncRows">' + asRow(0) + '</tbody></table>' +
+      '<div class="f c12"><label>Ad set และโฆษณา</label><table class="t nc-table"><tbody id="ncRows">' + asRow() + '</tbody></table>' +
       '<button type="button" class="linkish" id="ncAdd" style="padding:6px 0">+ เพิ่ม Ad set</button></div>' +
       '<div class="f c12"><label>หมายเหตุ / สิ่งที่ทดลอง</label><input id="ncNote"></div>' +
       '<div class="c12 actions"><button type="button" class="btn ghost" data-close>ยกเลิก</button><button class="btn" type="submit">สร้าง</button></div></form>',
@@ -1053,7 +1123,8 @@
         syncMode(); wireDel();
         $('#ncForm', el).onsubmit = function (e) {
           e.preventDefault();
-          var name = $('#ncName', el).value.trim(), date = $('#ncDate', el).value, m = mode(), note = $('#ncNote', el).value.trim();
+          var name = $('#ncName', el).value.trim(), date = $('#ncDate', el).value, end = $('#ncEnd', el).value, m = mode(), note = $('#ncNote', el).value.trim();
+          if (end && end < date) return toast('วันจบต้องไม่ก่อนวันเริ่ม', true);
           var rows = $$('#ncRows tr', el).map(function (tr) {
             return { as: $('.nc-as', tr).value.trim(), ad: $('.nc-ad', tr).value.trim(), bd: $('.nc-bd', tr).value };
           }).filter(function (r) { return r.as; });
@@ -1067,14 +1138,14 @@
               return API.call('saveAd', { ad: { campaign: name, adset: r.as, ad_name: r.ad || r.as, active: true, post_url: '', creative_url: '', note: '' } }).then(function (s) { S.data.ads.push(s); });
             });
           });
-          if (m === 'campaign') chain = chain.then(function () { return saveBudgetSmart({ campaign: name, adset: '', start_date: date, daily_budget: $('#ncBudget', el).value, note: note || 'เริ่มยิง' }); });
+          if (m === 'campaign') chain = chain.then(function () { return saveRun({ campaign: name, adset: '', start_date: date, end_date: end, daily_budget: $('#ncBudget', el).value, note: note || 'เริ่มยิง' }); });
           else rows.forEach(function (r) {
-            if (Number(r.bd) > 0) chain = chain.then(function () { return saveBudgetSmart({ campaign: name, adset: r.as, start_date: date, daily_budget: r.bd, note: note || 'เริ่มยิง' }); });
+            if (Number(r.bd) > 0) chain = chain.then(function () { return saveRun({ campaign: name, adset: r.as, start_date: date, end_date: end, daily_budget: r.bd, note: note || 'เริ่มยิง' }); });
           });
           chain.then(function () {
             var cp = S.data.campaigns.filter(function (c) { return c.name === name; })[0];
             S.campNav = { camp: cp ? cp.id : null, filter: 'active' };
-            close(); toast('สร้างแคมเปญแล้ว'); pageCampaigns();
+            close(); return reloadAfterSave('สร้างแคมเปญแล้ว');
           }).catch(fail);
         };
       });
@@ -1086,26 +1157,19 @@
     modal('<h3>แก้ไขแคมเปญ</h3><form id="cpForm" class="form-grid">' +
       '<div class="f c12"><label>ชื่อแคมเปญ</label><input id="cpName" value="' + esc(c.name) + '" required><div class="hint">เปลี่ยนชื่อได้ — แชท/โฆษณา/งบเดิมเปลี่ยนตามให้</div></div>' +
       '<div class="f c12"><label>หมายเหตุ</label><input id="cpNote" value="' + esc(c.note || '') + '"></div>' +
-      '<div class="c12 muted" style="font-size:13px">วันที่เริ่ม/หยุด/งบ ไม่ต้องแก้ที่นี่ — ใช้ปุ่ม เปิดยิง / ปรับงบ / หยุดยิง แล้วดูในไทม์ไลน์</div>' +
+      '<div class="c12 muted small">วันเริ่ม/วันจบ/งบ แก้ที่ตาราง "รอบการยิง" ในหน้าแคมเปญ</div>' +
       '<div class="c12 actions" style="justify-content:space-between">' + (!used ? '<button type="button" class="btn danger" id="cpDel">ลบแคมเปญ</button>' : '<span></span>') +
       '<span class="actions"><button type="button" class="btn ghost" data-close>ยกเลิก</button><button class="btn" type="submit">บันทึก</button></span></div></form>',
       function (el, close) {
         $('#cpForm', el).onsubmit = function (e) {
           e.preventDefault();
-          var oldName = c.name;
-          saveCampRec(c, { name: $('#cpName', el).value.trim(), note: $('#cpNote', el).value.trim() }).then(function (saved) {
-            if (oldName !== saved.name) {
-              [S.data.ads, S.data.chats, S.data.budgets, S.data.adsets, S.data.spend].forEach(function (list) { list.forEach(function (x) { if (x.campaign === oldName) x.campaign = saved.name; }); });
-            }
-            close(); toast('บันทึกแล้ว'); pageCampaigns();
-          }).catch(fail);
+          saveCampRec(c, { name: $('#cpName', el).value.trim(), note: $('#cpNote', el).value.trim() })
+            .then(function () { close(); return reloadAfterSave('บันทึกแล้ว'); }).catch(fail);
         };
         if ($('#cpDel', el)) $('#cpDel', el).onclick = function () {
           if (!window.confirm('ลบแคมเปญ ' + c.name + ' ?')) return;
           API.call('deleteCampaign', { id: c.id }).then(function () {
-            S.data.campaigns = S.data.campaigns.filter(function (x) { return x.id !== c.id; });
-            S.data.budgets = S.data.budgets.filter(function (x) { return x.campaign !== c.name; });
-            S.campNav = { camp: null, filter: 'active' }; close(); toast('ลบแล้ว'); pageCampaigns();
+            S.campNav = { camp: null, filter: 'active' }; close(); return reloadAfterSave('ลบแล้ว');
           }).catch(fail);
         };
       });
@@ -1117,37 +1181,26 @@
     var mode = C.budgetMode(S.data, a.campaign);
     modal('<h3>' + (isNew ? 'เพิ่ม Ad set' : 'แก้ไข Ad set') + '</h3><form id="asForm" class="form-grid">' +
       '<div class="f c12"><label>ชื่อ Ad set (ตรงกับใน Ads Manager)</label><input id="asName" value="' + esc(a.name || '') + '" required>' + (used ? '<div class="hint">เปลี่ยนชื่อได้ — แชท/โฆษณา/งบเดิมเปลี่ยนตามให้</div>' : '') + '</div>' +
-      (isNew ? '<div class="f c12"><label>ชื่อโฆษณาแรก (เว้นว่าง = ชื่อเดียวกับ Ad set)</label><input id="asAd"></div>' : '') +
+      (isNew ? '<div class="f c12"><label>ชื่อโฆษณาแรก (ว่าง = ชื่อเดียวกับ Ad set)</label><input id="asAd"></div>' : '') +
       (isNew && mode === 'adset' ? '<div class="f c6"><label>งบ/วัน (เริ่มวันนี้)</label><input type="number" id="asBudget" min="1" inputmode="numeric"></div>' : '') +
       '<div class="c12 actions" style="justify-content:space-between">' + (!isNew && !used && a.id ? '<button type="button" class="btn danger" id="asDel">ลบ</button>' : '<span></span>') +
       '<span class="actions"><button type="button" class="btn ghost" data-close>ยกเลิก</button><button class="btn" type="submit">บันทึก</button></span></div></form>',
       function (el, close) {
         $('#asForm', el).onsubmit = function (e) {
           e.preventDefault();
-          var oldName = a.name, name = $('#asName', el).value.trim();
+          var name = $('#asName', el).value.trim();
           var adName = $('#asAd', el) ? $('#asAd', el).value.trim() : '';
           var bd = $('#asBudget', el) ? $('#asBudget', el).value : '';
-          API.call('saveAdset', { adset: { id: a.id || '', campaign: a.campaign, name: name, active: true, note: a.note || '' } }).then(function (saved) {
-            var i = S.data.adsets.findIndex(function (x) { return x.id === saved.id; });
-            if (i >= 0) S.data.adsets[i] = saved; else S.data.adsets.push(saved);
-            if (oldName && oldName !== saved.name) {
-              [S.data.ads, S.data.chats, S.data.budgets, S.data.spend].forEach(function (list) { list.forEach(function (x) { if (x.campaign === saved.campaign && x.adset === oldName) x.adset = saved.name; }); });
-            }
+          API.call('saveAdset', { adset: { id: a.id || '', campaign: a.campaign, name: name, active: true, note: a.note || '' } }).then(function () {
             var chain = Promise.resolve();
-            if (isNew) chain = chain.then(function () {
-              return API.call('saveAd', { ad: { campaign: a.campaign, adset: name, ad_name: adName || name, active: true, post_url: '', creative_url: '', note: '' } }).then(function (s) { S.data.ads.push(s); });
-            });
-            if (Number(bd) > 0) chain = chain.then(function () { return saveBudgetSmart({ campaign: a.campaign, adset: name, start_date: today(), daily_budget: bd, note: 'เริ่มยิง' }); });
+            if (isNew) chain = chain.then(function () { return API.call('saveAd', { ad: { campaign: a.campaign, adset: name, ad_name: adName || name, active: true, post_url: '', creative_url: '', note: '' } }); });
+            if (Number(bd) > 0) chain = chain.then(function () { return saveRun({ campaign: a.campaign, adset: name, start_date: today(), end_date: '', daily_budget: bd, note: 'เริ่มยิง' }); });
             return chain;
-          }).then(function () { close(); toast('บันทึก Ad set แล้ว'); pageCampaigns(); }).catch(fail);
+          }).then(function () { close(); return reloadAfterSave('บันทึก Ad set แล้ว'); }).catch(fail);
         };
         if ($('#asDel', el)) $('#asDel', el).onclick = function () {
           if (!window.confirm('ลบ Ad set ' + a.name + ' ?')) return;
-          API.call('deleteAdset', { id: a.id }).then(function () {
-            S.data.adsets = S.data.adsets.filter(function (x) { return x.id !== a.id; });
-            S.data.budgets = S.data.budgets.filter(function (b) { return !(b.campaign === a.campaign && b.adset === a.name); });
-            close(); toast('ลบแล้ว'); pageCampaigns();
-          }).catch(fail);
+          API.call('deleteAdset', { id: a.id }).then(function () { close(); return reloadAfterSave('ลบแล้ว'); }).catch(fail);
         };
       });
   }

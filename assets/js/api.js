@@ -3,7 +3,7 @@
  */
 (function () {
   var URL_ = (window.APP_CONFIG.API_URL || '').trim();
-  var DEMO_KEY = 'fbat_demo_v4';
+  var DEMO_KEY = 'fbat_demo_v5';
 
   function store(key, val) {
     try { if (val === undefined) return localStorage.getItem(key); if (val === null) localStorage.removeItem(key); else localStorage.setItem(key, val); } catch (e) { return null; }
@@ -11,6 +11,9 @@
 
   // ---------- โหมดจริง ----------
   function remote(action, payload) {
+    if (window.API && window.API.outdated && /^(save|delete)/.test(action)) {
+      return Promise.reject(new Error('หลังบ้านยังเป็นเวอร์ชันเก่า — วาง Code.gs ใหม่ แล้ว Run setup + Deploy New version ก่อนบันทึก'));
+    }
     var body = Object.assign({ action: action, token: store('fbat_token') }, payload || {});
     return fetch(URL_, {
       method: 'POST',
@@ -64,7 +67,9 @@
             case 'saveChat':
               if (!String(p.chat.customer || '').trim()) throw new Error('ต้องใส่ชื่อลูกค้า');
               if (p.chat.status === '5-ปิดการขาย' && !(Number(p.chat.amount) > 0)) throw new Error('เคสปิดการขายต้องใส่ยอดรับซื้อ');
-              return resolve(upsert(db.chats, Object.assign({}, p.chat, { updated_by: me, updated_at: now }), 'c', { created_by: me, created_at: now }));
+              var ch = Object.assign({}, p.chat, { updated_by: me, updated_at: now });
+              if (ch.status === '5-ปิดการขาย') { ch.closed_date = ch.closed_date || now.slice(0, 10); ch.closed_by = ch.closed_by || me; } else { ch.closed_date = ''; ch.closed_by = ''; }
+              return resolve(upsert(db.chats, ch, 'c', { created_by: me, created_at: now }));
             case 'deleteChat': return resolve(remove(db.chats, p.id));
             case 'saveAd':
               if (db.ads.some(function (a) { return a.ad_name === p.ad.ad_name && a.id !== p.ad.id; })) throw new Error('ชื่อโฆษณาซ้ำ — เติม (AS-1) (AS-2) ต่อท้ายถ้าใช้ครีเอทีฟเดียวกัน');
@@ -123,6 +128,8 @@
 
   window.API = {
     isDemo: !URL_,
+    MIN_BACKEND: 5,
+    outdated: false,
     call: function (action, payload) { return URL_ ? remote(action, payload) : local(action, payload || {}); },
     token: function (v) { return store('fbat_token', v); },
     userName: function (v) { return store('fbat_user', v); },
