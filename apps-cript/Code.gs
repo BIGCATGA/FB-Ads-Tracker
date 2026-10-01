@@ -16,18 +16,21 @@ var OLD_SHEET_ID = '10RES0HrYE5Ff13bp2LRKf9cZWmK7jh1-KGu8O3z-IQE';
 var FIRST_USER = { name: 'Admin', pin: '1234' }; // เปลี่ยนก่อนรัน createFirstUser()
 var TOKEN_DAYS = 30;
 var TZ = 'Asia/Bangkok';
+var BACKEND_VERSION = 5; // หน้าเว็บจะเช็คเลขนี้ — ถ้าต่ำกว่าที่ต้องการจะไม่ยอมบันทึก (กันข้อมูลหาย)
 
 // ====== โครงสร้างตาราง ======
 var SCHEMA = {
   Chats:  ['id', 'date', 'customer', 'ad', 'adset', 'campaign', 'status', 'product', 'amount', 'note',
-           'created_by', 'created_at', 'updated_by', 'updated_at'],
+           'created_by', 'created_at', 'updated_by', 'updated_at', 'closed_date', 'closed_by'],
   Ads:    ['id', 'ad_name', 'adset', 'campaign', 'post_url', 'creative_url', 'active', 'note'],
   AdSets: ['id', 'campaign', 'name', 'active', 'note'],
   Campaigns: ['id', 'name', 'start_date', 'end_date', 'objective', 'note', 'created_by', 'created_at'],
   // งบที่ตั้งไว้ (แผน) — 1 แถว = งบ/วันที่เริ่มใช้ตั้งแต่ start_date จนกว่าจะมีแถวใหม่ของระดับเดียวกัน
   // adset ว่าง = งบระดับแคมเปญ (CBO)
-  Budgets: ['id', 'campaign', 'adset', 'start_date', 'daily_budget', 'note', 'created_by', 'created_at'],
-  Spend:  ['id', 'date', 'adset', 'amount', 'note', 'created_by', 'created_at'],
+  // รอบการยิง — 1 แถว = ยิงด้วยงบ/วันเดียวกัน ตั้งแต่ start_date ถึง end_date (ว่าง = ยังยิงอยู่)
+  Budgets: ['id', 'campaign', 'adset', 'start_date', 'daily_budget', 'note', 'created_by', 'created_at', 'end_date'],
+  // ค่า Ads ที่ใช้จริง — 1 แถว = ยอดของช่วง date → date_to (วันเดียวก็ได้) ระดับแคมเปญ (adset ว่าง) หรือ Ad set
+  Spend:  ['id', 'date', 'adset', 'amount', 'note', 'created_by', 'created_at', 'campaign', 'date_to'],
   Users:  ['name', 'pin_hash', 'active'],
   Config: ['key', 'value'],
   Log:    ['at', 'user', 'action', 'sheet', 'row_id', 'data']
@@ -40,7 +43,7 @@ var STATUSES = ['1-ทักแล้วเงียบ', '2-มีข้อม�
 // HTTP
 // ============================================================
 function doGet() {
-  return json_({ ok: true, app: 'fb-ads-tracker', time: new Date().toISOString() });
+  return json_({ ok: true, app: 'fb-ads-tracker', backend_version: BACKEND_VERSION, time: new Date().toISOString() });
 }
 
 function doPost(e) {
@@ -200,7 +203,8 @@ function bootstrap_(user) {
     adsets: readTable_('AdSets'),
     users: readTable_('Users').map(function (r) { return { name: r.name, active: isTrue_(r.active) }; }),
     statuses: STATUSES,
-    serverTime: new Date().toISOString()
+    serverTime: new Date().toISOString(),
+    backend_version: BACKEND_VERSION
   };
 }
 
@@ -220,6 +224,10 @@ function saveChat_(chat, user) {
     product: chat.product || '', amount: chat.amount === '' || chat.amount == null ? '' : Number(chat.amount),
     note: chat.note || '', updated_by: user, updated_at: now
   };
+  if (chat.status === '5-ปิดการขาย') {
+    rec.closed_date = normDate_(chat.closed_date) || today_();
+    rec.closed_by = chat.closed_by || user;
+  } else { rec.closed_date = ''; rec.closed_by = ''; }
   return upsert_('Chats', rec, user, { created_by: user, created_at: now });
 }
 
@@ -324,7 +332,9 @@ function saveBudget_(b, user) {
   var start = normDate_(b.start_date);
   if (!start) throw new Error('ต้องใส่วันที่เริ่มใช้งบนี้');
   if (!(Number(b.daily_budget) >= 0) || b.daily_budget === '') throw new Error('งบ/วัน ต้องเป็นตัวเลข');
-  var rec = { id: b.id, campaign: b.campaign, adset: b.adset || '', start_date: start, daily_budget: Number(b.daily_budget), note: b.note || '' };
+  var end = normDate_(b.end_date);
+  if (end && end < start) throw new Error('วันที่จบต้องไม่ก่อนวันที่เริ่ม');
+  var rec = { id: b.id, campaign: b.campaign, adset: b.adset || '', start_date: start, end_date: end, daily_budget: Number(b.daily_budget), note: b.note || '' };
   return upsert_('Budgets', rec, user, { created_by: user, created_at: new Date().toISOString() });
 }
 
@@ -362,9 +372,12 @@ function saveAd_(ad, user) {
 }
 
 function saveSpend_(sp, user) {
-  if (!sp || !sp.adset) throw new Error('ต้องเลือก Ad set');
-  if (!(Number(sp.amount) >= 0)) throw new Error('ยอดต้องเป็นตัวเลข');
-  var rec = { id: sp.id, date: normDate_(sp.date) || today_(), adset: sp.adset, amount: Number(sp.amount), note: sp.note || '' };
+  if (!sp || (!sp.campaign && !sp.adset)) throw new Error('ต้องเลือกแคมเปญ');
+  if (sp.amount === '' || !(Number(sp.amount) >= 0)) throw new Error('ยอดต้องเป็นตัวเลข');
+  var from = normDate_(sp.date) || today_();
+  var to = normDate_(sp.date_to) || from;
+  if (to < from) throw new Error('วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่ม');
+  var rec = { id: sp.id, date: from, date_to: to, campaign: sp.campaign || '', adset: sp.adset || '', amount: Number(sp.amount), note: sp.note || '' };
   return upsert_('Spend', rec, user, { created_by: user, created_at: new Date().toISOString() });
 }
 
