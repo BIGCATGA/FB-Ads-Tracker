@@ -769,15 +769,19 @@ function syncFacebook_(user) {
     fbAds.forEach(function (fa) {
       var si = setInfo[fa.adset_id];
       if (!si) return;
+      // จับคู่ด้วย id ก่อน แล้วค่อยชื่อ+แคมเปญ (id เก่าบางแถวอาจเพี้ยนจากชีตปัดตัวเลข)
       var row = ads.filter(function (a) { return String(a.fb_id) === fa.id; })[0] ||
-                ads.filter(function (a) { return !a.fb_id && a.ad_name === fa.name && a.campaign === si.camp; })[0];
+                ads.filter(function (a) { return a.ad_name === fa.name && a.campaign === si.camp; })[0];
       if (!row) {
-        if (fa.effective_status !== 'ACTIVE') return; // โฆษณาเก่าที่ปิดแล้วไม่ต้องเพิ่ม
-        row = { id: newId_('Ads'), ad_name: fa.name, post_url: '', creative_url: '', note: 'ดึงจาก Facebook', active: true };
+        row = { id: newId_('Ads'), ad_name: fa.name, post_url: '', creative_url: '', note: 'ดึงจาก Facebook' };
         ads.push(row); sum.ads++;
       }
       row.fb_id = fa.id; row.adset = si.name; row.campaign = si.camp;
+      row.active = fa.effective_status === 'ACTIVE';
     });
+    // ลบแถวโฆษณาซ้ำ (ชื่อ + Ad set + แคมเปญ เดียวกัน)
+    var seenAd = {};
+    ads = ads.filter(function (a) { var k = a.ad_name + '|' + a.adset + '|' + a.campaign; if (seenAd[k]) return false; seenAd[k] = true; return true; });
     rewriteTable_('Ads', ads);
 
     // ---- 5) ค่า Ads รายวัน (แทนที่แถว Facebook เดิมในช่วงที่ดึง) ----
@@ -889,6 +893,7 @@ function syncInbox_(t0, user) {
   while (url) {
     if (Date.now() - t0 > 270000) break; // เผื่อเวลา — รอบหน้าดึงต่อจากจุดนี้
     var body = fetchJson_(url);
+    Utilities.sleep(400);
     var stop = false;
     (body.data || []).forEach(function (c) { if (fbDate_(c.updated_time) < since) stop = true; else convs.push(c); });
     cursor = body.paging && body.paging.cursors ? body.paging.cursors.after : '';
@@ -935,9 +940,12 @@ function syncInbox_(t0, user) {
       if (!hit) { fresh.push(row); added++; }
     });
 
-    // ---- เดาโฆษณา: ดูว่าวันนั้นโฆษณาไหนได้แชท ----
-    if (fresh.length) {
-      var dates = fresh.map(function (r) { return r.first_date; }).sort();
+    // ---- จับคู่แคมเปญ: ใช้จำนวนแชทที่ Facebook นับรายวันของแต่ละโฆษณา ----
+    // วันไหนโฆษณาได้แชท N คน → คนที่ทักวันนั้น N คนแรกนับเป็นลูกค้าจากโฆษณา (แบ่งตามสัดส่วนแต่ละโฆษณา)
+    // เกินจากนั้น = ทักมาจากช่องทางอื่น · วันนี้ยังรอ Facebook อัปเดตตัวเลข
+    var pend = inbox.filter(function (r) { return r.status === 'pending' && r.first_date; });
+    if (pend.length) {
+      var dates = pend.map(function (r) { return r.first_date; }).sort();
       var adIns = null;
       try {
         adIns = fbGetAll_(FB_AD_ACCOUNT + '/insights', {
@@ -945,56 +953,70 @@ function syncInbox_(t0, user) {
           time_range: JSON.stringify({ since: dates[0], until: dates[dates.length - 1] })
         });
       } catch (e) { adIns = null; }
-      if (!adIns) adIns = [];
-      var insOk = adIns.length > 0;
-      var perDay = {}, spendDay = {};
-      adIns.forEach(function (r) {
-        var ad = adByFb[String(r.ad_id)];
-        if (Number(r.spend) > 0) spendDay[r.date_start] = true;
-        if (!ad) return;
-        var n = 0;
-        (r.actions || []).forEach(function (a) { if (a.action_type === 'onsite_conversion.messaging_conversation_started_7d') n = Number(a.value) || 0; });
-        if (n > 0) (perDay[r.date_start] = perDay[r.date_start] || []).push({ ad: ad, n: n });
-      });
-      var byDay = {};
-      fresh.forEach(function (r) { (byDay[r.first_date] = byDay[r.first_date] || []).push(r); });
-      Object.keys(byDay).forEach(function (d) {
-        var people = byDay[d], list = (perDay[d] || []).sort(function (a, b) { return b.n - a.n; });
-        if (insOk && !spendDay[d]) { people.forEach(function (r) { r.status = 'other'; }); return; } // วันนั้นไม่มีโฆษณายิงเลย → มาจากช่องทางอื่น
-        people.forEach(function (r) { r.suggest = list.map(function (x) { return x.ad.ad_name + ':' + x.n; }).join('|'); });
-        if (list.length === 1 && people.length <= list[0].n) {
-          var ad = list[0].ad;
-          people.forEach(function (r) {
+      if (adIns) {
+        var adsNow = readTable_('Ads'), byFb = {};
+        adsNow.forEach(function (a) { if (a.fb_id) byFb[String(a.fb_id)] = a; });
+        var perDay = {};
+        adIns.forEach(function (r) {
+          var ad = byFb[String(r.ad_id)];
+          var n = 0;
+          (r.actions || []).forEach(function (a) { if (a.action_type === 'onsite_conversion.messaging_conversation_started_7d') n = Number(a.value) || 0; });
+          if (ad && n > 0) (perDay[r.date_start] = perDay[r.date_start] || []).push({ ad: ad, n: n });
+        });
+        // ที่นั่งที่ถูกใช้ไปแล้ว (แชทจาก Facebook ที่สร้างไว้ก่อนหน้า)
+        var used = {};
+        chats.forEach(function (c) { if (c.source === 'fb' && c.ad) { var k = c.date + '|' + c.ad; used[k] = (used[k] || 0) + 1; } });
+        var byDay = {};
+        pend.forEach(function (r) { (byDay[r.first_date] = byDay[r.first_date] || []).push(r); });
+        Object.keys(byDay).forEach(function (d) {
+          if (d >= today) return; // ตัวเลขวันนี้ Facebook ยังอัปเดตไม่ครบ — รอบหน้าค่อยจับคู่
+          var slots = [];
+          (perDay[d] || []).sort(function (x, y) { return y.n - x.n; }).forEach(function (x) {
+            var free = x.n - (used[d + '|' + x.ad.ad_name] || 0);
+            for (var k = 0; k < free; k++) slots.push({ ad: x.ad, w: k / x.n }); // กระจายตามสัดส่วน
+          });
+          slots.sort(function (x, y) { return x.w - y.w; });
+          byDay[d].forEach(function (r, i) {
+            var sl = slots[i];
+            if (!sl) { r.status = 'other'; return; }
+            var ad = sl.ad;
             var ch = { id: newId_('Chats') + (auto++), date: r.first_date, customer: r.name, ad: ad.ad_name, adset: ad.adset, campaign: ad.campaign,
                        status: '1-ทักแล้วเงียบ', product: '', amount: '', note: '', created_by: 'facebook', created_at: now, updated_by: '', updated_at: '',
                        closed_date: '', closed_by: '', psid: r.psid, pic: r.pic, source: 'fb', review: 'auto' };
-            chats.push(ch); chatByPsid[r.psid] = ch; r.status = 'ad'; r.chat_id = ch.id; chatsChanged = true;
+            chats.push(ch); chatByPsid[r.psid] = ch; r.status = 'ad'; r.chat_id = ch.id; r.suggest = ''; chatsChanged = true;
           });
-        }
-      });
+        });
+      }
     }
 
-    // ---- รูปโปรไฟล์ (ถ้า Facebook อนุญาต) ----
+    // ---- รูปโปรไฟล์ (ถ้า Facebook อนุญาต) — ทีละน้อย เว้นจังหวะ กัน Google จำกัดความถี่ ----
     if (cfg.fb_pic_off !== today) {
-      var need = inbox.filter(function (r) { return r.status !== 'other' && r.last_date >= addDays_(today, -14); }).slice(-150);
-      for (var i = 0; i < need.length; i += 50) {
-        if (Date.now() - t0 > 320000) break;
-        var batch = need.slice(i, i + 50);
-        var res = UrlFetchApp.fetchAll(batch.map(function (r) {
-          return { url: FB_API + r.psid + '?fields=profile_pic&access_token=' + encodeURIComponent(page.access_token), muteHttpExceptions: true };
-        }));
-        var denied = false;
-        res.forEach(function (rs, k) {
-          var b = {}; try { b = JSON.parse(rs.getContentText() || '{}'); } catch (e) {}
-          if (b.error) { denied = true; return; }
-          if (b.profile_pic) {
-            batch[k].pic = b.profile_pic;
-            var ch = chatByPsid[batch[k].psid];
-            if (ch && ch.pic !== b.profile_pic) { ch.pic = b.profile_pic; chatsChanged = true; }
-          }
-        });
-        if (denied && !batch.some(function (r) { return r.pic; })) { setConfig_('fb_pic_off', today); break; }
-      }
+      try {
+        var need = inbox.filter(function (r) { return r.status !== 'other' && !r.pic && r.last_date >= addDays_(today, -14); }).slice(-40);
+        var denied = 0, got = 0;
+        for (var i = 0; i < need.length; i += 5) {
+          if (Date.now() - t0 > 300000) break;
+          var batch = need.slice(i, i + 5);
+          var res;
+          try {
+            res = UrlFetchApp.fetchAll(batch.map(function (r) {
+              return { url: FB_API + r.psid + '?fields=profile_pic&access_token=' + encodeURIComponent(page.access_token), muteHttpExceptions: true };
+            }));
+          } catch (e) { Utilities.sleep(2000); continue; } // ถูกจำกัดความถี่ → ข้ามรอบนี้ ไว้ดึงรอบหน้า
+          res.forEach(function (rs, k) {
+            var b = {}; try { b = JSON.parse(rs.getContentText() || '{}'); } catch (e) {}
+            if (b.error) { denied++; return; }
+            if (b.profile_pic) {
+              got++;
+              batch[k].pic = b.profile_pic;
+              var ch = chatByPsid[batch[k].psid];
+              if (ch && ch.pic !== b.profile_pic) { ch.pic = b.profile_pic; chatsChanged = true; }
+            }
+          });
+          if (denied && !got) { setConfig_('fb_pic_off', today); break; }
+          Utilities.sleep(1200);
+        }
+      } catch (e) { /* รูปไม่ใช่ข้อมูลสำคัญ — พังก็ไม่กระทบรายชื่อ */ }
     }
 
     inbox.sort(function (a, b) { return a.first_date < b.first_date ? -1 : a.first_date > b.first_date ? 1 : 0; });
@@ -1022,6 +1044,7 @@ function inboxDecide_(req, user) {
     var row = inbox.filter(function (r) { return String(r.psid) === String(req.psid); })[0];
     if (!row) throw new Error('ไม่พบรายชื่อนี้');
     var chat = null, now = new Date().toISOString();
+    if (req.ad && row.status === 'ad') return { inbox: row, chat: null }; // เป็นแชทอยู่แล้ว ไม่สร้างซ้ำ
     if (req.ad) {
       var ad = readTable_('Ads').filter(function (a) { return a.ad_name === req.ad; })[0] || {};
       chat = { id: newId_('Chats'), date: row.first_date, customer: row.name, ad: req.ad, adset: ad.adset || '', campaign: ad.campaign || '',
