@@ -332,13 +332,18 @@
     var adsetCamp = {};
     data.ads.forEach(function (a) { if (a.adset && a.campaign) adsetCamp[a.adset] = a.campaign; });
     (data.adsets || []).forEach(function (a) { adsetCamp[a.name] = adsetCamp[a.name] || a.campaign; });
-    var out = [];
+    var out = [], fbDay = {};
+    // วันที่มีตัวเลขจาก Facebook แล้ว → ไม่นับยอดที่กรอกมือของแคมเปญนั้นในวันนั้น (กันนับซ้ำ)
+    (data.spend || []).forEach(function (s) { if (s.source === 'fb') fbDay[(s.campaign || '') + '|' + s.date] = true; });
     (data.spend || []).forEach(function (s) {
       var from = s.date, to = s.date_to && s.date_to >= from ? s.date_to : from;
       var camp = s.campaign || adsetCamp[s.adset] || '';
       var n = daysIncl(from, to), per = (Number(s.amount) || 0) / n;
       var d = from, guard = 0;
-      while (d <= to && guard++ < 1000) { out.push({ date: d, campaign: camp, adset: s.adset || '', amount: per }); d = addDays(d, 1); }
+      while (d <= to && guard++ < 1000) {
+        if (s.source === 'fb' || !fbDay[camp + '|' + d]) out.push({ date: d, campaign: camp, adset: s.adset || '', amount: per, results: s.source === 'fb' ? Number(s.results) || 0 : 0, fb: s.source === 'fb' });
+        d = addDays(d, 1);
+      }
     });
     return out;
   }
@@ -359,7 +364,10 @@
       while (d <= to && guard++ < 1000) { covered[d] = true; d = addDays(d, 1); }
     });
     var missing = runningDays(data, camp, yesterday).filter(function (d) { return !covered[d]; });
-    return { total: total, lastTo: lastTo, missing: missing, entries: entries };
+    var fbChats = 0;
+    total = 0;
+    spendDaily(data).forEach(function (x) { if (x.campaign === camp) { total += x.amount; fbChats += x.results || 0; } });
+    return { total: total, lastTo: lastTo, missing: missing, entries: entries, fbChats: fbChats, hasFb: entries.some(function (e) { return e.source === 'fb'; }) };
   }
 
   /** ผลของแต่ละรอบ (เทียบกับรอบก่อนหน้าของระดับเดียวกัน) */
@@ -489,6 +497,106 @@
     return L.join('\n');
   }
 
+  // ---------- ผลการปรับงบ: เทียบ "ก่อนปรับ" กับ "หลังปรับ" ----------
+  var MIN_DAYS = 3;
+  function cplOf(r) {
+    if (r.covDays && r.covLeads) return { v: r.covSpend / r.covLeads, est: false };
+    if (r.leads && r.daily) return { v: r.daily * r.days / r.leads, est: true }; // ยังไม่กรอกค่า Ads → ประมาณจากงบที่ตั้ง
+    return { v: null, est: !r.spend };
+  }
+  function verdictOf(b, a) {
+    var kind = a.daily > b.daily ? 'up' : a.daily < b.daily ? 'down' : 'same';
+    var cb = cplOf(b), ca = cplOf(a);
+    var useEst = cb.est || ca.est;
+    if (useEst) { cb = { v: b.leads && b.daily ? b.daily * b.days / b.leads : null }; ca = { v: a.leads && a.daily ? a.daily * a.days / a.leads : null }; }
+    var lpdCh = b.leadsPerDay ? (a.leadsPerDay - b.leadsPerDay) / b.leadsPerDay : null;
+    var cplCh = cb.v && ca.v ? (ca.v - cb.v) / cb.v : null;
+    var key;
+    if (a.days < MIN_DAYS) key = 'wait';
+    else if (!b.leads && !a.leads) key = 'nodata';
+    else if (!a.leads) key = 'bad';
+    else if (!b.leads) key = 'good';
+    else if (cplCh <= -0.1) key = 'good';
+    else if (cplCh >= 0.2) key = 'bad';
+    else if (kind === 'up' && lpdCh >= 0.1) key = 'good';
+    else key = 'flat';
+    var T = {
+      up: { good: 'เพิ่มงบแล้วคุ้ม', bad: 'เพิ่มงบแล้วไม่คุ้ม', flat: 'เพิ่มงบแล้วผลพอ ๆ เดิม' },
+      down: { good: 'ลดงบแล้วคุ้มกว่า', bad: 'ลดงบแล้วแย่ลง', flat: 'ลดงบแล้วผลพอ ๆ เดิม' },
+      same: { good: 'รอบใหม่ดีกว่าเดิม', bad: 'รอบใหม่แย่กว่าเดิม', flat: 'ผลพอ ๆ เดิม' }
+    };
+    var title = key === 'wait' ? 'รอผลอีก ' + (MIN_DAYS - a.days) + ' วัน' : key === 'nodata' ? 'ยังไม่มี Lead' : T[kind][key];
+    var advice = '';
+    if (key === 'wait') advice = 'เพิ่งเปลี่ยน ' + a.days + ' วัน — ผลช่วงแรกยังไม่นิ่ง ยิงให้ครบ ' + MIN_DAYS + ' วันก่อนค่อยตัดสิน';
+    else if (key === 'nodata') advice = 'ทั้งก่อนและหลังปรับยังไม่มีคนทัก — ลองเปลี่ยนครีเอทีฟหรือกลุ่มเป้าหมาย';
+    else if (key === 'good') advice = kind === 'up' ? 'ยิงงบนี้ต่อได้ — ถ้าอยากได้ Lead เพิ่ม ลองขยับอีกครั้งละ 20–30%' : kind === 'down' ? 'งบนี้คุ้มกว่า ใช้ต่อได้' : 'รอบนี้ดีกว่า ยิงต่อได้';
+    else if (key === 'bad') advice = kind === 'up' ? 'ลองกลับไปงบเดิม ' + baht(b.daily) + '/วัน หรือเปลี่ยนครีเอทีฟ/กลุ่มเป้าหมายก่อนเพิ่มงบ' : kind === 'down' ? 'ลองกลับไปงบเดิม ' + baht(b.daily) + '/วัน' : 'ดูครีเอทีฟ/กลุ่มเป้าหมายของรอบนี้';
+    else advice = 'ต้นทุนต่อ Lead ใกล้เดิม — ' + (kind === 'up' ? 'ได้ Lead เพิ่มตามงบ ยิงต่อได้ถ้าทีมตอบแชททัน' : 'ยิงต่ออีกสักพักแล้วดูอีกครั้ง');
+    var few = key !== 'wait' && key !== 'nodata' && (b.leads < 5 || a.leads < 5);
+    var partial = !useEst && (b.covDays < b.days || a.covDays < a.days);
+    return { key: key, kind: kind, title: title, advice: advice, few: few, est: useEst, partial: partial,
+      lpd: [b.leadsPerDay, a.leadsPerDay], lpdChange: lpdCh, cpl: [cb.v, ca.v], cplChange: cplCh };
+  }
+  /** ทุกครั้งที่เปลี่ยนรอบ (ปรับงบ / กลับมายิง) → 1 การทดลอง */
+  function experiments(data, opts) {
+    var today = opts.today || iso(new Date()), daily = spendDaily(data), out = [];
+    var camps = {};
+    (data.budgets || []).forEach(function (b) { if (b.campaign && (!opts.campaign || b.campaign === opts.campaign)) camps[b.campaign] = true; });
+    Object.keys(camps).forEach(function (camp) {
+      [''].concat(adsetsOf(data, camp)).forEach(function (lv) {
+        var rows = runResults(data, camp, lv, today, daily).filter(function (r) { return !r.future; });
+        for (var i = 1; i < rows.length; i++) {
+          var b = rows[i - 1], a = rows[i];
+          if (opts.from && (a.to < opts.from || a.from > opts.to)) continue;
+          [b, a].forEach(function (r) {
+            if (r.covDays != null) return;
+            var cov = campaignDaily(data, camp, lv, r.from, r.to).filter(function (d) { return d.spend > 0; });
+            r.covDays = cov.length;
+            r.covSpend = cov.reduce(function (t, d) { return t + d.spend; }, 0);
+            r.covLeads = cov.reduce(function (t, d) { return t + d.leads; }, 0);
+          });
+          var gapFrom = b.plannedTo ? addDays(b.plannedTo, 1) : null;
+          var gap = gapFrom && gapFrom < a.from ? daysIncl(gapFrom, addDays(a.from, -1)) : 0;
+          out.push({ id: a.run.id, campaign: camp, adset: lv, before: b, after: a, gap: gap, note: a.note || '',
+            budgetChange: b.daily ? (a.daily - b.daily) / b.daily : null, v: verdictOf(b, a) });
+        }
+      });
+    });
+    return out.sort(function (x, y) { return x.after.from < y.after.from ? 1 : x.after.from > y.after.from ? -1 : 0; });
+  }
+  /** รายวันของแคมเปญ (หรือ 1 Ad set): Lead · งบที่ตั้ง · ค่า Ads ที่กรอก */
+  function campaignDaily(data, camp, adset, from, to) {
+    var people = uniquePeople(data.chats.filter(function (c) { return c.campaign === camp && (!adset || c.adset === adset); }));
+    var leads = {}, closed = {}, spend = {};
+    people.forEach(function (p) { if (stageOf(p.status) >= 1) leads[p.firstDate] = (leads[p.firstDate] || 0) + 1; if (p.status === '5-ปิดการขาย') closed[p.firstDate] = (closed[p.firstDate] || 0) + 1; });
+    spendDaily(data).forEach(function (s) { if (s.campaign === camp && (!adset || s.adset === adset)) spend[s.date] = (spend[s.date] || 0) + s.amount; });
+    var levels = adset ? [adset] : [''].concat(adsetsOf(data, camp));
+    var runs = levels.map(function (lv) { return runsOf(data, camp, lv); });
+    return dayList(from, to).map(function (d) {
+      var bud = 0;
+      runs.forEach(function (rs) { var r = activeRun(rs, d); if (r) bud += r.amount; });
+      return { date: d, leads: leads[d] || 0, closed: closed[d] || 0, spend: spend[d] || 0, budget: bud };
+    });
+  }
+
+  // ---------- ประเภทสินค้า ----------
+  var DEFAULT_PRODUCTS = ['iPhone', 'iPad', 'MacBook', 'iMac', 'Apple Watch', 'AirPods', 'Notebook', 'Computer', 'เกมคอนโซล', 'กล้อง'];
+  function productList(data) {
+    var raw = data && data.config && data.config.products;
+    var list = raw ? String(raw).split(/[\n,]+/).map(function (x) { return x.trim(); }).filter(Boolean) : [];
+    return list.length ? list : DEFAULT_PRODUCTS.slice();
+  }
+  /** แยก "iPhone 14 Pro 256GB" → { cat: 'iPhone', detail: '14 Pro 256GB' } */
+  function splitProduct(data, product) {
+    var p = String(product || '').trim(), list = productList(data).slice().sort(function (a, b) { return b.length - a.length; });
+    for (var i = 0; i < list.length; i++) {
+      var c = list[i];
+      if (p.toLowerCase().indexOf(c.toLowerCase()) === 0) return { cat: c, detail: p.slice(c.length).replace(/^[\s·\-:]+/, '') };
+    }
+    var hit = list.filter(function (c) { return p.toLowerCase().indexOf(c.toLowerCase()) >= 0; })[0];
+    return hit ? { cat: hit, detail: p, loose: true } : { cat: p ? 'อื่น ๆ' : '', detail: p };
+  }
+
   window.Calc = {
     STATUSES: STATUSES, BY_KEY: BY_KEY, STAGES: STAGES,
     stageOf: stageOf, dupMap: dupMap, uniquePeople: uniquePeople, compute: compute, presetRange: presetRange,
@@ -497,6 +605,7 @@
     runsOf: runsOf, needsNormalize: needsNormalize, levelState: levelState, campState: campState, budgetMode: budgetMode, firstStart: firstStart,
     spendDaily: spendDaily, spendCoverage: spendCoverage, runResults: runResults, runningDays: runningDays, daysIncl: daysIncl,
     closeDurations: closeDurations, durationStats: durationStats,
+    experiments: experiments, campaignDaily: campaignDaily, productList: productList, splitProduct: splitProduct, MIN_DAYS: MIN_DAYS,
     fmt: { baht: baht, int: int, pct: pct, thDate: thDate, thRange: thRange }
   };
 })();

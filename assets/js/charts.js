@@ -167,5 +167,119 @@
     document.addEventListener('scroll', function () { tipEl.classList.add('hidden'); }, true);
   }
 
-  window.Charts = { ring: ring, segRing: segRing, donut: donut, wave: wave, bars: bars, bindTips: bindTips, esc: esc };
+  /**
+   * กราฟแท่งแนวตั้ง วาดตามความกว้างจริงของกล่อง (คมชัด ไม่ยืด)
+   * opts = { labels:[], tips:[], series:[{name, color, values:[]}], height, fmt(v), showValues }
+   */
+  function columns(el, opts) {
+    var W = Math.max(280, el.clientWidth), H = opts.height || 320;
+    var L = opts.left || 64, R = 12, T = 18, B = 34;
+    var series = opts.series, n = opts.labels.length;
+    var fmt = opts.fmt || function (v) { return String(Math.round(v)); };
+    var max = 0;
+    series.forEach(function (s) { s.values.forEach(function (v) { if (v > max) max = v; }); });
+    var step = niceStep(max), top = Math.max(step * Math.ceil(max / step), step);
+    var maxLen = Math.max.apply(null, opts.labels.map(function (l) { return Math.max.apply(null, String(l).split('\n').map(function (x) { return x.length; })); }).concat([2]));
+    var two = opts.labels.some(function (l) { return String(l).indexOf('\n') >= 0; });
+    if (two) B += 18;
+    var plotW = W - L - R, plotH = H - T - B, gw = plotW / Math.max(n, 1);
+    var bw = Math.max(3, Math.min(28, (gw * 0.72) / series.length));
+    var out = '';
+    for (var v = 0; v <= top + 1e-9; v += step) {
+      var y = T + plotH - v / top * plotH;
+      out += '<line class="grid-line" x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '"/>';
+      out += '<text class="ax" x="' + (L - 10) + '" y="' + (y + 4) + '" text-anchor="end">' + esc(fmt(v)) + '</text>';
+    }
+    var every = Math.max(1, Math.ceil(n / Math.max(1, Math.floor(plotW / Math.max(46, maxLen * 7.5 + 12)))));
+    var showVals = opts.showValues && n <= 16;
+    for (var i = 0; i < n; i++) {
+      var gx = L + i * gw, cx = gx + gw / 2, totalW = series.length * bw + (series.length - 1) * 4;
+      var tip = '<b>' + esc(opts.tips ? opts.tips[i] : opts.labels[i]) + '</b>' + series.map(function (s) {
+        return '<div class="row"><span><i class="tip-dot" style="background:' + s.color + '"></i>' + esc(s.name) + '</span><b>' + esc(fmt(s.values[i] || 0)) + '</b></div>';
+      }).join('');
+      out += '<rect class="hover-band" x="' + gx + '" y="' + T + '" width="' + gw + '" height="' + plotH + '" data-tip="' + esc(tip) + '"/>';
+      series.forEach(function (s, k) {
+        var val = s.values[i] || 0;
+        if (!val) return;
+        var h = Math.max(2, val / top * plotH), x = cx - totalW / 2 + k * (bw + 4), y = T + plotH - h, r = Math.min(5, bw / 2, h);
+        out += '<path pointer-events="none" fill="' + s.color + '" d="M' + x + ' ' + (T + plotH) + 'V' + (y + r) + 'Q' + x + ' ' + y + ' ' + (x + r) + ' ' + y + 'H' + (x + bw - r) + 'Q' + (x + bw) + ' ' + y + ' ' + (x + bw) + ' ' + (y + r) + 'V' + (T + plotH) + 'Z"/>';
+        if (showVals) out += '<text class="val" x="' + (x + bw / 2) + '" y="' + (y - 6) + '" text-anchor="middle">' + esc(fmt(val)) + '</text>';
+      });
+      if (i % every === 0) {
+        var ls = String(opts.labels[i]).split('\n');
+        out += '<text class="ax" x="' + cx + '" y="' + (H - (ls.length > 1 ? 28 : 10)) + '" text-anchor="middle">' + ls.map(function (t, k) { return '<tspan x="' + cx + '" dy="' + (k ? 18 : 0) + '"' + (k ? ' class="ax2"' : '') + '>' + esc(t) + '</tspan>'; }).join('') + '</text>';
+      }
+    }
+    out += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + plotH) + '" y2="' + (T + plotH) + '" stroke="var(--line-strong)"/>';
+    el.innerHTML = '<svg class="chart big" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(opts.aria || '') + '">' + out + '</svg>';
+  }
+
+  /**
+   * แถบแนวนอน (HTML) — อ่านง่าย ป้ายยาวได้
+   * items = [{label, value, display, sub, color, tip}] · opts = { max, target, targetLabel }
+   */
+  function hbars(items, opts) {
+    opts = opts || {};
+    var max = opts.max || Math.max.apply(null, items.map(function (x) { return x.value || 0; }).concat([opts.target || 0, 1]));
+    var tgt = opts.target ? '<i class="hb-target" style="left:' + (opts.target / max * 100) + '%" title="' + esc(opts.targetLabel || '') + '"></i>' : '';
+    return '<div class="hbars">' + items.map(function (x) {
+      var w = Math.max(x.value ? 1.5 : 0, (x.value || 0) / max * 100);
+      return '<div class="hb"' + (x.tip ? ' data-tip="' + esc(x.tip) + '"' : '') + '><div class="hb-label">' + esc(x.label) + (x.sub ? '<span>' + esc(x.sub) + '</span>' : '') + '</div>' +
+        '<div class="hb-track"><i style="width:' + w + '%;background:' + (x.color || 'var(--primary)') + '"></i>' + tgt + '</div>' +
+        '<div class="hb-val">' + esc(x.display != null ? x.display : x.value) + '</div></div>';
+    }).join('') + '</div>';
+  }
+
+  /**
+   * ไทม์ไลน์แคมเปญ: แท่ง = Lead ต่อวัน (แกนซ้าย) · เส้นขั้นบันได = งบ/วันที่ตั้ง (แกนขวา) · เส้นประ = วันที่ปรับงบ
+   * opts: { dates, leads, budget, marks:[{i,label}], tips, labels, height, aria }
+   */
+  function timeline(el, o) {
+    var W = Math.max(280, el.clientWidth), H = o.height || 320, L = 46, R = 70, T = 34, B = 34;
+    var n = o.dates.length, plotW = W - L - R, plotH = H - T - B, gw = plotW / Math.max(n, 1);
+    var maxL = Math.max.apply(null, o.leads.concat([1])), sL = niceStep(maxL), topL = Math.max(sL * Math.ceil(maxL / sL), sL);
+    var maxB = Math.max.apply(null, o.budget.concat([1])), sB = niceStep(maxB), topB = Math.max(sB * Math.ceil(maxB * 1.15 / sB), sB);
+    var yL = function (v) { return T + plotH - v / topL * plotH; }, yB = function (v) { return T + plotH - v / topB * plotH; };
+    var out = '';
+    for (var v = 0; v <= topL + 1e-9; v += sL) out += '<line class="grid-line" x1="' + L + '" x2="' + (W - R) + '" y1="' + yL(v) + '" y2="' + yL(v) + '"/><text class="ax" x="' + (L - 8) + '" y="' + (yL(v) + 4) + '" text-anchor="end">' + v + '</text>';
+    for (var b = 0; b <= topB + 1e-9; b += sB) out += '<text class="ax" x="' + (W - R + 8) + '" y="' + (yB(b) + 4) + '" fill="var(--budget)">' + (b >= 1000 ? (b / 1000) + 'k' : b) + ' ฿</text>';
+    var bw = Math.max(2, Math.min(22, gw * 0.62));
+    var every = Math.max(1, Math.ceil(n / Math.max(1, Math.floor(plotW / 44))));
+    for (var i = 0; i < n; i++) {
+      var gx = L + i * gw, cx = gx + gw / 2;
+      out += '<rect class="hover-band" x="' + gx + '" y="' + T + '" width="' + gw + '" height="' + plotH + '" data-tip="' + esc(o.tips[i]) + '"/>';
+      var lv = o.leads[i];
+      if (lv) { var h = Math.max(2, lv / topL * plotH), x = cx - bw / 2, y = T + plotH - h, r = Math.min(4, bw / 2, h);
+        out += '<path pointer-events="none" fill="var(--primary)" opacity=".85" d="M' + x + ' ' + (T + plotH) + 'V' + (y + r) + 'Q' + x + ' ' + y + ' ' + (x + r) + ' ' + y + 'H' + (x + bw - r) + 'Q' + (x + bw) + ' ' + y + ' ' + (x + bw) + ' ' + (y + r) + 'V' + (T + plotH) + 'Z"/>'; }
+      if (i % every === 0) out += '<text class="ax" x="' + cx + '" y="' + (H - 10) + '" text-anchor="middle">' + esc(o.labels[i]) + '</text>';
+    }
+    // เส้นงบ (ขาดช่วงวันที่หยุด)
+    var path = '', on = false;
+    for (var k = 0; k < n; k++) {
+      var bv = o.budget[k], x0 = L + k * gw, x1 = x0 + gw;
+      if (bv > 0) { path += (on ? 'L' + x0 + ' ' + yB(bv) : 'M' + x0 + ' ' + yB(bv)) + 'L' + x1 + ' ' + yB(bv); on = true; } else on = false;
+    }
+    out += '<path d="' + path + '" fill="none" stroke="var(--budget)" stroke-width="3" stroke-linejoin="round" pointer-events="none"/>';
+    (o.marks || []).forEach(function (m, j) {
+      var mx = L + m.i * gw;
+      out += '<line x1="' + mx + '" x2="' + mx + '" y1="' + (T - 4) + '" y2="' + (T + plotH) + '" stroke="var(--text-3)" stroke-dasharray="4 4" pointer-events="none"/>';
+      var anchor = mx > W - R - 60 ? 'end' : mx < L + 60 ? 'start' : 'middle';
+      out += '<text class="mark-l" x="' + mx + '" y="' + (T - 12 - (j % 2) * 0) + '" text-anchor="' + anchor + '">' + esc(m.label) + '</text>';
+    });
+    out += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + plotH) + '" y2="' + (T + plotH) + '" stroke="var(--line-strong)"/>';
+    el.innerHTML = '<svg class="chart big" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(o.aria || '') + '">' + out + '</svg>';
+  }
+  /** กราฟจิ๋วในการ์ดแคมเปญ: แท่ง Lead รายวัน + เส้นงบ (ไม่ต้องวาดใหม่ตอนย่อจอ) */
+  function spark(leads, budget) {
+    var n = leads.length, W = 100, H = 36, gw = W / Math.max(n, 1);
+    var mL = Math.max.apply(null, leads.concat([1])), mB = Math.max.apply(null, budget.concat([1])) * 1.15;
+    var out = '';
+    leads.forEach(function (v, i) { if (v) { var h = Math.max(1.5, v / mL * (H - 4)); out += '<rect x="' + (i * gw + gw * 0.18) + '" y="' + (H - h) + '" width="' + (gw * 0.64) + '" height="' + h + '" rx="0.6" fill="var(--primary)" opacity=".8"/>'; } });
+    var path = '', on = false;
+    budget.forEach(function (v, i) { if (v > 0) { var y = H - v / mB * (H - 4); path += (on ? 'L' : 'M') + (i * gw) + ' ' + y + 'L' + ((i + 1) * gw) + ' ' + y; on = true; } else on = false; });
+    out += '<path d="' + path + '" fill="none" stroke="var(--budget)" stroke-width="1.6" vector-effect="non-scaling-stroke"/>';
+    return '<svg class="spark" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">' + out + '</svg>';
+  }
+
+  window.Charts = { timeline: timeline, spark: spark, columns: columns, hbars: hbars, ring: ring, segRing: segRing, donut: donut, wave: wave, bars: bars, bindTips: bindTips, esc: esc };
 })();

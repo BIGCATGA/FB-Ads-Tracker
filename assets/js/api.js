@@ -3,7 +3,7 @@
  */
 (function () {
   var URL_ = (window.APP_CONFIG.API_URL || '').trim();
-  var DEMO_KEY = 'fbat_demo_v5';
+  var DEMO_KEY = 'fbat_demo_v6';
 
   function store(key, val) {
     try { if (val === undefined) return localStorage.getItem(key); if (val === null) localStorage.removeItem(key); else localStorage.setItem(key, val); } catch (e) { return null; }
@@ -114,6 +114,18 @@
               if (p.budget.daily_budget === '' || !(Number(p.budget.daily_budget) >= 0)) throw new Error('งบ/วัน ต้องเป็นตัวเลข');
               return resolve(upsert(db.budgets, Object.assign({}, p.budget, { daily_budget: Number(p.budget.daily_budget) }), 'b', { created_by: me, created_at: now }));
             case 'deleteBudget': return resolve(remove(db.budgets, p.id));
+            case 'inboxDecide':
+              var ir = (db.inbox || []).find(function (x) { return x.psid === p.psid; });
+              if (!ir) throw new Error('ไม่พบรายชื่อนี้');
+              var nc = null;
+              if (p.ad) {
+                var ad0 = db.ads.find(function (a) { return a.ad_name === p.ad; }) || {};
+                nc = upsert(db.chats, { date: ir.first_date, customer: ir.name, ad: p.ad, adset: ad0.adset || '', campaign: ad0.campaign || '', status: p.status || '1-ทักแล้วเงียบ',
+                  product: '', amount: '', note: '', psid: ir.psid, pic: ir.pic, source: 'fb', review: '' }, 'c', { created_by: me, created_at: now });
+                ir.status = 'ad'; ir.chat_id = nc.id;
+              } else ir.status = p.other ? 'other' : 'pending';
+              demoSave(); return resolve({ inbox: Object.assign({}, ir), chat: nc });
+            case 'syncFacebook': return reject(new Error('โหมดตัวอย่างดึงจาก Facebook จริงไม่ได้ — ใช้ได้เมื่อต่อกับ Apps Script แล้ว'));
             case 'saveConfig': db.config[p.key] = p.value; demoSave(); return resolve({ key: p.key, value: p.value });
             case 'saveUser':
               var u = db.users.find(function (x) { return x.name === p.name; });
@@ -128,7 +140,7 @@
 
   window.API = {
     isDemo: !URL_,
-    MIN_BACKEND: 5,
+    MIN_BACKEND: 7,
     outdated: false,
     call: function (action, payload) { return URL_ ? remote(action, payload) : local(action, payload || {}); },
     token: function (v) { return store('fbat_token', v); },
