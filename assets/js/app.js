@@ -274,9 +274,11 @@
     // ---------- 2) Lead + ปิดได้ ตามเวลา ----------
     html += section('Lead และเคสที่ปิดได้ — แต่ละวัน', 'ดูว่าช่วงไหนคนทักเยอะ/น้อย และเพิ่มงบแล้ว Lead ขึ้นตามไหม',
       '<div class="tabs"><button data-ctab="day" class="' + (S.chartTab === 'day' ? 'on' : '') + '">รายวัน</button><button data-ctab="week" class="' + (S.chartTab === 'week' ? 'on' : '') + '">รายสัปดาห์</button></div>' +
-      legend([['Lead', 'var(--primary)'], ['ปิดได้', 'var(--st-7)']]) + '<div class="chart-box" id="chLeads"></div>', 'full');
+      legend([['Lead', 'var(--primary)'], ['ปิดได้', 'var(--st-5)'], ['เส้นประ = ค่าเฉลี่ย', 'transparent']]) + '<div class="chart-box" id="chLeads"></div>', 'full');
     var g = groupDaily(m.daily, S.chartTab);
-    charts.push(['chLeads', { labels: g.labels, tips: g.tips, series: [{ name: 'Lead', color: 'var(--primary)', values: g.map('leads') }, { name: 'ปิดได้', color: 'var(--st-7)', values: g.map('closed') }], height: 340, showValues: S.chartTab === 'week', aria: 'Lead และเคสที่ปิดได้' }]);
+    var gl = g.map('leads'), avgL = gl.length ? gl.reduce(function (a, b) { return a + b; }, 0) / gl.length : 0;
+    charts.push(['chLeads', { labels: g.labels, tips: g.tips, series: [{ name: 'Lead', color: 'var(--primary)', values: gl }, { name: 'ปิดได้', color: 'var(--st-5)', values: g.map('closed') }], height: 360,
+      avg: { value: avgL, label: 'เฉลี่ย ' + (Math.round(avgL * 10) / 10) + ' Lead/' + (S.chartTab === 'week' ? 'สัปดาห์' : 'วัน') }, aria: 'Lead และเคสที่ปิดได้' }]);
 
     // ---------- 3) Funnel + สถานะ ----------
     var f1 = m.funnel[0].n || 1;
@@ -349,6 +351,7 @@
     $('#page').innerHTML = html;
     S.drawCharts = function () { charts.forEach(function (c) { var el = document.getElementById(c[0]); if (el) Charts.columns(el, c[1]); }); };
     S.drawCharts();
+    Charts.countUp($('#page'));
 
     $$('[data-preset]').forEach(function (b) { b.onclick = function () { f.preset = b.dataset.preset; pageDashboard(); }; });
     if ($('#fFrom')) {
@@ -857,6 +860,7 @@
     }).join('') + '</div>' : '<div class="card empty">ไม่มีแคมเปญในกลุ่มนี้</div>';
     $('#page').innerHTML = html;
     $$('[data-f]').forEach(function (b) { b.onclick = function () { nv.filter = b.dataset.f; campList(); }; });
+    Charts.countUp($('#page'));
     $('#newCamp').onclick = newCampaignDialog;
     $('#bulkSpend2').onclick = bulkSpendDialog;
     if ($('#bulkSpend')) $('#bulkSpend').onclick = bulkSpendDialog;
@@ -932,6 +936,7 @@
       };
       S.drawCharts();
     } else S.drawCharts = null;
+    Charts.countUp($('#page'));
 
     $('#back').onclick = function () { S.campNav.camp = null; S.drawCharts = null; pageCampaigns(); };
     $('#editCp').onclick = function () { editCampaign(cp.id); };
@@ -1546,6 +1551,6 @@
   }
 
   var rz;
-  window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (S.page === 'dashboard' && S.drawCharts) S.drawCharts(); }, 150); });
+  window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (S.drawCharts) S.drawCharts(); }, 150); });
   boot();
 })();

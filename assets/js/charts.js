@@ -183,7 +183,9 @@
     var two = opts.labels.some(function (l) { return String(l).indexOf('\n') >= 0; });
     if (two) B += 18;
     var plotW = W - L - R, plotH = H - T - B, gw = plotW / Math.max(n, 1);
-    var bw = Math.max(3, Math.min(28, (gw * 0.72) / series.length));
+    var bw = Math.max(3, Math.min(34, (gw * 0.74) / series.length));
+    var anim = !el.dataset.drawn && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+    el.dataset.drawn = '1';
     var out = '';
     for (var v = 0; v <= top + 1e-9; v += step) {
       var y = T + plotH - v / top * plotH;
@@ -191,7 +193,7 @@
       out += '<text class="ax" x="' + (L - 10) + '" y="' + (y + 4) + '" text-anchor="end">' + esc(fmt(v)) + '</text>';
     }
     var every = Math.max(1, Math.ceil(n / Math.max(1, Math.floor(plotW / Math.max(46, maxLen * 7.5 + 12)))));
-    var showVals = opts.showValues && n <= 16;
+    var showVals = (opts.showValues && n <= 16) || (opts.showValues !== false && bw >= 11 && n <= 45);
     for (var i = 0; i < n; i++) {
       var gx = L + i * gw, cx = gx + gw / 2, totalW = series.length * bw + (series.length - 1) * 4;
       var tip = '<b>' + esc(opts.tips ? opts.tips[i] : opts.labels[i]) + '</b>' + series.map(function (s) {
@@ -202,16 +204,21 @@
         var val = s.values[i] || 0;
         if (!val) return;
         var h = Math.max(2, val / top * plotH), x = cx - totalW / 2 + k * (bw + 4), y = T + plotH - h, r = Math.min(5, bw / 2, h);
-        out += '<path pointer-events="none" fill="' + s.color + '" d="M' + x + ' ' + (T + plotH) + 'V' + (y + r) + 'Q' + x + ' ' + y + ' ' + (x + r) + ' ' + y + 'H' + (x + bw - r) + 'Q' + (x + bw) + ' ' + y + ' ' + (x + bw) + ' ' + (y + r) + 'V' + (T + plotH) + 'Z"/>';
-        if (showVals) out += '<text class="val" x="' + (x + bw / 2) + '" y="' + (y - 6) + '" text-anchor="middle">' + esc(fmt(val)) + '</text>';
+        out += '<path class="bar" style="--i:' + i + '" pointer-events="none" fill="' + s.color + '" d="M' + x + ' ' + (T + plotH) + 'V' + (y + r) + 'Q' + x + ' ' + y + ' ' + (x + r) + ' ' + y + 'H' + (x + bw - r) + 'Q' + (x + bw) + ' ' + y + ' ' + (x + bw) + ' ' + (y + r) + 'V' + (T + plotH) + 'Z"/>';
+        if (showVals) out += '<text class="val" style="--i:' + i + '" x="' + (x + bw / 2) + '" y="' + (y - 6) + '" text-anchor="middle">' + esc(fmt(val)) + '</text>';
       });
       if (i % every === 0) {
         var ls = String(opts.labels[i]).split('\n');
         out += '<text class="ax" x="' + cx + '" y="' + (H - (ls.length > 1 ? 28 : 10)) + '" text-anchor="middle">' + ls.map(function (t, k) { return '<tspan x="' + cx + '" dy="' + (k ? 18 : 0) + '"' + (k ? ' class="ax2"' : '') + '>' + esc(t) + '</tspan>'; }).join('') + '</text>';
       }
     }
+    if (opts.avg && opts.avg.value > 0 && opts.avg.value <= top) {
+      var ay = T + plotH - opts.avg.value / top * plotH;
+      out += '<line class="avg-line" x1="' + L + '" x2="' + (W - R) + '" y1="' + ay + '" y2="' + ay + '" stroke="' + (opts.avg.color || 'var(--text-2)') + '"/>' +
+        '<text class="avg-l" x="' + (W - R - 4) + '" y="' + (ay - 7) + '" text-anchor="end">' + esc(opts.avg.label) + '</text>';
+    }
     out += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + plotH) + '" y2="' + (T + plotH) + '" stroke="var(--line-strong)"/>';
-    el.innerHTML = '<svg class="chart big" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(opts.aria || '') + '">' + out + '</svg>';
+    el.innerHTML = '<svg class="chart big' + (anim ? ' anim' : '') + '" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(opts.aria || '') + '">' + out + '</svg>';
   }
 
   /**
@@ -250,7 +257,7 @@
       out += '<rect class="hover-band" x="' + gx + '" y="' + T + '" width="' + gw + '" height="' + plotH + '" data-tip="' + esc(o.tips[i]) + '"/>';
       var lv = o.leads[i];
       if (lv) { var h = Math.max(2, lv / topL * plotH), x = cx - bw / 2, y = T + plotH - h, r = Math.min(4, bw / 2, h);
-        out += '<path pointer-events="none" fill="var(--primary)" opacity=".85" d="M' + x + ' ' + (T + plotH) + 'V' + (y + r) + 'Q' + x + ' ' + y + ' ' + (x + r) + ' ' + y + 'H' + (x + bw - r) + 'Q' + (x + bw) + ' ' + y + ' ' + (x + bw) + ' ' + (y + r) + 'V' + (T + plotH) + 'Z"/>'; }
+        out += '<path class="bar" style="--i:' + i + '" pointer-events="none" fill="var(--primary)" opacity=".85" d="M' + x + ' ' + (T + plotH) + 'V' + (y + r) + 'Q' + x + ' ' + y + ' ' + (x + r) + ' ' + y + 'H' + (x + bw - r) + 'Q' + (x + bw) + ' ' + y + ' ' + (x + bw) + ' ' + (y + r) + 'V' + (T + plotH) + 'Z"/>'; }
       if (i % every === 0) out += '<text class="ax" x="' + cx + '" y="' + (H - 10) + '" text-anchor="middle">' + esc(o.labels[i]) + '</text>';
     }
     // เส้นงบ (ขาดช่วงวันที่หยุด)
@@ -267,7 +274,29 @@
       out += '<text class="mark-l" x="' + mx + '" y="' + (T - 12 - (j % 2) * 0) + '" text-anchor="' + anchor + '">' + esc(m.label) + '</text>';
     });
     out += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + plotH) + '" y2="' + (T + plotH) + '" stroke="var(--line-strong)"/>';
-    el.innerHTML = '<svg class="chart big" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(o.aria || '') + '">' + out + '</svg>';
+    var animT = !el.dataset.drawn; el.dataset.drawn = '1';
+    el.innerHTML = '<svg class="chart big' + (animT ? ' anim' : '') + '" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(o.aria || '') + '">' + out + '</svg>';
+  }
+  /** ตัวเลขวิ่งจาก 0 → ค่าจริง (การ์ดตัวเลข) */
+  function countUp(root) {
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    Array.prototype.forEach.call((root || document).querySelectorAll('.kpi-v, .facts b, .cc2-stats b, .xp-v'), function (el) {
+      if (el.children.length) return;
+      var m = /^([^\d]*?)(\d[\d,]*(?:\.\d+)?)(.*)$/.exec(el.textContent);
+      if (!m) return;
+      var target = Number(m[2].replace(/,/g, '')), dec = (m[2].split('.')[1] || '').length, comma = m[2].indexOf(',') >= 0 || target >= 1000;
+      if (!(target > 0)) return;
+      var t0 = null, dur = 900;
+      function fmt(v) { var s2 = v.toFixed(dec); return comma ? Number(s2).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec }) : s2; }
+      function step(ts) {
+        if (!t0) t0 = ts;
+        var p = Math.min(1, (ts - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+        el.textContent = m[1] + fmt(target * e) + m[3];
+        if (p < 1) requestAnimationFrame(step);
+      }
+      el.textContent = m[1] + fmt(0) + m[3];
+      requestAnimationFrame(step);
+    });
   }
   /** กราฟจิ๋วในการ์ดแคมเปญ: แท่ง Lead รายวัน + เส้นงบ (ไม่ต้องวาดใหม่ตอนย่อจอ) */
   function spark(leads, budget) {
@@ -281,5 +310,5 @@
     return '<svg class="spark" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">' + out + '</svg>';
   }
 
-  window.Charts = { timeline: timeline, spark: spark, columns: columns, hbars: hbars, ring: ring, segRing: segRing, donut: donut, wave: wave, bars: bars, bindTips: bindTips, esc: esc };
+  window.Charts = { countUp: countUp, timeline: timeline, spark: spark, columns: columns, hbars: hbars, ring: ring, segRing: segRing, donut: donut, wave: wave, bars: bars, bindTips: bindTips, esc: esc };
 })();
