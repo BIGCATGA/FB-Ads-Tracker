@@ -177,7 +177,7 @@
   function render() {
     var dark = document.documentElement.dataset.theme === 'dark';
     var nav = NAV.map(function (n) {
-      var cnt = n.id === 'chats' ? (S.data.inbox || []).filter(function (r) { return r.status === 'pending'; }).length : 0;
+      var cnt = 0;
       return '<button data-nav="' + n.id + '" class="' + (S.page === n.id ? 'active' : '') + '">' + n.icon + '<span>' + n.label + '</span>' + (cnt ? '<i class="nav-badge">' + cnt + '</i>' : '') + '</button>';
     }).join('');
     var title = NAV.filter(function (n) { return n.id === S.page; })[0].label;
@@ -623,56 +623,69 @@
     var all = S.data.inbox || [];
     var pend = all.filter(function (r) { return r.status === 'pending'; }).sort(function (a, b) { return a.first_date < b.first_date ? 1 : -1; });
     var other = all.filter(function (r) { return r.status === 'other'; }).sort(function (a, b) { return a.last_date < b.last_date ? 1 : -1; });
-    if (!pend.length && !other.length) { box.innerHTML = ''; return; }
+    var fbChats = S.data.chats.filter(function (c) { return c.source === 'fb'; });
+    if (!pend.length && !other.length && !fbChats.length) { box.innerHTML = ''; return; }
+    var byCamp = {};
+    fbChats.forEach(function (c) { var k = c.campaign || '(ไม่ระบุแคมเปญ)'; byCamp[k] = (byCamp[k] || 0) + 1; });
+    var camps = Object.keys(byCamp).sort(function (a, b) { return byCamp[b] - byCamp[a]; });
+    var cf = S.chatFilter;
+    var html = '<div class="card inbox" style="margin-bottom:18px"><div class="card-head"><div><h2 class="card-title">ลูกค้าที่ทักมาจากโฆษณา (ดึงจาก Facebook อัตโนมัติ)</h2>' +
+      '<div class="card-sub">ระบบจับคู่แคมเปญจากจำนวนแชทที่ Facebook นับในแต่ละวัน · กดตัวเลขเพื่อดูรายชื่อในตารางด้านล่าง · คนที่ไม่ได้มาจากโฆษณาไม่นับรวม</div></div></div>' +
+      '<div class="ib-sum">' +
+      '<button class="ib-num' + (cf.fbOnly && !cf.campaign ? ' on' : '') + '" data-fbcamp=""><b>' + fbChats.length + '</b><span>ทั้งหมดจากโฆษณา</span></button>' +
+      camps.map(function (k) { return '<button class="ib-num' + (cf.fbOnly && cf.campaign === k ? ' on' : '') + '" data-fbcamp="' + esc(k) + '" title="' + esc(k) + '"><b>' + byCamp[k] + '</b><span>' + esc(k) + '</span></button>'; }).join('') +
+      '</div>' +
+      '<div class="ib-foot">' +
+      (pend.length ? '<button class="linkish" id="ibPendT">รอ Facebook อัปเดตตัวเลข ' + pend.length + ' คน (วันนี้) ' + (S.pendOpen ? '▲' : '▼') + '</button>' : '') +
+      (other.length ? '<button class="linkish muted-link" id="ibOtherT">ทักมาจากช่องทางอื่น ' + other.length + ' คน (ไม่นับ) ' + (S.otherOpen ? '▲' : '▼') + '</button>' : '') +
+      (cf.fbOnly ? '<button class="linkish" id="ibClear">✕ ล้างตัวกรอง</button>' : '') + '</div>';
     var lim = S.inboxLimit || 20;
     var activeAds = S.data.ads.filter(function (a) { return isTrue(a.active); });
-    var html = '';
-    if (pend.length) {
-      html += '<div class="card inbox" style="margin-bottom:18px"><div class="card-head"><div><h2 class="card-title">ลูกค้าที่ทักมา รอเลือกโฆษณา (' + pend.length + ')</h2>' +
-        '<div class="card-sub">ดึงจาก Inbox เพจอัตโนมัติ · Facebook ไม่บอกว่าแต่ละคนกดมาจากโฆษณาตัวไหน ระบบจึงแนะนำโฆษณาที่ได้แชทในวันนั้น (ตัวเลข = จำนวนแชทที่ Facebook นับ) · กดโฆษณาเพื่อย้ายเป็นแชท</div></div></div>' +
-        '<div class="ib-list">' + pend.slice(0, lim).map(function (r) {
-          var sug = String(r.suggest || '').split('|').filter(Boolean).map(function (x) { var i = x.lastIndexOf(':'); return { ad: x.slice(0, i), n: x.slice(i + 1) }; });
-          var sugNames = sug.map(function (x) { return x.ad; });
-          return '<div class="ib-row" data-psid="' + esc(r.psid) + '">' + face(r.name, r.pic, 44) +
-            '<div class="ib-who"><b>' + esc(r.name) + '</b><span>ทักครั้งแรก ' + F.thDate(r.first_date, true) + (isTrue(r.approx) ? ' (อาจก่อนหน้านี้)' : '') + (r.first_text ? ' · “' + esc(r.first_text) + '”' : '') + '</span></div>' +
-            '<div class="ib-act">' + sug.map(function (x) { return '<button class="chip ib-ad" data-ad="' + esc(x.ad) + '" title="' + esc(adCampaign(x.ad)) + '">' + esc(x.ad) + ' <em>' + esc(x.n) + '</em></button>'; }).join('') +
-            '<select class="field-inline ib-sel"><option value="">' + (sug.length ? 'โฆษณาอื่น…' : 'เลือกโฆษณา…') + '</option>' + activeAds.filter(function (a) { return sugNames.indexOf(a.ad_name) < 0; }).map(function (a) { return opt(a.ad_name, a.ad_name + ' · ' + a.campaign); }).join('') + '</select>' +
-            '<button class="btn ghost sm ib-other">ไม่ได้มาจากโฆษณา</button></div></div>';
-        }).join('') + '</div>' + (pend.length > lim ? '<div class="actions" style="justify-content:center;margin-top:10px"><button class="btn ghost sm" id="ibMore">แสดงเพิ่ม (' + (pend.length - lim) + ')</button></div>' : '') + '</div>';
+    if (pend.length && S.pendOpen) {
+      html += '<div class="ib-list" style="margin-top:12px">' + pend.slice(0, lim).map(function (r) {
+        return '<div class="ib-row" data-psid="' + esc(r.psid) + '">' + face(r.name, r.pic, 44) +
+          '<div class="ib-who"><b>' + esc(r.name) + '</b><span>ทัก ' + F.thDate(r.first_date, true) + (r.first_text ? ' · “' + esc(r.first_text) + '”' : '') + '</span></div>' +
+          '<div class="ib-act"><select class="field-inline ib-sel"><option value="">เลือกโฆษณาเอง…</option>' + activeAds.map(function (a) { return opt(a.ad_name, a.ad_name + ' · ' + a.campaign); }).join('') + '</select>' +
+          '<button class="btn ghost sm ib-other">ไม่ได้มาจากโฆษณา</button></div></div>';
+      }).join('') + '</div>' + (pend.length > lim ? '<div class="actions" style="justify-content:center;margin-top:10px"><button class="btn ghost sm" id="ibMore">แสดงเพิ่ม (' + (pend.length - lim) + ')</button></div>' : '');
     }
-    if (other.length) {
-      html += '<details class="card ib-other-box" style="margin-bottom:18px"' + (S.otherOpen ? ' open' : '') + '><summary><b>ทักมาจากช่องทางอื่น (' + other.length + ')</b> <span class="muted">· ไม่ได้มาจากโฆษณา — เก็บไว้ดูเฉย ๆ ไม่นับใน Lead/ต้นทุน</span></summary>' +
-        '<div class="ib-mini">' + other.slice(0, 200).map(function (r) {
-          return '<div class="ib-m" data-psid="' + esc(r.psid) + '">' + face(r.name, r.pic, 32) + '<div><b>' + esc(r.name) + '</b><span>' + F.thDate(r.first_date) + (r.last_date && r.last_date !== r.first_date ? ' – ' + F.thDate(r.last_date) : '') + (r.first_text ? ' · ' + esc(r.first_text) : '') + '</span></div>' +
-            '<button class="linkish ib-back">ย้ายไปรอเลือกโฆษณา</button></div>';
-        }).join('') + '</div></details>';
+    if (other.length && S.otherOpen) {
+      html += '<div class="ib-mini">' + other.slice(0, 200).map(function (r) {
+        return '<div class="ib-m" data-psid="' + esc(r.psid) + '">' + face(r.name, r.pic, 32) + '<div><b>' + esc(r.name) + '</b><span>' + F.thDate(r.first_date) + (r.first_text ? ' · ' + esc(r.first_text) : '') + '</span></div>' +
+          '<button class="linkish ib-back">จริง ๆ มาจากโฆษณา</button></div>';
+      }).join('') + (other.length > 200 ? '<div class="muted small">แสดง 200 คนล่าสุด</div>' : '') + '</div>';
     }
+    html += '</div>';
     box.innerHTML = html;
+    $$('[data-fbcamp]', box).forEach(function (b) {
+      b.onclick = function () { cf.fbOnly = true; cf.campaign = b.dataset.fbcamp; cf.limit = 100; renderInbox(); renderChatList(); var t = $('#chatList'); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+    });
+    if ($('#ibClear', box)) $('#ibClear', box).onclick = function () { cf.fbOnly = false; cf.campaign = ''; renderInbox(); renderChatList(); };
+    if ($('#ibPendT', box)) $('#ibPendT', box).onclick = function () { S.pendOpen = !S.pendOpen; renderInbox(); };
+    if ($('#ibOtherT', box)) $('#ibOtherT', box).onclick = function () { S.otherOpen = !S.otherOpen; renderInbox(); };
     function decide(psid, payload, msg) {
       var r = (S.data.inbox || []).filter(function (x) { return x.psid === psid; })[0];
       API.call('inboxDecide', Object.assign({ psid: psid }, payload)).then(function (res) {
         if (r) r.status = res.inbox.status;
         if (res.chat) S.data.chats.push(normalize({ chats: [res.chat], spend: [], budgets: [], campaigns: [] }).chats[0]);
         toast(msg); renderInbox(); renderChatList();
-        var n = (S.data.inbox || []).filter(function (x) { return x.status === 'pending'; }).length;
+        var n = 0;
         $$('[data-nav="chats"]').forEach(function (b) { var i = $('.nav-badge', b); if (n) { if (!i) { i = document.createElement('i'); i.className = 'nav-badge'; b.appendChild(i); } i.textContent = n; } else if (i) i.remove(); });
       }).catch(fail);
     }
     $$('.ib-row', box).forEach(function (row) {
       var psid = row.dataset.psid, name = $('.ib-who b', row).textContent;
-      $$('.ib-ad', row).forEach(function (b) { b.onclick = function () { decide(psid, { ad: b.dataset.ad }, name + ' → ' + b.dataset.ad); }; });
       $('.ib-sel', row).onchange = function () { if (this.value) decide(psid, { ad: this.value }, name + ' → ' + this.value); };
       $('.ib-other', row).onclick = function () { decide(psid, { other: true }, name + ' → ช่องทางอื่น'); };
     });
-    $$('.ib-back', box).forEach(function (b) { b.onclick = function () { S.otherOpen = true; decide(b.closest('.ib-m').dataset.psid, { pending: true }, 'ย้ายไปรอเลือกโฆษณาแล้ว'); }; });
+    $$('.ib-back', box).forEach(function (b) { b.onclick = function () { S.pendOpen = true; decide(b.closest('.ib-m').dataset.psid, { pending: true }, 'ย้ายไปเลือกโฆษณาแล้ว'); }; });
     if ($('#ibMore')) $('#ibMore').onclick = function () { S.inboxLimit = lim + 50; renderInbox(); };
-    var det = $('.ib-other-box', box); if (det) det.ontoggle = function () { S.otherOpen = det.open; };
   }
 
   function filteredChats() {
     var cf = S.chatFilter, q = cf.q.toLowerCase();
     return S.data.chats.filter(function (c) {
-      return (!cf.status || c.status === cf.status) && (!cf.campaign || c.campaign === cf.campaign) &&
+      return (!cf.status || c.status === cf.status) && (!cf.campaign || (c.campaign || (cf.fbOnly ? '(ไม่ระบุแคมเปญ)' : '')) === cf.campaign) && (!cf.fbOnly || c.source === 'fb') &&
         (!q || String(c.customer).toLowerCase().indexOf(q) >= 0 || String(c.product || '').toLowerCase().indexOf(q) >= 0);
     }).sort(function (a, b) {
       return a.date < b.date ? 1 : a.date > b.date ? -1 : String(b.created_at || b.id) < String(a.created_at || a.id) ? -1 : 1;

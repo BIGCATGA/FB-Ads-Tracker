@@ -3,7 +3,7 @@
  */
 (function () {
   var URL_ = (window.APP_CONFIG.API_URL || '').trim();
-  var DEMO_KEY = 'fbat_demo_v6';
+  var DEMO_KEY = 'fbat_demo_v7';
 
   function store(key, val) {
     try { if (val === undefined) return localStorage.getItem(key); if (val === null) localStorage.removeItem(key); else localStorage.setItem(key, val); } catch (e) { return null; }
@@ -19,7 +19,14 @@
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // text/plain = ไม่มี preflight CORS
       body: JSON.stringify(body)
-    }).then(function (r) { return r.json(); }).then(function (res) {
+    }).then(function (r) {
+      return r.text().then(function (t) {
+        try { return JSON.parse(t); } catch (e) { throw new Error('หลังบ้านตอบกลับไม่ใช่ข้อมูล (HTTP ' + r.status + ') — เช็คลิงก์ API_URL ใน config.js ว่าเป็น Web app URL ล่าสุดที่ลงท้าย /exec'); }
+      });
+    }).then(function (res) {
+      if (res && res.ok && res.data === undefined && action !== 'deleteChat') {
+        throw new Error('หลังบ้านตอบกลับแต่ไม่มีข้อมูล (' + Object.keys(res).join(', ') + (res.backend_version ? ' · v' + res.backend_version : '') + ') — ลอง Deploy → Manage deployments → ✎ → New version อีกครั้ง');
+      }
       if (!res.ok) {
         var err = new Error(res.message || res.error || 'เกิดข้อผิดพลาด');
         err.code = res.error;
