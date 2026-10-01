@@ -26,6 +26,7 @@ var FB_AD_ACCOUNT = 'act_1153541378984020';
 var FB_API = 'https://graph.facebook.com/v23.0/';
 var FB_FIRST_DAYS = 90;   // ครั้งแรกดึงย้อนหลังกี่วัน
 var FB_REFETCH_DAYS = 3;  // ดึงซ้ำย้อนหลังกี่วันทุกรอบ (Facebook ยังปรับตัวเลขช่วงล่าสุด)
+var FB_INBOX_SINCE = '2026-09-01'; // ดึงรายชื่อคนทักเพจตั้งแต่วันนี้เป็นต้นไป
 var FB_PAGE_ID = '';      // ว่าง = หาเพจให้เองจากโทเคน (ถ้ามีหลายเพจให้ใส่ ID เพจ Bigcat ตรงนี้)
 var BACKEND_VERSION = 7; // หน้าเว็บจะเช็คเลขนี้ — ถ้าต่ำกว่าที่ต้องการจะไม่ยอมบันทึก (กันข้อมูลหาย)
 
@@ -220,7 +221,7 @@ function bootstrap_(user) {
     campaigns: readTable_('Campaigns'),
     budgets: readTable_('Budgets'),
     adsets: readTable_('AdSets'),
-    inbox: tableOrEmpty_('Inbox').filter(function (r) { return r.status !== 'ad'; }),
+    inbox: tableOrEmpty_('Inbox').filter(function (r) { return r.status !== 'ad' && (!r.first_date || String(r.first_date) >= FB_INBOX_SINCE); }),
     users: readTable_('Users').map(function (r) { return { name: r.name, active: isTrue_(r.active) }; }),
     statuses: STATUSES,
     serverTime: new Date().toISOString(),
@@ -248,7 +249,19 @@ function saveChat_(chat, user) {
     rec.closed_date = normDate_(chat.closed_date) || today_();
     rec.closed_by = chat.closed_by || user;
   } else { rec.closed_date = ''; rec.closed_by = ''; }
-  return upsert_('Chats', rec, user, { created_by: user, created_at: now });
+  if (chat.psid) { rec.psid = String(chat.psid); rec.pic = chat.pic || ''; rec.source = 'fb'; }
+  var saved = upsert_('Chats', rec, user, { created_by: user, created_at: now });
+  if (chat.psid) {
+    try {
+      var lock = LockService.getScriptLock(); lock.waitLock(20000);
+      try {
+        var inbox = readTable_('Inbox'), hit = false;
+        inbox.forEach(function (r) { if (String(r.psid) === String(chat.psid)) { r.status = 'ad'; r.chat_id = saved.id; r.updated_at = now; hit = true; } });
+        if (hit) rewriteTable_('Inbox', inbox);
+      } finally { lock.releaseLock(); }
+    } catch (e) {}
+  }
+  return saved;
 }
 
 // ---------- แคมเปญ ----------
@@ -882,7 +895,8 @@ function syncInbox_(t0, user) {
   if (cfg.page_id !== page.id) setConfig_('page_id', page.id);
   if (cfg.page_name !== page.name) setConfig_('page_name', page.name);
   var resume = cfg.fb_inbox_after || '';
-  var since = cfg.fb_inbox_until ? addDays_(normDate_(cfg.fb_inbox_until) || today, -1) : addDays_(today, -FB_FIRST_DAYS + 1);
+  var since = cfg.fb_inbox_until ? addDays_(normDate_(cfg.fb_inbox_until) || today, -1) : FB_INBOX_SINCE;
+  if (since < FB_INBOX_SINCE) since = FB_INBOX_SINCE;
   if (!resume) setConfig_('fb_inbox_walk_start', today);
 
   // ---- ดึงรายการแชท (ใหม่ → เก่า) จนถึงวันที่ since หรือหมดเวลา ----
@@ -922,6 +936,7 @@ function syncInbox_(t0, user) {
         .sort(function (a, b) { return a.created_time < b.created_time ? -1 : 1; });
       if (!mine.length) return; // เพจส่งหาอย่างเดียว ลูกค้ายังไม่ตอบ
       var fd = fbDate_(mine[0].created_time), ld = fbDate_(mine[mine.length - 1].created_time);
+      if (fd < FB_INBOX_SINCE && !byPsid[cust.id]) return; // ลูกค้าเก่าก่อนวันเริ่มเก็บ
       var approx = all.length >= 20; // คุยยาว — Facebook ให้ดูแค่ 20 ข้อความล่าสุด วันที่ทักแรกอาจเก่ากว่านี้
       var row = byPsid[cust.id];
       if (row) {
@@ -940,54 +955,16 @@ function syncInbox_(t0, user) {
       if (!hit) { fresh.push(row); added++; }
     });
 
-    // ---- จับคู่แคมเปญ: ใช้จำนวนแชทที่ Facebook นับรายวันของแต่ละโฆษณา ----
-    // วันไหนโฆษณาได้แชท N คน → คนที่ทักวันนั้น N คนแรกนับเป็นลูกค้าจากโฆษณา (แบ่งตามสัดส่วนแต่ละโฆษณา)
-    // เกินจากนั้น = ทักมาจากช่องทางอื่น · วันนี้ยังรอ Facebook อัปเดตตัวเลข
-    var pend = inbox.filter(function (r) { return r.status === 'pending' && r.first_date; });
-    if (pend.length) {
-      var dates = pend.map(function (r) { return r.first_date; }).sort();
-      var adIns = null;
-      try {
-        adIns = fbGetAll_(FB_AD_ACCOUNT + '/insights', {
-          level: 'ad', time_increment: 1, limit: 500, fields: 'ad_id,spend,actions',
-          time_range: JSON.stringify({ since: dates[0], until: dates[dates.length - 1] })
-        });
-      } catch (e) { adIns = null; }
-      if (adIns) {
-        var adsNow = readTable_('Ads'), byFb = {};
-        adsNow.forEach(function (a) { if (a.fb_id) byFb[String(a.fb_id)] = a; });
-        var perDay = {};
-        adIns.forEach(function (r) {
-          var ad = byFb[String(r.ad_id)];
-          var n = 0;
-          (r.actions || []).forEach(function (a) { if (a.action_type === 'onsite_conversion.messaging_conversation_started_7d') n = Number(a.value) || 0; });
-          if (ad && n > 0) (perDay[r.date_start] = perDay[r.date_start] || []).push({ ad: ad, n: n });
-        });
-        // ที่นั่งที่ถูกใช้ไปแล้ว (แชทจาก Facebook ที่สร้างไว้ก่อนหน้า)
-        var used = {};
-        chats.forEach(function (c) { if (c.source === 'fb' && c.ad) { var k = c.date + '|' + c.ad; used[k] = (used[k] || 0) + 1; } });
-        var byDay = {};
-        pend.forEach(function (r) { (byDay[r.first_date] = byDay[r.first_date] || []).push(r); });
-        Object.keys(byDay).forEach(function (d) {
-          if (d >= today) return; // ตัวเลขวันนี้ Facebook ยังอัปเดตไม่ครบ — รอบหน้าค่อยจับคู่
-          var slots = [];
-          (perDay[d] || []).sort(function (x, y) { return y.n - x.n; }).forEach(function (x) {
-            var free = x.n - (used[d + '|' + x.ad.ad_name] || 0);
-            for (var k = 0; k < free; k++) slots.push({ ad: x.ad, w: k / x.n }); // กระจายตามสัดส่วน
-          });
-          slots.sort(function (x, y) { return x.w - y.w; });
-          byDay[d].forEach(function (r, i) {
-            var sl = slots[i];
-            if (!sl) { r.status = 'other'; return; }
-            var ad = sl.ad;
-            var ch = { id: newId_('Chats') + (auto++), date: r.first_date, customer: r.name, ad: ad.ad_name, adset: ad.adset, campaign: ad.campaign,
-                       status: '1-ทักแล้วเงียบ', product: '', amount: '', note: '', created_by: 'facebook', created_at: now, updated_by: '', updated_at: '',
-                       closed_date: '', closed_by: '', psid: r.psid, pic: r.pic, source: 'fb', review: 'auto' };
-            chats.push(ch); chatByPsid[r.psid] = ch; r.status = 'ad'; r.chat_id = ch.id; r.suggest = ''; chatsChanged = true;
-          });
-        });
-      }
-    }
+    // ---- ไม่จับคู่แคมเปญอัตโนมัติ (แอดมินเลือกเองตอนบันทึก) ----
+    // ล้างแชทที่เวอร์ชันก่อนสร้างให้อัตโนมัติ (ที่ยังไม่มีใครแก้) → กลับไปเป็นรายชื่อรอบันทึก
+    var autoIds = {};
+    chats = chats.filter(function (c) {
+      if (c.review === 'auto' && c.created_by === 'facebook') { autoIds[c.id] = true; delete chatByPsid[String(c.psid)]; chatsChanged = true; return false; }
+      return true;
+    });
+    inbox.forEach(function (r) { if (autoIds[r.chat_id]) { r.status = 'pending'; r.chat_id = ''; } });
+    // คนที่ทักก่อนวันเริ่มเก็บ ไม่ต้องเก็บ
+    inbox = inbox.filter(function (r) { return !r.first_date || r.first_date >= FB_INBOX_SINCE || r.status === 'ad'; });
 
     // ---- รูปโปรไฟล์ (ถ้า Facebook อนุญาต) — ทีละน้อย เว้นจังหวะ กัน Google จำกัดความถี่ ----
     if (cfg.fb_pic_off !== today) {
