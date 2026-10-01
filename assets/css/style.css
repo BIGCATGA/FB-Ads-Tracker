@@ -639,3 +639,26 @@ table.runs tr.gap td { color: var(--text-3); font-size: 14px; padding: 6px 12px;
 .ib-num.on { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 0 2px var(--primary-soft); }
 .ib-foot { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 12px; font-size: 14.5px; }
 .muted-link { color: var(--text-3) !important; }
+
+/* ---------- v10: เลือกโฆษณา 2 ขั้น · รายชื่อคนทักเพจ ---------- */
+.name-line { display: flex; gap: 10px; align-items: center; }
+.name-line input { flex: 1; min-width: 0; }
+.adp { border: 1px solid var(--line-strong); border-radius: 14px; padding: 12px 14px; background: var(--bg-soft); display: grid; gap: 8px; }
+.adp-step { font-size: 13.5px; font-weight: 600; color: var(--text-3); }
+.adp-camps, .adp-ads { display: flex; flex-wrap: wrap; gap: 8px; }
+.adp-c, .adp-a { border: 1px solid var(--line-strong); background: var(--card); border-radius: 10px; padding: 8px 14px; cursor: pointer; font-family: inherit; font-size: 15px; color: var(--text); text-align: left; display: inline-flex; align-items: center; gap: 7px; }
+.adp-c:hover, .adp-a:hover { border-color: var(--primary); }
+.adp-c.on { border-color: var(--primary); background: var(--primary-soft); color: var(--primary-text); font-weight: 600; }
+.adp-a.on { border-color: var(--primary); background: var(--primary); color: var(--on-primary); font-weight: 500; }
+.adp-a { flex-direction: column; align-items: flex-start; gap: 0; }
+.adp-a small { font-size: 12px; opacity: .75; }
+.adp-c.off, .adp-a.off { opacity: .6; }
+.adp-c .sdot { width: 8px; height: 8px; }
+.ib-q { max-width: 240px; }
+.ib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.ib-card { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; cursor: pointer; }
+.ib-card:hover { border-color: var(--primary); }
+.ib-card.on { border-color: var(--primary); background: var(--primary-soft); }
+.ib-x { border: 0; background: none; color: var(--text-3); cursor: pointer; font-size: 14px; padding: 4px 6px; border-radius: 8px; }
+.ib-x:hover { background: var(--bg-soft); color: var(--bad); }
+.c9 { grid-column: span 9; } @media (max-width: 860px) { .c9 { grid-column: span 12; } }
