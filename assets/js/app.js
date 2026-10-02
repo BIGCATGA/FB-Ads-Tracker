@@ -1513,8 +1513,18 @@
     computer: '<rect x="8" y="10" width="58" height="40" rx="4" fill="var(--card)" stroke="currentColor" stroke-width="3"/><path d="M31 50h12l3 12H28z" fill="currentColor"/><rect x="22" y="62" width="30" height="4" rx="2" fill="currentColor"/><rect x="72" y="12" width="22" height="54" rx="4" fill="var(--card)" stroke="currentColor" stroke-width="3"/><circle cx="83" cy="24" r="3.5" fill="currentColor"/>'
   };
   var CAT_SHADE = { iphone: 'var(--primary)', ipad: '#f2884a', macbook: '#f8b185', notebook: '#fbd4b8', computer: '#b9bdcc' };
+  // รูปสินค้า: ใช้ไฟล์ใน assets/img/<หมวด>.png ก่อน ถ้าไม่มีใช้ลิงก์ด้านล่าง ถ้าโหลดไม่ได้แสดงลายเส้นแทน
+  var PIMG_URL = {
+    iphone: 'https://www.apple.com/th/iphone-duo/images/meta/iphone-duo_overview__bmsaaq50eyaa_og.png?202609150114',
+    ipad: 'https://instore.studio7thailand.com/apple-product/ipad-pro-m4/images/flex_applecare_small_2x.png?1714498094200',
+    macbook: 'https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/macbook-air-size-unselect-202601-gallery-1_FMT_WHH?wid=690&hei=720&fmt=p-jpg&qlt=80&.v=YTFkSnBPS2tMZFdhaFNRRkx6VnJZaUd4WmthcldkemtncUgvMzhXenFEVndhQ3N1TEt4d0ZKdVZUQ3ZrNzhjK3cxNEx1QmdlVkdRQUhOMXl2K3pkY3dBb0pjWml6bllCL0Y5a1RKc2gxZjlFM2V1RWVXTHBHVzUxMVFmU1Z0Y2ZNdFgzTjZuSWt6SW96N2hDL1hWZkxR&traceId=1',
+    notebook: 'https://notebookspec.com/web/wp-content/uploads/2025/11/omen-1.jpg',
+    computer: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSxV9JRudbCedPWtotoSIu6GAR2YhgseFRD8YvneKCTYHX3zUzSjN4tIl_Q&s=10'
+  };
   function pimg(k) {
-    return '<span class="pimg"><svg viewBox="0 0 100 80" aria-hidden="true">' + (DEV[k] || '') + '</svg><img src="assets/img/' + k + '.png" alt="" onload="this.parentNode.classList.add(\'ok\')" onerror="this.remove()"></span>';
+    var alt = esc(PIMG_URL[k] || '');
+    return '<span class="pimg"><svg viewBox="0 0 100 80" aria-hidden="true">' + (DEV[k] || '') + '</svg><img src="assets/img/' + k + '.png" data-alt="' + alt + '" alt="" referrerpolicy="no-referrer" loading="lazy"' +
+      ' onload="this.parentNode.classList.add(\'ok\')" onerror="var a=this.getAttribute(\'data-alt\');if(a){this.removeAttribute(\'data-alt\');this.src=a}else this.remove()"></span>';
   }
   function nb(v) { return v == null || !isFinite(v) ? '–' : F.int(Math.round(v)); }
   function pctOf(v, t) { return v == null || t == null || !t ? null : (v - t) / t * 100; }
