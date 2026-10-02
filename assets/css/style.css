@@ -972,8 +972,6 @@ table.t.kt td.gt, table.t.kt td.bt { font-weight: 600; }
 .app { background: linear-gradient(to right, var(--side) 290px, var(--bg) 290px); }
 @media (max-width: 860px) { .app { background: var(--bg); } }
 .card { border: 1px solid var(--line); box-shadow: var(--shadow); }
-
-/* เมนูซ้ายสีเข้ม */
 .sidebar { background: var(--side); border-right: 0; color: var(--side-t); }
 .brand-name { color: #fff; } .brand-name span { color: var(--primary); }
 .brand-mark { background: var(--primary); }
@@ -1003,8 +1001,6 @@ table.t.kt td.gt, table.t.kt td.bt { font-weight: 600; }
 .syncbox { background: rgba(95, 212, 154, .09); } .syncbox small { color: var(--side-t); } .syncbox b { color: #5fd49a; }
 .sidebar .linkish { color: var(--side-t); }
 .nav-badge { background: var(--primary) !important; color: #fff !important; }
-
-/* ชิ้นส่วนทั่วไป */
 .chip-group { box-shadow: none; border: 1px solid var(--line); }
 .chip-group button.on { box-shadow: 0 6px 14px var(--primary-shadow); }
 .btn { font-weight: 600; }
@@ -1012,8 +1008,6 @@ table.t.kt td.gt, table.t.kt td.bt { font-weight: 600; }
 .search { box-shadow: none; border: 1px solid var(--line); }
 .stp { display: inline-flex; align-items: center; font-size: 12.5px; font-weight: 600; border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
 .stp.g { background: var(--good-bg); color: var(--good); } .stp.b { background: var(--bad-bg); color: var(--bad); } .stp.n { background: var(--bg-soft); color: var(--text-3); font-weight: 400; }
-
-/* ---- หน้า ต้นทุนต่อหมวด ---- */
 .sumk { border-top: 1px solid var(--line) !important; gap: 10px; }
 .sk-l { font-size: 14px; color: var(--text-2); }
 .sk-mid { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
@@ -1021,7 +1015,6 @@ table.t.kt td.gt, table.t.kt td.bt { font-weight: 600; }
 .sk-f { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13.5px; color: var(--text-3); border-top: 1px solid var(--line); padding-top: 10px; }
 .sk-f b { color: var(--text); font-weight: 600; }
 .sk-f .gt, .sk-f .bt { font-weight: 600; }
-
 .card.kc { padding: 10px 10px 14px; gap: 6px; border: 1px solid var(--line); box-shadow: var(--shadow); }
 .card.kc:hover { border-color: var(--line-strong); transform: translateY(-2px); }
 .card.kc { transition: transform .15s, border-color .15s; }
@@ -1042,9 +1035,7 @@ table.t.kt td.gt, table.t.kt td.bt { font-weight: 600; }
 .kt1 { border-radius: 14px; }
 .kt1.y { background: var(--tgt); }
 .dvr.on { background: var(--primary-soft); }
-.hb, .kb i.o { background: var(--primary); }
-
-/* ---- หน้า บันทึกแชท: รายชื่อลูกค้าที่ทักเพจ ---- */
+.kb i.o { background: var(--primary); }
 .ib-grid { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
 .ib-card { display: grid !important; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 12px; align-items: center; background: var(--bg-soft); border: 1px solid transparent; border-radius: 14px; padding: 10px 12px; cursor: pointer; transition: border-color .15s, background .15s; }
 .ib-card:hover { background: var(--card); border-color: var(--primary); }
@@ -1059,7 +1050,7 @@ table.t.kt td.gt, table.t.kt td.bt { font-weight: 600; }
 .kc-row.sub span:first-child { white-space: nowrap; }
 
 /* ============================================================
-   v14 — ธีมเหลือง (ตามภาพตัวอย่าง) · เมนูซ้ายสีเหลือง ไม่ใช้สีดำ
+   v14 — ธีมเหลือง · เมนูซ้ายสีเหลือง ไม่ใช้สีดำ
    ============================================================ */
 :root {
   --primary: #ffbe0b; --primary-2: #ffcb3d; --primary-soft: #fff6d9; --primary-text: #9a6a00; --on-primary: #2b2100;
@@ -1120,3 +1111,8 @@ table.t.kt td.gt, table.t.kt td.bt { font-weight: 600; }
 .ib-card:hover { border-color: var(--primary); }
 .tabs button.on { border-color: var(--primary); }
 .kc-h .kc-art .pimg, .kt-art .pimg { color: #b07a00; } :root[data-theme="dark"] .kc-h .kc-art .pimg, :root[data-theme="dark"] .kt-art .pimg { color: var(--primary); }
+/* แก้บั๊ก: แถวกราฟแท่งหน้าภาพรวมเคยกลายเป็นพื้นเหลือง */
+.hb { background: none; }
+/* รูปสินค้าจริง: กลืนพื้นขาวของรูป jpg เข้ากับกล่อง */
+.pimg img { mix-blend-mode: multiply; padding: 4px; }
+:root[data-theme="dark"] .pimg img { mix-blend-mode: normal; background: #fff; border-radius: 10px; }
