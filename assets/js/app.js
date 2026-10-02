@@ -34,6 +34,7 @@
     { id: 'dashboard', label: 'ภาพรวม', icon: I.dash },
     { id: 'chats', label: 'บันทึกแชท', icon: I.chat },
     { id: 'campaigns', label: 'แคมเปญ', icon: I.mega },
+    { id: 'kpi', label: 'ต้นทุนต่อหมวด', icon: I.coin },
     { id: 'settings', label: 'ตั้งค่า', icon: I.gear }
   ];
 
@@ -71,6 +72,9 @@
     d.spend.forEach(function (s) { s.date = nd(s.date); s.date_to = nd(s.date_to) || s.date; s.amount = nn(s.amount) || 0; });
     d.budgets.forEach(function (b) { b.start_date = nd(b.start_date); b.end_date = nd(b.end_date); b.daily_budget = nn(b.daily_budget) || 0; });
     d.campaigns.forEach(function (c) { c.start_date = nd(c.start_date); c.end_date = nd(c.end_date); });
+    d.fbads = (d.fbads || []).map(function (r) { r.date = nd(r.date); return r; });
+    d.gads = (d.gads || []).map(function (r) { r.date = nd(r.date); r.cost = Number(r.cost) || 0; r.conversions = Number(r.conversions) || 0; return r; });
+    d.purchases = (d.purchases || []).map(function (a) { return Array.isArray(a) ? { date: nd(a[0]), category: a[1], fb: !!a[2], line: !!a[3], bought: a[4], repair: a[5], sell: a[6], fbName: a[7] || '' } : a; });
     d.inbox = (d.inbox || []).map(function (r) { r.psid = String(r.psid); r.first_date = nd(r.first_date); r.last_date = nd(r.last_date); return r; });
     d.spend = d.spend.filter(function (s) { return s.date; });
     return d;
@@ -214,7 +218,7 @@
     };
     if (S.page === 'chats') $('#globalSearch').oninput = function () { S.chatFilter.q = this.value.trim(); renderChatList(); };
 
-    ({ dashboard: pageDashboard, chats: pageChats, campaigns: pageCampaigns, settings: pageSettings })[S.page]();
+    ({ dashboard: pageDashboard, chats: pageChats, campaigns: pageCampaigns, kpi: pageKpi, settings: pageSettings })[S.page]();
   }
 
   function go(page) {
@@ -271,6 +275,11 @@
     var spendRows = (S.data.spend || []).length;
     if (!m.spend) html += '<div class="nudge" style="margin:0 0 20px">' + (spendRows ? 'มีค่า Ads ที่กรอกไว้ ' + spendRows + ' รายการ แต่ไม่อยู่ในช่วงวันที่/แคมเปญที่เลือก' : 'ยังไม่ได้กรอกค่า Ads — ต้นทุน/Lead และต้นทุน/เคส จะยังคำนวณไม่ได้') + ' · กรอกที่หน้า แคมเปญ → กรอกค่า Ads</div>';
 
+    // ---------- 1.5) ประสิทธิภาพโฆษณา Facebook ----------
+    var prevR = prev ? [C.addDays(f.from, -nDays), C.addDays(f.from, -1)] : null;
+    var perf = perfSection(f, m, prevR, charts);
+    html += perf;
+
     // ---------- 2) Lead + ปิดได้ ตามเวลา ----------
     html += section('Lead และเคสที่ปิดได้ — แต่ละวัน', 'ดูว่าช่วงไหนคนทักเยอะ/น้อย และเพิ่มงบแล้ว Lead ขึ้นตามไหม',
       '<div class="tabs"><button data-ctab="day" class="' + (S.chartTab === 'day' ? 'on' : '') + '">รายวัน</button><button data-ctab="week" class="' + (S.chartTab === 'week' ? 'on' : '') + '">รายสัปดาห์</button></div>' +
@@ -292,11 +301,11 @@
     var statusItems = m.statusCounts.filter(function (s) { return s.n; }).sort(function (a, b) { return b.n - a.n; }).map(function (s) {
       return { label: s.key, value: s.n, display: s.n + ' (' + F.pct(s.pct) + ')', color: s.color };
     });
-    html += '<div class="grid row-2 mt">' +
+    html += (perf ? section('ลูกค้าตอนนี้อยู่สถานะไหน', 'นับลูกค้าไม่ซ้ำ ' + m.people.length + ' คน · ใช้ดูว่าต้องตามแชทกลุ่มไหน', statusItems.length ? Charts.hbars(statusItems) : '<div class="empty">ยังไม่มีแชท</div>', 'full') : '<div class="grid row-2 mt">' +
       section('ลูกค้าหลุดตรงไหน (Funnel)', 'นับสะสม: คนที่ไปถึงขั้น 3 ถูกนับในขั้น 1–3 ด้วย · แถบแดง = ขั้นที่หลุดมากที่สุด',
         (m.leads ? Charts.hbars(funnelItems, { max: f1 }) + (leak ? '<div class="leak-note">หลุดมากสุดที่ขั้น ' + (leak.stage - 1) + '→' + leak.stage + ' (ผ่านแค่ ' + F.pct(leak.conv) + ') · ' + reason + '</div>' : '') : '<div class="empty">ยังไม่มีแชทในช่วงนี้</div>')) +
       section('ลูกค้าตอนนี้อยู่สถานะไหน', 'นับลูกค้าไม่ซ้ำ ' + m.people.length + ' คน · ใช้ดูว่าต้องตามแชทกลุ่มไหน',
-        statusItems.length ? Charts.hbars(statusItems) : '<div class="empty">ยังไม่มีแชท</div>') + '</div>';
+        statusItems.length ? Charts.hbars(statusItems) : '<div class="empty">ยังไม่มีแชท</div>') + '</div>');
 
     // ---------- 4) เงิน: ค่า Ads vs ยอดรับซื้อ + แคมเปญไหนคุ้ม ----------
     var gw = groupDaily(m.daily, 'week');
@@ -349,7 +358,7 @@
       adItems.length ? Charts.hbars(adItems, { max: 100 }) : '<div class="empty">ยังไม่มีโฆษณาที่มีแชทถึง 5 คน</div>', 'full');
 
     $('#page').innerHTML = html;
-    S.drawCharts = function () { charts.forEach(function (c) { var el = document.getElementById(c[0]); if (el) Charts.columns(el, c[1]); }); };
+    S.drawCharts = function () { charts.forEach(function (c) { var el = document.getElementById(c[0]); if (el) { if (c.length === 3) Charts[c[1]](el, c[2]); else Charts.columns(el, c[1]); } }); };
     S.drawCharts();
     Charts.countUp($('#page'));
 
@@ -361,6 +370,8 @@
     $('#fCamp').onchange = function () { f.campaign = this.value; pageDashboard(); };
     $$('[data-ctab]').forEach(function (b) { b.onclick = function () { S.chartTab = b.dataset.ctab; pageDashboard(); }; });
     $('#btnSummary').onclick = function () { openSummary(m); };
+    $$('[data-pm]').forEach(function (b) { b.onclick = function () { S.pmetric = b.dataset.pm; pageDashboard(); }; });
+    $$('[data-pc]').forEach(function (b) { b.onclick = function () { S.popen = S.popen || {}; S.popen[b.dataset.pc] = !S.popen[b.dataset.pc]; pageDashboard(); }; });
     $$('[data-chat]').forEach(function (r) { r.onclick = function () { editChat(r.dataset.chat, pageDashboard); }; });
   }
 
@@ -1452,6 +1463,200 @@
       });
   }
 
+
+  // ============================================================
+  // ต้นทุนต่อหมวด (FB + Google)
+  // ============================================================
+  function dBadge(cur, old, goodUp, kind) {
+    if (cur == null || old == null || !old || !isFinite(cur) || !isFinite(old)) return '<span class="badge n">–</span>';
+    var diff, txt;
+    if (kind === 'pt') { diff = (cur - old) * 100; txt = Math.abs(diff).toFixed(1) + ' จุด'; if (Math.abs(diff) < 0.05) return '<span class="badge n">เท่าเดิม</span>'; }
+    else if (kind === 'abs') { diff = cur - old; txt = Math.abs(diff).toFixed(1); if (Math.abs(diff) < 0.05) return '<span class="badge n">เท่าเดิม</span>'; }
+    else { diff = (cur - old) / old; txt = Math.abs(diff * 100).toFixed(0) + '%'; if (Math.abs(diff) < 0.005) return '<span class="badge n">เท่าเดิม</span>'; }
+    var good = goodUp ? diff > 0 : diff < 0;
+    return '<span class="badge ' + (good ? 'g' : 'b') + '">' + (diff > 0 ? '▲ ' : '▼ ') + txt + '</span>';
+  }
+  function tBadge(cur, t) {
+    if (cur == null || t == null) return '<span class="badge n">' + (t == null ? 'ยังไม่มีเป้า' : 'ยังไม่มีข้อมูล') + '</span>';
+    var d = (cur - t) / t;
+    return d <= 0 ? '<span class="badge g">✓ ผ่านเป้า</span>' : '<span class="badge b">เกินเป้า ' + Math.round(d * 100) + '%</span>';
+  }
+  function bulletBar(cur, t) {
+    if (cur == null) return '<div class="bl"></div>';
+    var mx = Math.max(cur, t || 0) * 1.25 || 1, ok = t == null || cur <= t;
+    return '<div class="bl"><i style="width:' + (cur / mx * 100) + '%;background:' + (t == null ? 'var(--primary)' : ok ? 'var(--good)' : 'var(--bad)') + '"></i>' +
+      (t != null ? '<b style="left:' + (t / mx * 100) + '%"></b><small style="left:' + (t / mx * 100) + '%">เป้า ' + F.baht(t) + '</small>' : '') + '</div>';
+  }
+  function pageKpi() {
+    var kf = S.kf || (S.kf = { preset: 'month', from: '', to: '', cat: 'iphone', metric: 'unit' });
+    if (kf.preset !== 'custom') { var r = C.presetRange(kf.preset, S.data, today()); kf.from = r.from; kf.to = r.to; }
+    var res = C.costByCat(S.data, kf.from, kf.to).cats, tg = C.kpiTargets(S.data, kf.from), T = tg.t;
+    var presets = [['month', 'เดือนนี้'], ['lastmonth', 'เดือนก่อน'], ['7d', '7 วัน'], ['30d', '30 วัน'], ['custom', 'กำหนดเอง']];
+    var noData = !(S.data.gads || []).length && !(S.data.purchases || []).length;
+    var html = '<div class="filters"><div class="chip-group">' + presets.map(function (p) { return '<button data-kp="' + p[0] + '" class="' + (kf.preset === p[0] ? 'on' : '') + '">' + p[1] + '</button>'; }).join('') + '</div>' +
+      (kf.preset === 'custom' ? '<input type="date" class="field-inline" id="kFrom" value="' + kf.from + '"><input type="date" class="field-inline" id="kTo" value="' + kf.to + '">' : '<span class="muted">' + F.thRange(kf.from, kf.to) + '</span>') +
+      '<span style="flex:1"></span><span class="src-l"><i style="background:var(--fb)"></i>Facebook <i style="background:var(--gg)"></i>Google Ads <i style="background:var(--primary)"></i>รับซื้อสำเร็จ</span></div>';
+    if (noData) html += '<div class="nudge" style="margin-bottom:18px">ยังไม่มีข้อมูล Google Ads / รับซื้อ — วาง Code.gs ใหม่ → Run setup → ไปที่ ตั้งค่า กด "ดึงข้อมูลตอนนี้"' + (S.data.config.gads_error ? ' · Google Ads: ' + esc(S.data.config.gads_error) : '') + (S.data.config.purchase_error ? ' · รับซื้อ: ' + esc(S.data.config.purchase_error) : '') + '</div>';
+    var tot = { spend: 0, cv: 0, u: 0, fb: 0, gg: 0, tu: 0, tc: 0, wu: 0, wc: 0 };
+    C.KPI_CATS.forEach(function (c) { var o = res[c.k], t = T[c.k]; tot.spend += o.spend; tot.cv += o.cv; tot.u += o.u; tot.fb += o.fb; tot.gg += o.gg;
+      if (t.tU != null && o.u) { tot.tu += t.tU * o.u; tot.wu += o.u; } if (t.tC != null && o.cv) { tot.tc += t.tC * o.cv; tot.wc += o.cv; } });
+    var cpu = tot.u ? tot.spend / tot.u : null, cpc = tot.cv ? tot.spend / tot.cv : null, tU = tot.wu ? tot.tu / tot.wu : null, tC = tot.wc ? tot.tc / tot.wc : null;
+    html += '<div class="sum2">' +
+      '<div class="card bigk"><span class="l">Cost / เครื่องที่รับซื้อสำเร็จ — รวม 5 หมวด</span><span class="v" data-n>' + F.baht(cpu) + '</span>' + bulletBar(cpu, tU) +
+        '<div class="row">' + tBadge(cpu, tU) + '<span>ค่า Ads ' + F.baht(tot.spend) + ' ÷ ' + tot.u + ' เครื่อง (มาจาก FB/LINE)</span></div></div>' +
+      '<div class="card bigk"><span class="l">Cost / Conversion — รวม 5 หมวด</span><span class="v" data-n>' + F.baht(cpc) + '</span>' + bulletBar(cpc, tC) +
+        '<div class="row">' + tBadge(cpc, tC) + '<span>ค่า Ads ' + F.baht(tot.spend) + ' ÷ ' + F.int(Math.round(tot.cv)) + ' Conversion (แชท FB + Conversion Google)</span></div></div></div>';
+    html += '<div class="cats5">' + C.KPI_CATS.map(function (c) {
+      var o = res[c.k], t = T[c.k];
+      return '<div class="card cat5' + (kf.cat === c.k ? ' on' : '') + '" data-kc="' + c.k + '"><h3>' + c.n + (o.cpu == null ? '' : t.tU == null || o.cpu <= t.tU ? '<span class="badge g">✓</span>' : '<span class="badge b">!</span>') + '</h3>' +
+        '<div class="m"><span class="k">Cost / เครื่องรับซื้อ</span><span class="x" data-n>' + F.baht(o.cpu) + '</span>' + bulletBar(o.cpu, t.tU) + '<span class="t">' + o.u + ' เครื่อง' + (o.avgM != null ? ' · กำไรเฉลี่ย ' + F.baht(o.avgM) : '') + '</span></div>' +
+        '<div class="m"><span class="k">Cost / Conversion</span><span class="x" data-n>' + F.baht(o.cpcv) + '</span>' + bulletBar(o.cpcv, t.tC) + '<span class="t">' + F.int(Math.round(o.cv)) + ' Conversion</span></div>' +
+        '<div><div class="split">' + (o.spend ? '<i style="width:' + (o.fb / o.spend * 100) + '%;background:var(--fb)"></i><i style="width:' + (o.gg / o.spend * 100) + '%;background:var(--gg)"></i>' : '') + '</div>' +
+        '<div class="foot"><span class="fbv">FB ' + F.baht(o.fb) + '</span><span class="ggv">Google ' + F.baht(o.gg) + '</span></div></div></div>';
+    }).join('') + '</div>';
+    var cn = C.KPI_CATS.filter(function (c) { return c.k === kf.cat; })[0].n, isU = kf.metric === 'unit';
+    html += '<div class="card mt"><div class="card-head"><div><h2 class="card-title">' + (isU ? 'Cost / เครื่องรับซื้อ' : 'Cost / Conversion') + ' — ' + cn + ' รายสัปดาห์</h2><div class="card-sub">กดการ์ดหมวดด้านบนเพื่อเปลี่ยน · เส้นประ = เป้า · จุดเขียว = ผ่านเป้า · ชี้เพื่อดูตัวเลข</div></div>' +
+      '<div class="tabs" style="margin:0"><button data-km="unit" class="' + (isU ? 'on' : '') + '">Cost / เครื่อง</button><button data-km="conv" class="' + (!isU ? 'on' : '') + '">Cost / Conversion</button></div></div>' +
+      legend([['ต้นทุนรวม', 'var(--primary)'], ['เฉพาะ Facebook', 'var(--fb)'], ['เฉพาะ Google', 'var(--gg)']]) + '<div class="chart-box" id="chK"></div></div>';
+    var rows = C.KPI_CATS.map(function (c) { var o = res[c.k], t = T[c.k];
+      return '<tr><td><b>' + c.n + '</b></td><td class="r fbv">' + F.baht(o.fb) + '</td><td class="r ggv">' + F.baht(o.gg) + '</td><td class="r"><b>' + F.baht(o.spend) + '</b></td>' +
+        '<td class="r fbv">' + F.int(Math.round(o.fbc)) + '</td><td class="r ggv">' + F.int(Math.round(o.ggc)) + '</td><td class="r"><b>' + F.baht(o.cpcv) + '</b></td><td class="r">' + F.baht(t.tC) + '</td><td>' + tBadge(o.cpcv, t.tC) + '</td>' +
+        '<td class="r fbv">' + o.ufb + '</td><td class="r ggv">' + o.ugg + '</td><td class="r"><b>' + F.baht(o.cpu) + '</b></td><td class="r">' + F.baht(t.tU) + '</td><td>' + tBadge(o.cpu, t.tU) + '</td>' +
+        '<td class="r">' + F.baht(o.avgM) + '</td><td class="r">' + (o.cpu != null && o.avgM ? Math.round(o.cpu / o.avgM * 100) + '%' : '–') + '</td></tr>'; }).join('');
+    html += '<div class="card mt"><h2 class="card-title">ตารางรายละเอียด</h2><div class="card-sub">FB = แชทจากโฆษณา + เครื่องที่ช่อง FB มีชื่อ · Google = Conversion Google Ads + เครื่องที่ช่อง LINE มีชื่อ · ค่า Ads ของแคมเปญที่ไม่ระบุหมวดกระจายตามสัดส่วน Conversion</div>' +
+      '<div class="table-wrap" style="margin-top:12px"><table class="t kt"><thead><tr><th></th><th class="grp" colspan="3">ค่า Ads</th><th class="grp" colspan="5">Conversion</th><th class="grp" colspan="5">เครื่องรับซื้อสำเร็จ</th><th class="grp" colspan="2">กำไร</th></tr>' +
+      '<tr><th>หมวด</th><th class="r">FB</th><th class="r">Google</th><th class="r">รวม</th><th class="r">FB</th><th class="r">Google</th><th class="r">Cost/Conv.</th><th class="r">เป้า</th><th></th><th class="r">FB</th><th class="r">Google</th><th class="r">Cost/เครื่อง</th><th class="r">เป้า</th><th></th><th class="r">เฉลี่ย/เครื่อง</th><th class="r">Ads % กำไร</th></tr></thead><tbody>' + rows +
+      '<tr class="tot"><td>รวม</td><td class="r">' + F.baht(tot.fb) + '</td><td class="r">' + F.baht(tot.gg) + '</td><td class="r">' + F.baht(tot.spend) + '</td><td class="r" colspan="2">' + F.int(Math.round(tot.cv)) + '</td><td class="r">' + F.baht(cpc) + '</td><td class="r">' + F.baht(tC) + '</td><td>' + tBadge(cpc, tC) + '</td><td class="r" colspan="2">' + tot.u + '</td><td class="r">' + F.baht(cpu) + '</td><td class="r">' + F.baht(tU) + '</td><td>' + tBadge(cpu, tU) + '</td><td></td><td></td></tr></tbody></table></div></div>';
+    var t0 = T[kf.cat];
+    html += '<div class="card mt"><h2 class="card-title">ตั้งเป้า</h2><div class="card-sub">เป้า = ค่าที่ต่ำกว่าระหว่าง (1) ค่าฐาน = ค่ากลาง 8 สัปดาห์ก่อนช่วงนี้ ลดลงตาม % และ (2) เพดานจากกำไร · เลื่อนแล้วบันทึกให้ทุกคนเห็นเหมือนกัน</div>' +
+      '<div class="tg3"><div class="box"><label>ลดจากค่าฐาน</label><div class="val" id="kv1">−' + tg.cut + '%</div><input type="range" id="kr1" min="0" max="30" value="' + tg.cut + '"></div>' +
+      '<div class="box"><label>ค่า Ads ไม่เกินกี่ % ของกำไรต่อเครื่อง</label><div class="val" id="kv2">' + tg.cap + '%</div><input type="range" id="kr2" min="5" max="40" value="' + tg.cap + '"></div>' +
+      '<div class="box formula"><b>ตัวอย่าง ' + cn + '</b><br>ค่าฐาน Cost/เครื่อง = ' + F.baht(t0.baseU) + (t0.baseU != null ? ' → ลด ' + tg.cut + '% = ' + F.baht(t0.baseU * (1 - tg.cut / 100)) : '') +
+        '<br>เพดานจากกำไร = ' + F.baht(t0.avgM) + ' × ' + tg.cap + '% = ' + F.baht(t0.capU) + '<br>→ เป้า = <b>' + F.baht(t0.tU) + '</b>' + (t0.weeks < 4 ? '<br><span class="warn-t">ข้อมูลย้อนหลังมี ' + t0.weeks + ' สัปดาห์ เป้ายังไม่นิ่ง</span>' : '') + '</div></div></div>';
+    $('#page').innerHTML = html;
+    // กราฟรายสัปดาห์
+    var wk = C.weeksBack(kf.to, 12), wv = wk.map(function (w) { return C.costByCat(S.data, w.from, w.to).cats[kf.cat]; });
+    var tv = isU ? t0.tU : t0.tC;
+    S.drawCharts = function () {
+      var el = $('#chK'); if (!el) return;
+      Charts.line(el, { labels: wk.map(function (w) { return F.thDate(w.to); }), tips: wk.map(function (w) { return 'สัปดาห์ ' + F.thRange(w.from, w.to); }), height: 320, fmt: function (v) { return F.int(Math.round(v)); },
+        target: tv != null ? { value: tv, label: 'เป้า ' + F.baht(tv) } : null,
+        series: [
+          { name: 'Facebook', color: 'var(--fb)', width: 1.8, opacity: .6, values: wv.map(function (o) { return isU ? (o.ufb ? o.fb / o.ufb : null) : (o.fbc ? o.fb / o.fbc : null); }) },
+          { name: 'Google', color: 'var(--gg)', width: 1.8, opacity: .6, values: wv.map(function (o) { return isU ? (o.ugg ? o.gg / o.ugg : null) : (o.ggc ? o.gg / o.ggc : null); }) },
+          { name: 'รวม', color: 'var(--primary)', width: 3.5, area: true, values: wv.map(function (o) { return isU ? o.cpu : o.cpcv; }), dots: function (v) { return tv == null ? 'var(--primary)' : v <= tv ? 'var(--good)' : 'var(--bad)'; } }
+        ] });
+    };
+    S.drawCharts(); Charts.countUp($('#page'));
+    $$('[data-kp]').forEach(function (b) { b.onclick = function () { kf.preset = b.dataset.kp; pageKpi(); }; });
+    if ($('#kFrom')) { $('#kFrom').onchange = function () { kf.from = this.value; pageKpi(); }; $('#kTo').onchange = function () { kf.to = this.value; pageKpi(); }; }
+    $$('[data-kc]').forEach(function (b) { b.onclick = function () { kf.cat = b.dataset.kc; pageKpi(); }; });
+    $$('[data-km]').forEach(function (b) { b.onclick = function () { kf.metric = b.dataset.km; pageKpi(); }; });
+    var tmr;
+    function saveT(key, v) { S.data.config[key] = v; clearTimeout(tmr); tmr = setTimeout(function () { API.call('saveConfig', { key: key, value: v }).catch(fail); }, 600); pageKpi(); }
+    $('#kr1').onchange = function () { saveT('target_cut', Number(this.value)); };
+    $('#kr1').oninput = function () { $('#kv1').textContent = '−' + this.value + '%'; };
+    $('#kr2').onchange = function () { saveT('target_cap', Number(this.value)); };
+    $('#kr2').oninput = function () { $('#kv2').textContent = this.value + '%'; };
+  }
+
+  /** ตั้งค่า: จับคู่แคมเปญ → หมวด */
+  function catMapCard() {
+    var map = C.catMap(S.data), fset = {}, gset = {};
+    (S.data.fbads || []).forEach(function (r) { fset[r.campaign] = true; });
+    (S.data.spend || []).forEach(function (r) { if (r.source === 'fb' && r.campaign) fset[r.campaign] = true; });
+    (S.data.gads || []).forEach(function (r) { gset[r.campaign] = true; });
+    var opts = [['auto', 'อัตโนมัติ (เดาจากชื่อ)']].concat(C.KPI_CATS.map(function (c) { return [c.k, c.n]; })).concat([['mixed', 'หลายหมวด (กระจายตามสัดส่วน)'], ['none', 'ไม่นับ']]);
+    var name = { mixed: 'กระจาย', none: 'ไม่นับ' }; C.KPI_CATS.forEach(function (c) { name[c.k] = c.n; });
+    function rowsOf(pf, set) {
+      return Object.keys(set).sort().map(function (c) {
+        var cur = map[pf + '|' + c] || 'auto', auto = C.adCat({}, pf, c, '');
+        return '<tr><td>' + esc(c) + '</td><td class="muted small">' + (cur === 'auto' ? 'ตอนนี้: ' + name[auto] + (pf === 'f' && auto === 'mixed' ? ' (ดูจากชื่อ Ad set/โฆษณาก่อน)' : '') : '') + '</td><td><select class="field-inline cm" data-cm="' + esc(pf + '|' + c) + '">' + opts.map(function (o) { return opt(o[0], o[1], cur); }).join('') + '</select></td></tr>';
+      }).join('');
+    }
+    var f = rowsOf('f', fset), g = rowsOf('g', gset);
+    return '<div class="card mt"><h2 class="card-title">จับคู่แคมเปญ → หมวด (หน้า ต้นทุนต่อหมวด)</h2><div class="card-sub">ระบบเดาจากชื่อให้เอง แก้เฉพาะตัวที่ผิด · Google ที่ไม่รู้หมวด = ไม่นับ · Facebook ที่ไม่รู้หมวด = กระจายตามสัดส่วน</div>' +
+      '<div class="table-wrap" style="margin-top:10px"><table class="t"><tbody>' + (f ? '<tr class="grp"><td colspan="3">Facebook</td></tr>' + f : '') + (g ? '<tr class="grp"><td colspan="3">Google Ads</td></tr>' + g : '') +
+      (!f && !g ? '<tr><td class="empty">ยังไม่มีข้อมูลแคมเปญ — กด ดึงข้อมูลตอนนี้</td></tr>' : '') + '</tbody></table></div></div>';
+  }
+  function wireCatMap() {
+    $$('.cm').forEach(function (s) {
+      s.onchange = function () {
+        var map = C.catMap(S.data);
+        if (s.value === 'auto') delete map[s.dataset.cm]; else map[s.dataset.cm] = s.value;
+        var v = JSON.stringify(map);
+        API.call('saveConfig', { key: 'cat_map', value: v }).then(function () { S.data.config.cat_map = v; toast('บันทึกแล้ว'); }).catch(fail);
+      };
+    });
+  }
+
+  // ============================================================
+  // ประสิทธิภาพโฆษณา Facebook (หน้า ภาพรวม)
+  // ============================================================
+  var PM = {
+    cpc: { l: 'ต้นทุนต่อแชท', f: function (v) { return F.baht(v); }, up: false, k: 'pct' },
+    reach: { l: 'คนเห็นโฆษณา', f: function (v) { return F.int(Math.round(v)); }, up: true, k: 'pct' },
+    ctr: { l: 'CTR (% คนคลิก)', f: function (v) { return F.pct(v, 1); }, up: true, k: 'pt' },
+    freq: { l: 'ความถี่ (เห็นซ้ำ)', f: function (v) { return v == null ? '–' : v.toFixed(1) + ' ครั้ง'; }, up: false, k: 'abs' },
+    cpm: { l: 'CPM (ต่อ 1,000 ครั้ง)', f: function (v) { return F.baht(v); }, up: false, k: 'pct' }
+  };
+  function perfSection(f, m, prevRange, charts) {
+    if (!(S.data.fbads || []).length) return '';
+    var cur = C.fbPerf(S.data, f.from, f.to, f.campaign), old = prevRange ? C.fbPerf(S.data, prevRange[0], prevRange[1], f.campaign) : {};
+    var met = S.pmetric || 'cpc';
+    var html = '<div class="pgrid mt">' + Object.keys(PM).map(function (k, i) { var p = PM[k];
+      return '<div class="card pk' + (i === 0 ? ' main' : '') + (met === k ? ' on' : '') + '" data-pm="' + k + '"><div class="l"><span>' + p.l + '</span>' + dBadge(cur[k], old[k], p.up, p.k) + '</div><div class="v" data-n>' + p.f(cur[k]) + '</div><div class="o">ช่วงก่อน ' + p.f(old[k]) + '</div>' + (i === 0 ? '<div class="o">ค่า Ads ' + F.baht(cur.spend) + ' · ' + F.int(Math.round(cur.chat)) + ' แชท</div>' : '') + '</div>'; }).join('') + '</div>';
+    // daily trend
+    var days = []; for (var d = f.from; d <= f.to; d = C.addDays(d, 1)) days.push(d);
+    var n = days.length, pv = days.map(function (d) { return C.fbPerf(S.data, d, d, f.campaign)[met]; }), pp = prevRange ? days.map(function (d, i) { var x = C.addDays(prevRange[0], i); return C.fbPerf(S.data, x, x, f.campaign)[met]; }) : [];
+    html += section(PM[met].l + ' — รายวัน (Facebook)', 'กดการ์ดด้านบนเพื่อเปลี่ยนตัวเลข · เส้นประจาง = ช่วงก่อนหน้า · ชี้เพื่อดูค่า', legend([['ช่วงที่เลือก', 'var(--primary)'], ['ช่วงก่อนหน้า', 'var(--text-3)']]) + '<div class="chart-box" id="chP"></div>', 'full');
+    charts.push(['chP', 'line', { labels: days.map(function (d) { return F.thDate(d); }), tips: days.map(function (d) { return F.thDate(d, true); }), height: 300, fmt: met === 'ctr' ? function (v) { return (v * 100).toFixed(1) + '%'; } : met === 'freq' ? function (v) { return v.toFixed(1); } : function (v) { return F.int(Math.round(v)); },
+      series: [{ name: 'ช่วงก่อน', color: 'var(--text-3)', width: 2, dash: '5 4', opacity: .6, values: pp }, { name: 'ช่วงนี้', color: 'var(--primary)', width: 3.5, area: true, values: pv }] }]);
+    // funnel
+    var st = [['เห็นโฆษณา', cur.reach, old.reach, 'fb', 'Facebook'], ['คลิก', cur.clk, old.clk, 'fb', 'Facebook'], ['ทักแชท', cur.chat, old.chat, 'fb', 'Facebook'],
+      ['บันทึกเป็น Lead', m.leads, null, 'us', 'แอดมินบันทึก'], ['ประเมินราคา', m.funnel[2] ? m.funnel[2].n : null, null, 'us', 'แอดมินบันทึก'], ['ปิดได้', m.closed, null, 'us', 'แอดมินบันทึก']];
+    var bench = [0.02, 0.05, 0.6, 0.5, 0.06], widths = [100, 84, 68, 54, 42, 30], fh = '', worst = null;
+    st.forEach(function (s, i) {
+      var w = widths[i], nw = widths[i + 1] || w * 0.7, cut = ((w - nw) / 2 / w * 100).toFixed(1);
+      fh += '<div class="fs"><div class="nm">' + s[0] + '<small>' + s[4] + '</small></div><div><div class="shape ' + s[3] + '" style="width:' + w + '%;--cut:' + cut + '%">' + F.int(Math.round(s[1] || 0)) + '</div></div><div class="dl">' + (s[2] != null ? dBadge(s[1], s[2], true, 'pct') : '') + '</div></div>';
+      if (i < st.length - 1) {
+        var a = s[1], b = st[i + 1][1], rr = a ? b / a : 0, lo = rr < bench[i];
+        if (lo && (!worst || rr / bench[i] < worst.k)) worst = { k: rr / bench[i], i: i + 1, r: rr };
+        fh += '<div class="gap"><div></div><div style="text-align:center"><span class="rate' + (lo ? ' lo' : '') + '">↓ ' + F.pct(rr, 1) + ' ไปต่อ</span></div><div class="miss">' + (i === 2 && a - b > 0 ? F.int(Math.round(a - b)) + ' คนยังไม่บันทึก' : '') + '</div></div>';
+      }
+    });
+    var msg = { 1: ['คนเห็นแต่ไม่คลิก', 'ภาพ/ข้อความโฆษณายังไม่ดึงดูด → ลองเปลี่ยนครีเอทีฟ'], 2: ['คลิกแล้วไม่ทัก', 'เช็คข้อความต้อนรับ/ปุ่มคำถามในโฆษณา'], 3: ['ทักแล้วไม่ได้บันทึก', 'ตามให้แอดมินบันทึกให้ครบ ตัวเลขจะได้แม่น'], 4: ['ทักแล้วไม่ส่งข้อมูลเครื่อง', 'ดูสคริปต์ตอบแชทและความเร็วในการตอบ'], 5: ['ประเมินราคาแล้วไม่ขาย', 'โฆษณาทำงานปกติ ปัญหาอยู่ที่ราคาหรือการตามลูกค้า'] };
+    var dg = worst ? '<div class="dg bad"><b>หลุดมากสุด: ' + msg[worst.i][0] + ' (' + F.pct(worst.r, 1) + ')</b><span>' + msg[worst.i][1] + '</span></div>' : '<div class="dg ok"><b>ทุกขั้นอยู่ในเกณฑ์ปกติ</b></div>';
+    dg += '<div class="dg"><b>อ่านกรวยยังไง</b><span>ป้ายระหว่างขั้น = คนจากขั้นบนไปต่อขั้นล่างกี่ % · สีแดง = ต่ำกว่าเกณฑ์ · ▲▼ = เทียบช่วงก่อนหน้า</span></div>';
+    html += section('ลูกค้าหลุดตรงไหน — ตั้งแต่เห็นโฆษณาจนรับซื้อได้', 'สีฟ้า = Facebook · สีส้ม = แอดมินบันทึก', '<div class="fwrap"><div class="vfun">' + fh + '</div><div class="diag">' + dg + '</div></div>', 'full');
+    // campaign/ad table
+    var all = !f.campaign, items;
+    if (all) { var cs = {}; C.fbPerf; (S.data.fbads || []).forEach(function (r) { if (r.date >= f.from && r.date <= f.to) cs[r.campaign] = true; });
+      items = Object.keys(cs).map(function (c) { return { name: c, camp: c, c: C.fbPerf(S.data, f.from, f.to, c), o: prevRange ? C.fbPerf(S.data, prevRange[0], prevRange[1], c) : {} }; }); }
+    else { var as = {}; (S.data.fbads || []).forEach(function (r) { if (r.campaign === f.campaign && r.date >= f.from && r.date <= f.to) as[r.ad] = true; });
+      items = Object.keys(as).map(function (a) { return { name: a, c: C.fbPerf(S.data, f.from, f.to, f.campaign, a), o: prevRange ? C.fbPerf(S.data, prevRange[0], prevRange[1], f.campaign, a) : {} }; }); }
+    items = items.filter(function (x) { return x.c.spend > 0; });
+    var cps = items.map(function (x) { return x.c.cpc; }).filter(Boolean), mn = Math.min.apply(null, cps), mx = Math.max.apply(null, cps), mxAll = mx;
+    S.popen = S.popen || {};
+    function prow(name, c, o, cls, extra, sub) {
+      var col = !sub && items.length > 1 && c.cpc === mn ? 'var(--good)' : !sub && items.length > 1 && c.cpc === mx ? 'var(--bad)' : 'var(--primary)';
+      var tag = c.freq > 3.5 ? '<span class="pill warn">เห็นซ้ำเยอะ</span>' : !sub && items.length > 1 && c.cpc === mn ? '<span class="pill good">คุ้มสุด</span>' : !sub && items.length > 1 && c.cpc === mx ? '<span class="pill bad">แพงสุด</span>' : '';
+      return '<tr class="' + cls + '"' + extra + '><td>' + name + '</td><td class="r num">' + F.baht(c.spend) + '</td><td class="r num">' + F.int(Math.round(c.reach)) + '</td><td class="r num"' + (c.freq > 3.5 ? ' style="color:var(--bad);font-weight:600"' : '') + '>' + (c.freq ? c.freq.toFixed(1) : '–') + '</td>' +
+        '<td class="r num"><div class="cell2">' + F.pct(c.ctr, 1) + dBadge(c.ctr, o.ctr, true, 'pt') + '</div></td><td class="r num">' + F.int(Math.round(c.chat)) + '</td>' +
+        '<td class="r num"><div class="cpc2"><div class="cell2"><b>' + F.baht(c.cpc) + '</b>' + dBadge(c.cpc, o.cpc, false, 'pct') + '</div><div class="tr2"><i style="width:' + (c.cpc && mxAll ? Math.min(100, c.cpc / mxAll * 100) : 0) + '%;background:' + col + '"></i></div></div></td><td>' + tag + '</td></tr>';
+    }
+    var th = '<thead><tr><th>' + (all ? 'แคมเปญ' : 'โฆษณา') + '</th><th class="r">ค่า Ads</th><th class="r">คนเห็น</th><th class="r">ความถี่</th><th class="r">CTR</th><th class="r">แชท</th><th class="r">ต้นทุน/แชท</th><th></th></tr></thead><tbody>';
+    items.forEach(function (x) {
+      if (all) { var op = S.popen[x.camp]; th += prow('<span class="caret' + (op ? ' open' : '') + '">▸</span>' + esc(x.name), x.c, x.o, 'click pcamp', ' data-pc="' + esc(x.camp) + '"');
+        if (op) { var as2 = {}; (S.data.fbads || []).forEach(function (r) { if (r.campaign === x.camp && r.date >= f.from && r.date <= f.to) as2[r.ad] = true; });
+          Object.keys(as2).forEach(function (a) { var c = C.fbPerf(S.data, f.from, f.to, x.camp, a); if (c.spend > 0) th += prow(esc(a), c, prevRange ? C.fbPerf(S.data, prevRange[0], prevRange[1], x.camp, a) : {}, 'sub-row', '', true); }); } }
+      else th += prow(esc(x.name), x.c, x.o, '', '', true);
+    });
+    html += section(all ? 'เทียบแคมเปญ (Facebook)' : 'เทียบโฆษณาในแคมเปญนี้', (all ? 'กดแถวเพื่อดูโฆษณาข้างใน · ' : '') + 'แถบสี = ต้นทุนต่อแชท (สั้น = ถูก) · ▲▼ เทียบช่วงก่อนหน้า',
+      items.length ? '<div class="table-wrap"><table class="t">' + th + '</tbody></table></div>' : '<div class="empty">ไม่มีการยิงในช่วงนี้</div>', 'full');
+    return html;
+  }
+
   // ============================================================
   // Settings
   // ============================================================
@@ -1478,7 +1683,10 @@
         ? '<div class="nudge" style="margin-top:12px">แชทลูกค้าจาก Inbox ยังดึงไม่ได้: ' + esc(S.data.config.fb_inbox_error) + '</div>'
         : '<div class="status-line" style="margin-top:6px"><span class="sdot on"></span><b>แชทลูกค้าจาก Inbox</b> <span class="muted">· ' + (S.data.config.page_name ? 'เพจ ' + esc(S.data.config.page_name) + ' · ' : '') +
           (fbRes.inboxNew != null ? 'คนทักใหม่รอบล่าสุด ' + fbRes.inboxNew + ' คน (จับคู่โฆษณาให้เอง ' + (fbRes.inboxAuto || 0) + ')' : 'ยังไม่เคยดึง') + (fbRes.inboxDone === false ? ' · กำลังดึงย้อนหลัง 3 เดือน (ทยอยดึงทุกชั่วโมง)' : '') + '</span></div>') : '') +
+      (fbLast ? '<div class="status-line" style="margin-top:6px"><span class="sdot ' + (S.data.config.gads_error ? 'off' : 'on') + '"></span><b>Google Ads (METRICS)</b> <span class="muted">· ' + (S.data.config.gads_error ? esc(S.data.config.gads_error) : (S.data.gads || []).length + ' แถว') + '</span></div>' +
+        '<div class="status-line" style="margin-top:6px"><span class="sdot ' + (S.data.config.purchase_error ? 'off' : 'on') + '"></span><b>รับซื้อ (Orders)</b> <span class="muted">· ' + (S.data.config.purchase_error ? esc(S.data.config.purchase_error) : (S.data.purchases || []).length + ' เครื่อง · อ่านอย่างเดียว') + '</span></div>' : '') +
       '<div class="muted small" style="margin-top:8px">ตั้งดึงอัตโนมัติทุก 1 ชั่วโมงด้วยการรัน installAutoSync() ใน Apps Script ครั้งเดียว · วันที่ Facebook มีตัวเลขแล้ว ระบบจะไม่นับค่า Ads ที่กรอกมือของวันนั้นซ้ำ</div></div>';
+    html += catMapCard();
     html += '<div class="card mt"><h2 class="card-title">ประเภทสินค้า</h2><div class="card-sub" style="margin-bottom:12px">ปุ่มให้กดเลือกตอนบันทึกแชท · 1 บรรทัด = 1 ประเภท · เรียงตามลำดับที่อยากให้แสดง</div>' +
       '<form id="prodForm" class="form-grid"><div class="f c8"><textarea id="prodList" rows="6">' + esc(C.productList(S.data).join('\n')) + '</textarea></div>' +
       '<div class="f c4" style="align-self:end"><div class="prod-picker small-p">' + C.productList(S.data).map(function (x) { return '<button type="button" tabindex="-1">' + esc(x) + '</button>'; }).join('') + '</div><button class="btn" type="submit" style="margin-top:12px">บันทึก</button></div></form></div>';
@@ -1499,6 +1707,7 @@
         return refresh().then(function () { toast('ดึงจาก Facebook แล้ว · ค่า Ads ' + r.spendDays + ' รายการ' + (r.inboxNew ? ' · คนทักใหม่ ' + r.inboxNew + ' คน' : '')); render(); });
       }).catch(function (e) { fail(e); b.disabled = false; b.textContent = 'ดึงข้อมูลตอนนี้'; });
     };
+    wireCatMap();
     $('#prodForm').onsubmit = function (e) {
       e.preventDefault();
       var list = $('#prodList').value.split(/[\n,]+/).map(function (x) { return x.trim(); }).filter(Boolean);

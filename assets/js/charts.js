@@ -310,5 +310,41 @@
     return '<svg class="spark" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">' + out + '</svg>';
   }
 
-  window.Charts = { countUp: countUp, timeline: timeline, spark: spark, columns: columns, hbars: hbars, ring: ring, segRing: segRing, donut: donut, wave: wave, bars: bars, bindTips: bindTips, esc: esc };
+  /**
+   * กราฟเส้น: opts { labels, tips, series:[{name,values,color,width,dash,area,dots}], target:{value,label}, fmt, height, marks:[{i,label}] }
+   * ชี้เมาส์ = ดูค่าทุกเส้นของวันนั้น
+   */
+  function line(el, o) {
+    var W = Math.max(280, el.clientWidth), H = o.height || 300, L = 58, R = 16, T = 26, B = 30, pw = W - L - R, ph = H - T - B, n = o.labels.length;
+    var fmt = o.fmt || function (v) { return String(Math.round(v)); };
+    var vals = [];
+    o.series.forEach(function (s) { s.values.forEach(function (v) { if (v != null && isFinite(v)) vals.push(v); }); });
+    if (o.target && o.target.value != null) vals.push(o.target.value);
+    var max = (Math.max.apply(null, vals.concat([0])) || 1) * 1.12, step = niceStep(max), top = Math.max(step * Math.ceil(max / step), step);
+    function x(i) { return L + (n <= 1 ? pw / 2 : i / (n - 1) * pw); }
+    function y(v) { return T + ph - v / top * ph; }
+    var out = '<defs><linearGradient id="lg' + el.id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--primary)" stop-opacity=".26"/><stop offset="1" stop-color="var(--primary)" stop-opacity="0"/></linearGradient></defs>';
+    for (var v = 0; v <= top + 1e-9; v += step) out += '<line class="grid-line" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '"/><text class="ax" x="' + (L - 8) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + esc(fmt(v)) + '</text>';
+    function path(vs) { var s = ''; vs.forEach(function (v, i) { if (v == null || !isFinite(v)) return; s += (s ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1); }); return s; }
+    o.series.forEach(function (s) {
+      var d = path(s.values);
+      if (!d) return;
+      if (s.area) { var fi = s.values.findIndex(function (v) { return v != null; }), li = s.values.length - 1; while (li > 0 && s.values[li] == null) li--; out += '<path d="' + d + 'L' + x(li) + ' ' + (T + ph) + 'L' + x(fi) + ' ' + (T + ph) + 'Z" fill="url(#lg' + el.id + ')"/>'; }
+      out += '<path class="ln" d="' + d + '" fill="none" stroke="' + s.color + '" stroke-width="' + (s.width || 3) + '"' + (s.dash ? ' stroke-dasharray="' + s.dash + '"' : '') + (s.opacity ? ' stroke-opacity="' + s.opacity + '"' : '') + ' stroke-linejoin="round" stroke-linecap="round"/>';
+      if (s.dots) s.values.forEach(function (v, i) { if (v != null) out += '<circle cx="' + x(i) + '" cy="' + y(v) + '" r="5" fill="' + (typeof s.dots === 'function' ? s.dots(v, i) : s.color) + '" stroke="var(--card)" stroke-width="2"/>'; });
+    });
+    if (o.target && o.target.value != null) out += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(o.target.value) + '" y2="' + y(o.target.value) + '" stroke="var(--text)" stroke-opacity=".6" stroke-width="2" stroke-dasharray="7 5"/><text class="mark-l" x="' + (W - R) + '" y="' + (y(o.target.value) - 8) + '" text-anchor="end">' + esc(o.target.label) + '</text>';
+    (o.marks || []).forEach(function (m) { var mx = x(m.i); out += '<line x1="' + mx + '" x2="' + mx + '" y1="' + T + '" y2="' + (T + ph) + '" stroke="var(--text-3)" stroke-dasharray="3 4"/><text class="mark-l" x="' + mx + '" y="' + (T - 8) + '" text-anchor="' + (mx > W - 140 ? 'end' : mx < L + 80 ? 'start' : 'middle') + '">' + esc(m.label) + '</text>'; });
+    var every = Math.max(1, Math.ceil(n / Math.max(1, Math.floor(pw / 70))));
+    o.labels.forEach(function (l, i) { if (i % every === 0 || i === n - 1) out += '<text class="ax" x="' + x(i) + '" y="' + (H - 8) + '" text-anchor="middle">' + esc(l) + '</text>'; });
+    var gw = n > 1 ? pw / (n - 1) : pw;
+    for (var i = 0; i < n; i++) {
+      var tip = '<b>' + esc(o.tips ? o.tips[i] : o.labels[i]) + '</b>' + o.series.filter(function (s) { return !s.noTip; }).map(function (s) { return '<div class="row"><span><i class="tip-dot" style="background:' + s.color + '"></i>' + esc(s.name) + '</span><b>' + (s.values[i] == null ? '–' : esc(fmt(s.values[i]))) + '</b></div>'; }).join('');
+      out += '<rect class="hover-band" x="' + (x(i) - gw / 2) + '" y="' + T + '" width="' + gw + '" height="' + ph + '" data-tip="' + esc(tip) + '"/>';
+    }
+    var anim = !el.dataset.drawn; el.dataset.drawn = '1';
+    el.innerHTML = '<svg class="chart big' + (anim ? ' anim-ln' : '') + '" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">' + out + '</svg>';
+  }
+
+  window.Charts = { line: line, countUp: countUp, timeline: timeline, spark: spark, columns: columns, hbars: hbars, ring: ring, segRing: segRing, donut: donut, wave: wave, bars: bars, bindTips: bindTips, esc: esc };
 })();

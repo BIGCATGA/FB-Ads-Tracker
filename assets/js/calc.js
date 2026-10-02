@@ -597,6 +597,106 @@
     return hit ? { cat: hit, detail: p, loose: true } : { cat: p ? 'อื่น ๆ' : '', detail: p };
   }
 
+  // ============================================================
+  // ต้นทุนต่อหมวด (FB + Google) · ประสิทธิภาพโฆษณา
+  // ============================================================
+  var KPI_CATS = [{ k: 'iphone', n: 'iPhone' }, { k: 'ipad', n: 'iPad' }, { k: 'macbook', n: 'MacBook' }, { k: 'notebook', n: 'Notebook' }, { k: 'computer', n: 'Computer' }];
+  function purchaseCat(c) {
+    c = String(c || '').toLowerCase().trim();
+    if (c === 'iphone') return 'iphone';
+    if (c === 'ipad') return 'ipad';
+    if (c === 'macbook') return 'macbook';
+    if (c === 'notebook gaming' || c === 'notebook office' || c === 'notebook') return 'notebook';
+    if (c === 'comset gaming' || c === 'comset office') return 'computer';
+    return '';
+  }
+  function guessCat(name) {
+    var s = String(name || '').toLowerCase();
+    if (/iphone/.test(s)) return 'iphone';
+    if (/ipad/.test(s)) return 'ipad';
+    if (/macbook/.test(s)) return 'macbook';
+    if (/laptop|notebook|โน้ตบุ๊ก|โน๊ตบุ๊ค|โน๊ตบุ๊ก/.test(s)) return 'notebook';
+    if (/compc|comset|คอมเซ็ต|คอมพิวเตอร์ตั้งโต๊ะ/.test(s)) return 'computer';
+    return '';
+  }
+  function catMap(data) { try { return JSON.parse((data.config && data.config.cat_map) || '{}') || {}; } catch (e) { return {}; } }
+  /** หมวดของค่า Ads: override ที่ตั้งไว้ → เดาจากชื่อ (Ad set/โฆษณา ก่อน แล้วแคมเปญ) · ไม่รู้: FB = กระจาย (mixed) · Google = ไม่นับ (none) */
+  function adCat(map, platform, campaign, detail) {
+    var o = map[platform + '|' + campaign];
+    if (o && o !== 'auto') return o;
+    return guessCat(detail) || guessCat(campaign) || (platform === 'f' ? 'mixed' : 'none');
+  }
+  function fbRows(data, from, to) {
+    var rows = (data.fbads || []).filter(function (r) { return r.date >= from && r.date <= to; });
+    if (rows.length || (data.fbads || []).length) return rows;
+    // ยังไม่มีข้อมูลรายโฆษณา → ใช้ค่า Ads รายแคมเปญแทน
+    return (data.spend || []).filter(function (s) { return s.source === 'fb' && s.date >= from && s.date <= to; })
+      .map(function (s) { return { date: s.date, campaign: s.campaign, adset: '', ad: '', spend: Number(s.amount) || 0, impressions: 0, reach: 0, clicks: 0, chats: Number(s.results) || 0 }; });
+  }
+  function costByCat(data, from, to) {
+    var map = catMap(data), cats = {}, mixed = { fb: 0, fbc: 0, gg: 0, ggc: 0 };
+    KPI_CATS.forEach(function (c) { cats[c.k] = { fb: 0, gg: 0, fbc: 0, ggc: 0, ufb: 0, ugg: 0, margin: 0 }; });
+    fbRows(data, from, to).forEach(function (r) {
+      var k = adCat(map, 'f', r.campaign, r.adset + ' ' + r.ad);
+      if (k === 'none') return;
+      var t = cats[k] || mixed; t.fb += Number(r.spend) || 0; t.fbc += Number(r.chats) || 0;
+    });
+    (data.gads || []).forEach(function (r) {
+      if (r.date < from || r.date > to) return;
+      var k = adCat(map, 'g', r.campaign, '');
+      if (k === 'none') return;
+      var t = cats[k] || mixed; t.gg += Number(r.cost) || 0; t.ggc += Number(r.conversions) || 0;
+    });
+    (data.purchases || []).forEach(function (p) {
+      if (p.date < from || p.date > to) return;
+      var t = cats[purchaseCat(p.category)];
+      if (!t) return;
+      if (p.fb) t.ufb++; else if (p.line) t.ugg++; else return;
+      t.margin += p.sell - p.bought - p.repair;
+    });
+    // แคมเปญที่ไม่ระบุหมวด → กระจายตามสัดส่วน Conversion
+    var totC = 0; KPI_CATS.forEach(function (c) { var t = cats[c.k]; totC += t.fbc + t.ggc; });
+    KPI_CATS.forEach(function (c) {
+      var t = cats[c.k], sh = totC ? (t.fbc + t.ggc) / totC : 1 / KPI_CATS.length;
+      t.fb += mixed.fb * sh; t.fbc += mixed.fbc * sh; t.gg += mixed.gg * sh; t.ggc += mixed.ggc * sh;
+      t.spend = t.fb + t.gg; t.cv = t.fbc + t.ggc; t.u = t.ufb + t.ugg;
+      t.cpcv = t.cv ? t.spend / t.cv : null; t.cpu = t.u ? t.spend / t.u : null;
+      t.avgM = t.u ? t.margin / t.u : null; t.close = t.cv ? t.u / t.cv : null;
+    });
+    return { cats: cats, mixed: mixed };
+  }
+  function median(a) { a = a.filter(function (v) { return v != null && isFinite(v); }).sort(function (x, y) { return x - y; }); if (!a.length) return null; var m = Math.floor(a.length / 2); return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
+  /** สัปดาห์ (7 วัน) ย้อนหลังจากวัน end */
+  function weeksBack(end, n) { var out = []; for (var i = n - 1; i >= 0; i--) { var to = addDays(end, -7 * i), from = addDays(to, -6); out.push({ from: from, to: to }); } return out; }
+  function kpiTargets(data, from) {
+    var cut = Number(data.config && data.config.target_cut); if (!(cut >= 0)) cut = 10;
+    var cap = Number(data.config && data.config.target_cap); if (!(cap > 0)) cap = 20;
+    var wk = weeksBack(addDays(from, -1), 8), out = {};
+    var per = wk.map(function (w) { return costByCat(data, w.from, w.to).cats; });
+    var all = costByCat(data, wk[0].from, wk[wk.length - 1].to).cats;
+    KPI_CATS.forEach(function (c) {
+      var baseU = median(per.map(function (x) { return x[c.k].cpu; })), baseC = median(per.map(function (x) { return x[c.k].cpcv; }));
+      var a = all[c.k], capU = a.avgM != null ? a.avgM * cap / 100 : null;
+      var cands = [baseU != null ? baseU * (1 - cut / 100) : null, capU].filter(function (v) { return v != null && v > 0; });
+      var tU = cands.length ? Math.min.apply(null, cands) : null;
+      var cc = [baseC != null ? baseC * (1 - cut / 100) : null, tU != null && a.close ? tU * a.close : null].filter(function (v) { return v != null && v > 0; });
+      out[c.k] = { baseU: baseU, baseC: baseC, capU: capU, tU: tU, tC: cc.length ? Math.min.apply(null, cc) : null, avgM: a.avgM,
+        by: tU == null ? '' : capU != null && tU === capU ? 'cap' : 'base', weeks: per.filter(function (x) { return x[c.k].u; }).length };
+    });
+    return { t: out, cut: cut, cap: cap };
+  }
+  /** ประสิทธิภาพ FB ช่วงหนึ่ง (แคมเปญเดียว หรือทั้งหมด) */
+  function fbPerf(data, from, to, camp, ad) {
+    var o = { spend: 0, imp: 0, reach: 0, clk: 0, chat: 0, days: {} };
+    fbRows(data, from, to).forEach(function (r) {
+      if (camp && r.campaign !== camp) return; if (ad && r.ad !== ad) return;
+      o.spend += Number(r.spend) || 0; o.imp += Number(r.impressions) || 0; o.reach += Number(r.reach) || 0; o.clk += Number(r.clicks) || 0; o.chat += Number(r.chats) || 0;
+    });
+    o.reach = o.reach * (daysIncl(from, to) > 1 ? 0.72 : 1); // คนเดียวกันเห็นหลายวัน — ประมาณจากผลรวมรายวัน
+    o.ctr = o.imp ? o.clk / o.imp : null; o.cpm = o.imp ? o.spend / o.imp * 1000 : null; o.freq = o.reach ? o.imp / o.reach : null; o.cpc = o.chat ? o.spend / o.chat : null;
+    return o;
+  }
+
   window.Calc = {
     STATUSES: STATUSES, BY_KEY: BY_KEY, STAGES: STAGES,
     stageOf: stageOf, dupMap: dupMap, uniquePeople: uniquePeople, compute: compute, presetRange: presetRange,
@@ -605,7 +705,7 @@
     runsOf: runsOf, needsNormalize: needsNormalize, levelState: levelState, campState: campState, budgetMode: budgetMode, firstStart: firstStart,
     spendDaily: spendDaily, spendCoverage: spendCoverage, runResults: runResults, runningDays: runningDays, daysIncl: daysIncl,
     closeDurations: closeDurations, durationStats: durationStats,
-    experiments: experiments, campaignDaily: campaignDaily, productList: productList, splitProduct: splitProduct, MIN_DAYS: MIN_DAYS,
+    experiments: experiments, KPI_CATS: KPI_CATS, purchaseCat: purchaseCat, guessCat: guessCat, catMap: catMap, adCat: adCat, costByCat: costByCat, kpiTargets: kpiTargets, weeksBack: weeksBack, fbPerf: fbPerf, median: median, campaignDaily: campaignDaily, productList: productList, splitProduct: splitProduct, MIN_DAYS: MIN_DAYS,
     fmt: { baht: baht, int: int, pct: pct, thDate: thDate, thRange: thRange }
   };
 })();

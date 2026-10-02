@@ -3,7 +3,7 @@
  */
 (function () {
   var URL_ = (window.APP_CONFIG.API_URL || '').trim();
-  var DEMO_KEY = 'fbat_demo_v8';
+  var DEMO_KEY = 'fbat_demo_v9';
 
   function store(key, val) {
     try { if (val === undefined) return localStorage.getItem(key); if (val === null) localStorage.removeItem(key); else localStorage.setItem(key, val); } catch (e) { return null; }
@@ -147,7 +147,7 @@
 
   window.API = {
     isDemo: !URL_,
-    MIN_BACKEND: 7,
+    MIN_BACKEND: 8,
     outdated: false,
     call: function (action, payload) { return URL_ ? remote(action, payload) : local(action, payload || {}); },
     token: function (v) { return store('fbat_token', v); },

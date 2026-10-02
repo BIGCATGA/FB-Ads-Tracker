@@ -133,6 +133,19 @@
         });
         return out;
       })(),
+      fbads: spend.map(function (x) { var imp = x.amount / 0.085 * (0.85 + r() * 0.3), clk = imp * (0.012 + r() * 0.02); return { date: x.date, campaign: x.campaign, adset: x.adset, ad: x.adset, spend: x.amount, impressions: Math.round(imp), reach: Math.round(imp / (1.6 + r())), clicks: Math.round(clk), chats: Math.round(clk * (0.06 + r() * 0.08)) }; }),
+      gads: (function () {
+        var out = [], t = new Date(), G = [['02Search-AppleiPhone-BKK_TopFunnel >30THB', 900, 9], ['03Search-AppleiPad KW รับซื้อ', 500, 6], ['05Search-AppleMacbook-BKK-New202602 - รับซื้อ', 450, 4], ['08-2Search-Laptop', 700, 8], ['08-1Search-ComPC', 300, 2], ['06Search-AppleWatch-BKK', 600, 7]];
+        for (var i = 120; i >= 1; i--) { var d = new Date(t); d.setDate(d.getDate() - i); var ds = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+          G.forEach(function (g) { out.push({ date: ds, campaign: g[0], cost: Math.round(g[1] * (0.8 + r() * 0.4)), conversions: Math.round(g[2] * (0.6 + r() * 0.8)) }); }); }
+        return out;
+      })(),
+      purchases: (function () {
+        var out = [], t = new Date(), P = [['iPhone', 4, 4200], ['iPad', 2.5, 3300], ['MacBook', 1.6, 4300], ['Notebook Gaming', 1.4, 4700], ['Notebook Office', 1, 3800], ['Comset Gaming', 0.5, 3600], ['Apple Watch', 1.5, 2000]];
+        for (var i = 120; i >= 1; i--) { var d = new Date(t); d.setDate(d.getDate() - i); var ds = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+          P.forEach(function (p) { var n = Math.floor(p[1] * (0.4 + r() * 1.2)); for (var k = 0; k < n; k++) { var fb = r() < 0.4, ln = !fb && r() < 0.85, b = 10000 + Math.round(r() * 10000); out.push([ds, p[0], fb ? 1 : 0, ln ? 1 : 0, b, 0, b + Math.round(p[2] * (0.7 + r() * 0.6)), '']); } }); }
+        return out;
+      })(),
       inbox: (function () {
         var t = new Date(), iso = function (n) { var d = new Date(t); d.setDate(d.getDate() - n); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); };
         var P = [['Nok Siriporn', 0, 'สนใจขาย iPhone 13 ครับ', 'Ad Set A : iPhone 11 / 12 / 13:3|Ad Set B : iPhone 14 / 15 / 16 / 17:2'],
