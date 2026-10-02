@@ -56,6 +56,9 @@
     today = today || iso(new Date());
     if (preset === '7d') return { from: addDays(today, -6), to: today };
     if (preset === '30d') return { from: addDays(today, -29), to: today };
+    if (preset === '3m') return { from: addDays(today, -91), to: today };
+    if (preset === '6m') return { from: addDays(today, -182), to: today };
+    if (preset === '1y') return { from: addDays(today, -364), to: today };
     if (preset === 'month') return { from: today.slice(0, 8) + '01', to: today };
     if (preset === 'lastmonth') {
       var d = new Date(today.slice(0, 8) + '01T00:00:00'); d.setDate(0);

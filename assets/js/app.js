@@ -1523,7 +1523,7 @@
   };
   function pimg(k) {
     var alt = esc(PIMG_URL[k] || '');
-    return '<span class="pimg"><svg viewBox="0 0 100 80" aria-hidden="true">' + (DEV[k] || '') + '</svg><img src="assets/img/' + k + '.png" data-alt="' + alt + '" alt="" referrerpolicy="no-referrer" loading="lazy"' +
+    return '<span class="pimg' + (k === 'macbook' ? ' mb' : '') + '"><svg viewBox="0 0 100 80" aria-hidden="true">' + (DEV[k] || '') + '</svg><img src="assets/img/' + k + '.png" data-alt="' + alt + '" alt="" referrerpolicy="no-referrer" loading="lazy"' +
       ' onload="this.parentNode.classList.add(\'ok\')" onerror="var a=this.getAttribute(\'data-alt\');if(a){this.removeAttribute(\'data-alt\');this.src=a}else this.remove()"></span>';
   }
   function nb(v) { return v == null || !isFinite(v) ? '–' : F.int(Math.round(v)); }
@@ -1541,8 +1541,8 @@
     var kf = S.kf || (S.kf = { preset: 'month', from: '', to: '', cat: 'iphone', metric: 'unit', dm: 'unit' });
     if (!kf.dm) kf.dm = 'unit';
     if (kf.preset !== 'custom') { var r = C.presetRange(kf.preset, S.data, today()); kf.from = r.from; kf.to = r.to; }
-    var res = C.costByCat(S.data, kf.from, kf.to).cats, tg = C.kpiTargets(S.data, kf.from), T = tg.t;
-    var presets = [['month', 'เดือนนี้'], ['lastmonth', 'เดือนก่อน'], ['7d', '7 วัน'], ['30d', '30 วัน'], ['custom', 'กำหนดเอง']];
+    var res = C.costByCat(S.data, kf.from, kf.to).cats, tg = C.kpiTargets(S.data, ['3m', '6m', '1y'].indexOf(kf.preset) >= 0 ? C.presetRange('month', S.data, today()).from : kf.from), T = tg.t;
+    var presets = [['month', 'เดือนนี้'], ['lastmonth', 'เดือนก่อน'], ['7d', '7 วัน'], ['30d', '30 วัน'], ['3m', '3 เดือน'], ['6m', '6 เดือน'], ['1y', '1 ปี'], ['custom', 'กำหนดเอง']];
     var noData = !(S.data.gads || []).length && !(S.data.purchases || []).length;
     var html = '<div class="filters"><div class="chip-group">' + presets.map(function (p) { return '<button data-kp="' + p[0] + '" class="' + (kf.preset === p[0] ? 'on' : '') + '">' + p[1] + '</button>'; }).join('') + '</div>' +
       (kf.preset === 'custom' ? '<input type="date" class="field-inline" id="kFrom" value="' + kf.from + '"><input type="date" class="field-inline" id="kTo" value="' + kf.to + '">' : '<span class="muted">' + F.thRange(kf.from, kf.to) + '</span>') + '</div>';
@@ -1580,22 +1580,31 @@
 
     // 2) กราฟรายสัปดาห์ของหมวดที่เลือก
     var cat = C.KPI_CATS.filter(function (c) { return c.k === kf.cat; })[0], isU = kf.metric === 'unit', o0 = res[kf.cat], t0 = T[kf.cat];
-    var wk = C.weeksBack(kf.to, 12), wv = wk.map(function (w) { var x = C.costByCat(S.data, w.from, w.to).cats[kf.cat]; return isU ? x.cpu : x.cpcv; });
+    var wk = C.weeksBack(kf.to, 12);
+    // แกนเวลา: ช่วงสั้น = รายวัน · ช่วงยาว (เกิน 62 วัน / 3-6 เดือน / 1 ปี) = รายเดือน
+    var spanD = Math.round((new Date(kf.to) - new Date(kf.from)) / 864e5) + 1, monthly = spanD > 62, bk = [];
+    if (monthly) { var mc = kf.from.slice(0, 7); while (mc <= kf.to.slice(0, 7) && bk.length < 36) { var me = new Date(Number(mc.slice(0, 4)), Number(mc.slice(5, 7)), 0); var mto = mc + '-' + String(me.getDate()).padStart(2, '0'); bk.push({ from: mc + '-01' < kf.from ? kf.from : mc + '-01', to: mto > kf.to ? kf.to : mto, m: mc }); var nx = new Date(Number(mc.slice(0, 4)), Number(mc.slice(5, 7)), 1); mc = nx.getFullYear() + '-' + String(nx.getMonth() + 1).padStart(2, '0'); } }
+    else { var dd = kf.from; while (dd <= kf.to && bk.length < 62) { bk.push({ from: dd, to: dd }); var nd2 = new Date(dd + 'T00:00:00'); nd2.setDate(nd2.getDate() + 1); dd = nd2.getFullYear() + '-' + String(nd2.getMonth() + 1).padStart(2, '0') + '-' + String(nd2.getDate()).padStart(2, '0'); } }
+    var TH_M = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+    function bLabel(b) { return monthly ? TH_M[Number(b.m.slice(5, 7)) - 1] + ' ' + String(Number(b.m.slice(0, 4)) + 543).slice(2) : F.thDate(b.to); }
+    var wv = bk.map(function (w) { var x = C.costByCat(S.data, w.from, w.to).cats[kf.cat], v = isU ? x.cpu : x.cpcv; return v > 0 ? v : null; });
     var first = wv.findIndex(function (v) { return v != null; }); if (first < 0) first = wv.length;
-    var vals = wv.slice(first), wks = wk.slice(first), tv = isU ? t0.tU : t0.tC, cur = isU ? o0.cpu : o0.cpcv;
-    var avg4 = vals.length ? vals.slice(-4).reduce(function (a, v) { return a + v; }, 0) / Math.min(4, vals.length) : null;
-    var best = vals.length ? Math.min.apply(null, vals) : null, worst = vals.length ? Math.max.apply(null, vals) : null;
-    var passN = tv == null ? 0 : vals.filter(function (v) { return v <= tv; }).length, curOk = cur != null && tv != null && cur <= tv;
-    html += '<div class="card kt-card mt"><div class="kt-head"><div class="kt-id"><span class="kt-art">' + pimg(kf.cat) + '</span><div><h2>' + cat.n + '</h2><div class="card-sub">' + (isU ? 'Cost / เครื่องรับซื้อ' : 'Cost / Conversion') + ' รายสัปดาห์' + (wks.length ? ' · เริ่มมีข้อมูล ' + F.thDate(wks[0].to) : '') + '</div></div></div>' +
+    var unitTxt = monthly ? 'รายเดือน' : 'รายวัน', avgN = monthly ? 3 : 7, avgTxt = monthly ? 'เฉลี่ย 3 เดือนล่าสุด' : 'เฉลี่ย 7 วันล่าสุด';
+    var wks = bk.slice(first), vals = wv.slice(first).map(function (v) { return v; }), tv = isU ? t0.tU : t0.tC, cur = isU ? o0.cpu : o0.cpcv;
+    var nn = vals.filter(function (v) { return v != null; }), lastN = nn.slice(-avgN);
+    var avg4 = lastN.length ? lastN.reduce(function (a, v) { return a + v; }, 0) / lastN.length : null;
+    var best = nn.length ? Math.min.apply(null, nn) : null, worst = nn.length ? Math.max.apply(null, nn) : null;
+    var passN = tv == null ? 0 : nn.filter(function (v) { return v <= tv; }).length, curOk = cur != null && tv != null && cur <= tv;
+    html += '<div class="card kt-card mt"><div class="kt-head"><div class="kt-id"><span class="kt-art">' + pimg(kf.cat) + '</span><div><h2>' + cat.n + '</h2><div class="card-sub">' + (isU ? 'Cost / เครื่องรับซื้อ' : 'Cost / Conversion') + ' ' + unitTxt + (wks.length ? ' · เริ่มมีข้อมูล ' + bLabel(wks[0]) : '') + '</div></div></div>' +
       '<div class="tabs" style="margin:0"><button data-km="unit" class="' + (isU ? 'on' : '') + '">Cost / เครื่อง</button><button data-km="conv" class="' + (!isU ? 'on' : '') + '">Cost / Conversion</button></div></div>' +
       '<div class="kt5">' +
         '<div class="kt1 ' + (cur == null || tv == null ? '' : curOk ? 'g' : 'b') + '"><span>ช่วงที่เลือก</span><b data-n>' + nb(cur) + '<small>บาท</small></b><em>' + (cur == null || tv == null ? '–' : (curOk ? '▼ ถูกกว่าเป้า ' : '▲ แพงกว่าเป้า ') + F.baht(Math.abs(cur - tv))) + '</em></div>' +
         '<div class="kt1 y"><span>เป้า</span><b data-n>' + nb(tv) + '<small>บาท</small></b><em>ไม่เกินเส้นนี้ = ผ่าน</em></div>' +
-        '<div class="kt1"><span>เฉลี่ย 4 สัปดาห์</span><b data-n>' + nb(avg4) + '<small>บาท</small></b><em>' + (avg4 == null || tv == null ? '–' : avg4 <= tv ? 'อยู่ในเป้า' : 'สูงกว่าเป้า ' + Math.round(pctOf(avg4, tv)) + '%') + '</em></div>' +
-        '<div class="kt1"><span>ดีที่สุด / แย่ที่สุด</span><b data-n><i class="gt">' + nb(best) + '</i> / <i class="bt">' + nb(worst) + '</i></b><em>' + (vals.length ? F.thDate(wks[vals.indexOf(best)].to) + ' / ' + F.thDate(wks[vals.indexOf(worst)].to) : '–') + '</em></div>' +
-        '<div class="kt1"><span>สัปดาห์ที่ผ่านเป้า</span><b data-n>' + passN + '<small>จาก ' + vals.length + '</small></b><div class="wdots">' + vals.map(function (v) { return '<i class="' + (tv == null ? '' : v <= tv ? 'g' : 'b') + '"></i>'; }).join('') + '</div></div>' +
+        '<div class="kt1"><span>' + avgTxt + '</span><b data-n>' + nb(avg4) + '<small>บาท</small></b><em>' + (avg4 == null || tv == null ? '–' : avg4 <= tv ? 'อยู่ในเป้า' : 'สูงกว่าเป้า ' + Math.round(pctOf(avg4, tv)) + '%') + '</em></div>' +
+        '<div class="kt1"><span>ดีที่สุด / แย่ที่สุด</span><b data-n><i class="gt">' + nb(best) + '</i> / <i class="bt">' + nb(worst) + '</i></b><em>' + (vals.length ? bLabel(wks[vals.indexOf(best)]) + ' / ' + bLabel(wks[vals.indexOf(worst)]) : '–') + '</em></div>' +
+        '<div class="kt1"><span>' + (monthly ? 'เดือนที่ผ่านเป้า' : 'วันที่ผ่านเป้า') + '</span><b data-n>' + passN + '<small>จาก ' + nn.length + (monthly ? ' เดือน' : ' วัน') + '</small></b><div class="wdots">' + vals.map(function (v) { return '<i class="' + (tv == null ? '' : v <= tv ? 'g' : 'b') + '"></i>'; }).join('') + '</div></div>' +
       '</div>' +
-      '<div class="kt-lg"><span><i class="g"></i>ผ่านเป้า</span><span><i class="b"></i>เกินเป้า</span><span><i class="dash"></i>เป้า ' + F.baht(tv) + '</span><span><i class="avg"></i>เฉลี่ย 4 สัปดาห์</span></div>' +
+      '<div class="kt-lg"><span><i class="g"></i>ผ่านเป้า</span><span><i class="b"></i>เกินเป้า</span><span><i class="dash"></i>เป้า ' + F.baht(tv) + '</span><span><i class="avg"></i>' + avgTxt + '</span></div>' +
       '<div class="wbars-box"><svg class="wbars" id="chK"></svg><div class="wtip" id="chKtip"></div></div></div>';
 
     // 3) เทียบเป้าทุกหมวด (แท่งออกจากเส้นกลาง)
@@ -1689,7 +1698,7 @@
           return '<td title="' + F.baht(v) + ' (เป้า ' + F.baht(t) + ')" style="background:color-mix(in srgb,' + (d > 0 ? 'var(--bad)' : 'var(--good)') + ' ' + a + '%,var(--bg-soft))">' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : Math.round(v)) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table>';
     }
 
-    S.drawCharts = function () { drawWeekBars($('#chK'), $('#chKtip'), vals, wks.map(function (w) { return F.thDate(w.to); }), wks.map(function (w) { return F.thRange(w.from, w.to); }), tv, avg4, isU); };
+    S.drawCharts = function () { drawWeekBars($('#chK'), $('#chKtip'), vals, wks.map(bLabel), wks.map(function (w) { return monthly ? bLabel(w) : F.thDate(w.to, true); }), tv, avg4, isU); };
     S.drawCharts(); Charts.countUp($('#page'));
     $$('[data-kp]').forEach(function (b) { b.onclick = function () { kf.preset = b.dataset.kp; pageKpi(); }; });
     if ($('#kFrom')) { $('#kFrom').onchange = function () { kf.from = this.value; pageKpi(); }; $('#kTo').onchange = function () { kf.to = this.value; pageKpi(); }; }
@@ -1711,7 +1720,7 @@
     svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.style.height = H + 'px';
     if (!vals.length) { svg.innerHTML = '<text x="' + W / 2 + '" y="' + H / 2 + '" text-anchor="middle" class="wb-empty">ยังไม่มีข้อมูลรายสัปดาห์</text>'; return; }
     var pw = W - L - R, ph = H - T - B, n = vals.length, gw = pw / n, bw = Math.min(nar ? 34 : 72, gw * .62), base = T + ph;
-    var top = Math.max.apply(null, vals.concat([t || 0])) * 1.22 || 1;
+    var top = Math.max.apply(null, vals.filter(function (v) { return v != null; }).concat([t || 0])) * 1.22 || 1;
     function y(v) { return base - v / top * ph; }
     function bd(x, yy) { var r = Math.min(10, (base - yy) / 2, bw / 2); return 'M' + x + ' ' + base + 'V' + (yy + r) + 'Q' + x + ' ' + yy + ' ' + (x + r) + ' ' + yy + 'H' + (x + bw - r) + 'Q' + (x + bw) + ' ' + yy + ' ' + (x + bw) + ' ' + (yy + r) + 'V' + base + 'Z'; }
     function k(v) { return nar && v >= 1000 ? (v / 1000).toFixed(1) + 'k' : F.int(Math.round(v)); }
@@ -1719,9 +1728,10 @@
     if (t != null) o += '<rect x="' + L + '" y="' + y(t) + '" width="' + pw + '" height="' + (base - y(t)) + '" rx="8" class="wb-zone"/>';
     o += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + base + '" y2="' + base + '" class="wb-base"/>';
     vals.forEach(function (v, i) {
+      if (v == null) { var cx0 = L + i * gw + gw / 2; if (!nar || n <= 6 || (n - 1 - i) % 2 === 0) o += '<text class="wb-x" x="' + cx0 + '" y="' + (base + 20) + '" text-anchor="middle">' + labels[i] + '</text>'; o += '<rect x="' + (cx0 - Math.min(nar ? 34 : 72, gw * .62) / 2) + '" y="' + (base - 6) + '" width="' + Math.min(nar ? 34 : 72, gw * .62) + '" height="6" rx="3" fill="var(--line)"/>'; bars.push(null); return; }
       var cx = L + i * gw + gw / 2, x = cx - bw / 2, ok = t == null || v <= t, dp = t ? Math.round((v - t) / t * 100) : null;
       bars.push({ x: x, yy: y(v) });
-      o += '<path class="wb-bar ' + (ok ? 'g' : 'b') + '" d="' + bd(x, base) + '"/>';
+      o += '<path class="wb-bar ' + (t == null ? 'n' : ok ? 'g' : 'b') + '" d="' + bd(x, base) + '"/>';
       var show = !nar || n <= 6 || (n - 1 - i) % 2 === 0;
       o += '<text class="wb-val" x="' + cx + '" y="' + (base - 8) + '" text-anchor="middle" style="opacity:0' + (nar ? ';font-size:11px' : '') + (show ? '' : ';display:none') + '">' + k(v) + '</text>';
       if (show) o += '<text class="wb-x" x="' + cx + '" y="' + (base + 20) + '" text-anchor="middle">' + labels[i] + '</text>';
@@ -1740,14 +1750,14 @@
     var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     (function grow(now) {
       var done = true;
-      bars.forEach(function (br, j) { var p = still ? 1 : Math.max(0, Math.min(1, (now - t0 - j * 70) / 800)); if (p < 1) done = false; var e = 1 - Math.pow(1 - p, 3), yy = base - (base - br.yy) * e;
+      var bj = 0; bars.forEach(function (br) { if (!br) return; var j = bj++; var p = still ? 1 : Math.max(0, Math.min(1, (now - t0 - j * 70) / 800)); if (p < 1) done = false; var e = 1 - Math.pow(1 - p, 3), yy = base - (base - br.yy) * e;
         P[j].setAttribute('d', bd(br.x, yy)); Lb[j].setAttribute('y', yy - 9); Lb[j].style.opacity = Math.min(1, p * 1.6); });
       if (!done) requestAnimationFrame(grow);
     })(t0);
     $$('.wb-hv', svg).forEach(function (r) {
       r.onmouseenter = function () { var i = +r.dataset.i, v = vals[i], bx = svg.getBoundingClientRect();
-        tip.innerHTML = '<b>สัปดาห์ ' + tips[i] + '</b><div><span>' + (isU ? 'Cost / เครื่อง' : 'Cost / Conv.') + '</span><span>' + F.baht(v) + '</span></div>' + (t ? '<div><span>เทียบเป้า</span><span>' + (v <= t ? 'ต่ำกว่า ' : 'เกิน ') + Math.abs(Math.round((v - t) / t * 100)) + '%</span></div>' : '');
-        tip.style.left = ((L + i * gw + gw / 2) / W * bx.width) + 'px'; tip.style.top = (y(v) / H * bx.height + 40) + 'px'; tip.style.opacity = 1; };
+        tip.innerHTML = '<b>' + tips[i] + '</b>' + (v == null ? '<div>ไม่มีเครื่องรับซื้อ / ไม่มีค่า Ads</div>' : '<div><span>' + (isU ? 'Cost / เครื่อง' : 'Cost / Conv.') + '</span><span>' + F.baht(v) + '</span></div>' + (t ? '<div><span>เทียบเป้า</span><span>' + (v <= t ? 'ต่ำกว่า ' : 'เกิน ') + Math.abs(Math.round((v - t) / t * 100)) + '%</span></div>' : '')) ;
+        tip.style.left = ((L + i * gw + gw / 2) / W * bx.width) + 'px'; tip.style.top = (y(v == null ? 0 : v) / H * bx.height + 40) + 'px'; tip.style.opacity = 1; };
       r.onmouseleave = function () { tip.style.opacity = 0; };
     });
   }
