@@ -26,9 +26,12 @@ var FB_AD_ACCOUNT = 'act_1153541378984020';
 var FB_API = 'https://graph.facebook.com/v23.0/';
 var FB_FIRST_DAYS = 90;   // ครั้งแรกดึงย้อนหลังกี่วัน
 var FB_REFETCH_DAYS = 3;  // ดึงซ้ำย้อนหลังกี่วันทุกรอบ (Facebook ยังปรับตัวเลขช่วงล่าสุด)
-var FB_INBOX_SINCE = '2026-09-01'; // ดึงรายชื่อคนทักเพจตั้งแต่วันนี้เป็นต้นไป
+var FB_INBOX_SINCE = '2026-09-01';
+// ชีตภายนอก (อ่านอย่างเดียว — ระบบไม่เขียนอะไรกลับไป)
+var PURCHASE_SHEET_ID = '1hsrvfwvkpZJE5Q6-75Fj5xg0FtePA-TceF8mJ8KF6iU'; // BIGCAT-TEST · แท็บ Orders_MM_YYYY
+var METRICS_SHEET_ID  = '1AEwjnQ0komRSwLi2-8TUj-SxAM0jvUgKYG1THfA-80Y'; // Google Ads · แท็บ METRICS // ดึงรายชื่อคนทักเพจตั้งแต่วันนี้เป็นต้นไป
 var FB_PAGE_ID = '';      // ว่าง = หาเพจให้เองจากโทเคน (ถ้ามีหลายเพจให้ใส่ ID เพจ Bigcat ตรงนี้)
-var BACKEND_VERSION = 7; // หน้าเว็บจะเช็คเลขนี้ — ถ้าต่ำกว่าที่ต้องการจะไม่ยอมบันทึก (กันข้อมูลหาย)
+var BACKEND_VERSION = 8; // หน้าเว็บจะเช็คเลขนี้ — ถ้าต่ำกว่าที่ต้องการจะไม่ยอมบันทึก (กันข้อมูลหาย)
 
 // ====== โครงสร้างตาราง ======
 var SCHEMA = {
@@ -49,10 +52,16 @@ var SCHEMA = {
   Spend:  ['id', 'date', 'adset', 'amount', 'note', 'created_by', 'created_at', 'campaign', 'date_to', 'results', 'source'],
   Users:  ['name', 'pin_hash', 'active'],
   Config: ['key', 'value'],
-  Log:    ['at', 'user', 'action', 'sheet', 'row_id', 'data']
+  Log:    ['at', 'user', 'action', 'sheet', 'row_id', 'data'],
+  // ประสิทธิภาพโฆษณา Facebook รายวัน ระดับโฆษณา
+  FbAds:  ['date', 'campaign', 'adset', 'ad', 'spend', 'impressions', 'reach', 'clicks', 'chats'],
+  // Google Ads รายวัน (คัดลอกจากแท็บ METRICS)
+  GAds:   ['date', 'campaign', 'cost', 'conversions', 'impressions', 'clicks'],
+  // รับซื้อสำเร็จ (คัดลอกจากแท็บ Orders_MM_YYYY ของบริษัท)
+  Purchases: ['product_id', 'buy_date', 'seller', 'category', 'fb', 'line', 'bought', 'repair', 'sell', 'updated_at']
 };
 // คอลัมน์ที่ต้องเก็บเป็นข้อความ: วันที่ (กันชีตแปลงรูปแบบ) และ ID ของ Facebook (ยาวเกิน 15 หลัก ถ้าเป็นตัวเลขชีตจะปัดเลขท้ายทิ้ง)
-var TEXT_COL = /date|psid|fb_id|chat_id/;
+var TEXT_COL = /date|psid|fb_id|chat_id|product_id/;
 var DEFAULT_CONFIG = { target_cost_per_case: 1000, brand: 'BIGCAT' };
 var STATUSES = ['1-ทักแล้วเงียบ', '2-มีข้อมูลเครื่อง', 'X-ของไม่ตรง', '3-ประเมินราคาแล้ว',
                 '7-สินค้าไม่รับซื้อ', '4-นัดรับของ', '5-ปิดการขาย', '6-ขอซื้อสินค้า'];
@@ -221,6 +230,9 @@ function bootstrap_(user) {
     campaigns: readTable_('Campaigns'),
     budgets: readTable_('Budgets'),
     adsets: readTable_('AdSets'),
+    fbads: tableOrEmpty_('FbAds'),
+    gads: tableOrEmpty_('GAds'),
+    purchases: tableOrEmpty_('Purchases').map(function (r) { return [r.buy_date, r.category, r.fb ? 1 : 0, r.line ? 1 : 0, Number(r.bought) || 0, Number(r.repair) || 0, Number(r.sell) || 0, r.fb || '']; }),
     inbox: tableOrEmpty_('Inbox').filter(function (r) { return r.status !== 'ad' && (!r.first_date || String(r.first_date) >= FB_INBOX_SINCE); }),
     users: readTable_('Users').map(function (r) { return { name: r.name, active: isTrue_(r.active) }; }),
     statuses: STATUSES,
@@ -729,6 +741,14 @@ function syncFacebook_(user) {
     time_range: JSON.stringify({ since: since, until: today }),
     fields: 'campaign_id,campaign_name,spend,actions'
   });
+  var adIns = [];
+  try {
+    adIns = fbGetAll_(FB_AD_ACCOUNT + '/insights', {
+      level: 'ad', time_increment: 1, limit: 500,
+      time_range: JSON.stringify({ since: since, until: today }),
+      fields: 'campaign_id,adset_name,ad_name,spend,impressions,reach,clicks,actions'
+    });
+  } catch (e) { adIns = null; } // ไม่กระทบค่า Ads หลัก
 
   var spentCamp = {}, firstSpend = {}, lastSpend = {};
   ins.forEach(function (r) {
@@ -813,6 +833,22 @@ function syncFacebook_(user) {
     spend.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
     rewriteTable_('Spend', spend);
 
+    // ---- 5.1) ประสิทธิภาพรายโฆษณา (คนเห็น/คลิก/แชท) ----
+    if (adIns) {
+      var fa = tableOrEmpty_('FbAds').filter(function (x) { return String(x.date) < since; });
+      adIns.forEach(function (r) {
+        var camp = campName[r.campaign_id];
+        if (!camp) return;
+        var msg = 0;
+        (r.actions || []).forEach(function (a) { if (a.action_type === 'onsite_conversion.messaging_conversation_started_7d') msg = Number(a.value) || 0; });
+        if (!(Number(r.spend) > 0) && !(Number(r.impressions) > 0)) return;
+        fa.push({ date: r.date_start, campaign: camp, adset: r.adset_name || '', ad: r.ad_name || '', spend: Math.round((Number(r.spend) || 0) * 100) / 100,
+                  impressions: Number(r.impressions) || 0, reach: Number(r.reach) || 0, clicks: Number(r.clicks) || 0, chats: msg });
+      });
+      fa.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+      rewriteTable_('FbAds', fa);
+    }
+
     // ---- 6) รอบการยิง: งบ/วันที่ตั้งใน Facebook ตอนนี้ ----
     var budgets = readTable_('Budgets'), yest = addDays_(today, -1);
     function level(camp, adset, active, amount, fbId) {
@@ -863,6 +899,9 @@ function syncFacebook_(user) {
     sum.inboxError = String(e && e.message || e);
     setConfig_('fb_inbox_error', sum.inboxError);
   }
+  // ---- 8) ชีตภายนอก: Google Ads (METRICS) + รับซื้อ (Orders) — อ่านอย่างเดียว ----
+  try { sum.gads = syncGAds_(); setConfig_('gads_error', ''); } catch (e) { sum.gadsError = String(e.message || e); setConfig_('gads_error', sum.gadsError); }
+  try { sum.purchases = syncPurchases_(); setConfig_('purchase_error', ''); } catch (e) { sum.purchaseError = String(e.message || e); setConfig_('purchase_error', sum.purchaseError); }
   setConfig_('fb_last_sync', new Date().toISOString());
   setConfig_('fb_last_result', JSON.stringify(sum));
   log_(user, 'syncFacebook', 'Spend', '', sum);
@@ -1045,4 +1084,66 @@ function setConfig_(key, value) {
   var rowNo = idx < 0 ? sh.getLastRow() + 1 : idx + 2;
   sh.getRange(rowNo, 1).setValue(key);
   sh.getRange(rowNo, 2).setNumberFormat('@').setValue(String(value)); // เก็บเป็นข้อความ กันชีตแปลงเป็นวันที่
+}
+
+
+// ============================================================
+// ชีตภายนอก — อ่านอย่างเดียว แล้วคัดลอกมาเก็บในชีตของเรา
+// ============================================================
+function num_(v) { var n = Number(String(v == null ? '' : v).replace(/[,฿\s%]/g, '')); return isNaN(n) ? 0 : n; }
+function headerIndex_(head) { var m = {}; head.forEach(function (h, i) { m[String(h).trim()] = i; }); return m; }
+function syncExternal() { Logger.log(JSON.stringify({ gads: syncGAds_(), purchases: syncPurchases_() })); }
+
+function syncGAds_() {
+  if (!METRICS_SHEET_ID) return 0;
+  var sh = SpreadsheetApp.openById(METRICS_SHEET_ID).getSheetByName('METRICS');
+  if (!sh) throw new Error('ไม่พบแท็บ METRICS');
+  var v = sh.getDataRange().getDisplayValues();
+  var h = headerIndex_(v[0]), out = [];
+  ['date', 'campaign', 'cost', 'conversions'].forEach(function (k) { if (h[k] == null) throw new Error('แท็บ METRICS ไม่มีคอลัมน์ ' + k); });
+  for (var i = 1; i < v.length; i++) {
+    var r = v[i], d = normDate_(r[h.date]);
+    if (!d || !r[h.campaign]) continue;
+    out.push({ date: d, campaign: String(r[h.campaign]).trim(), cost: num_(r[h.cost]), conversions: num_(r[h.conversions]),
+               impressions: h.impressions != null ? num_(r[h.impressions]) : 0, clicks: h.clicks != null ? num_(r[h.clicks]) : 0 });
+  }
+  // ซ้ำ (วันเดียวกัน+แคมเปญเดียวกัน) → ใช้แถวล่าสุด
+  var map = {};
+  out.forEach(function (r) { map[r.date + '|' + r.campaign] = r; });
+  out = Object.keys(map).map(function (k) { return map[k]; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+  var lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try { rewriteTable_('GAds', out); } finally { lock.releaseLock(); }
+  return out.length;
+}
+
+var MONTH_EN_ = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+function buyDate_(s) {
+  var m = /^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/.exec(String(s).trim());
+  if (m && MONTH_EN_[m[2].toLowerCase()]) return m[3] + '-' + pad_(MONTH_EN_[m[2].toLowerCase()]) + '-' + pad_(Number(m[1]));
+  return normDate_(s);
+}
+function syncPurchases_() {
+  if (!PURCHASE_SHEET_ID) return 0;
+  var ss = SpreadsheetApp.openById(PURCHASE_SHEET_ID), out = [], now = new Date().toISOString();
+  ss.getSheets().forEach(function (sh) {
+    if (!/^Orders_\d{2}_\d{4}$/.test(sh.getName())) return;
+    var v = sh.getDataRange().getDisplayValues();
+    if (v.length < 2) return;
+    var h = headerIndex_(v[0]);
+    if (h.ProductID == null || h['หมวดหมู่'] == null) return;
+    for (var i = 1; i < v.length; i++) {
+      var r = v[i], id = String(r[h.ProductID] || '').trim();
+      if (!id) continue;
+      out.push({ product_id: id, buy_date: buyDate_(r[h.BuyDate]), seller: h['ชื่อคนขาย'] != null ? r[h['ชื่อคนขาย']] : '',
+        category: String(r[h['หมวดหมู่']] || '').trim(), fb: h.FB != null ? String(r[h.FB] || '').trim() : '', line: h.LINE != null ? String(r[h.LINE] || '').trim() : '',
+        bought: h.BoughtPrice != null ? num_(r[h.BoughtPrice]) : 0, repair: h.RepairCost != null ? num_(r[h.RepairCost]) : 0,
+        sell: h.SellPrice != null ? num_(r[h.SellPrice]) : 0, updated_at: now });
+    }
+  });
+  var map = {};
+  out.forEach(function (r) { map[r.product_id] = r; });
+  out = Object.keys(map).map(function (k) { return map[k]; }).sort(function (a, b) { return a.buy_date < b.buy_date ? -1 : 1; });
+  var lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try { rewriteTable_('Purchases', out); } finally { lock.releaseLock(); }
+  return out.length;
 }
