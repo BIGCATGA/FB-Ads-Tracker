@@ -278,23 +278,28 @@
     el.innerHTML = '<svg class="chart big' + (animT ? ' anim' : '') + '" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(o.aria || '') + '">' + out + '</svg>';
   }
   /** ตัวเลขวิ่งจาก 0 → ค่าจริง (การ์ดตัวเลข) */
+  /** ตัวเลขวิ่ง: .kpi-v/.facts b/... และทุก [data-n] (รองรับหลายตัวเลขในกล่องเดียว) */
   function countUp(root) {
     if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    Array.prototype.forEach.call((root || document).querySelectorAll('.kpi-v, .facts b, .cc2-stats b, .xp-v'), function (el) {
-      if (el.children.length) return;
-      var m = /^([^\d]*?)(\d[\d,]*(?:\.\d+)?)(.*)$/.exec(el.textContent);
+    var nodes = [];
+    Array.prototype.forEach.call((root || document).querySelectorAll('.kpi-v, .facts b, .cc2-stats b, .xp-v, [data-n]'), function (el) {
+      var w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null), n;
+      while ((n = w.nextNode())) if (/\d/.test(n.nodeValue) && nodes.indexOf(n) < 0) nodes.push(n);
+    });
+    nodes.forEach(function (node) {
+      var m = /^([^\d]*?)(\d[\d,]*(?:\.\d+)?)(.*)$/.exec(node.nodeValue);
       if (!m) return;
       var target = Number(m[2].replace(/,/g, '')), dec = (m[2].split('.')[1] || '').length, comma = m[2].indexOf(',') >= 0 || target >= 1000;
       if (!(target > 0)) return;
-      var t0 = null, dur = 900;
+      var t0 = null, dur = 1000;
       function fmt(v) { var s2 = v.toFixed(dec); return comma ? Number(s2).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec }) : s2; }
       function step(ts) {
         if (!t0) t0 = ts;
         var p = Math.min(1, (ts - t0) / dur), e = 1 - Math.pow(1 - p, 3);
-        el.textContent = m[1] + fmt(target * e) + m[3];
+        node.nodeValue = m[1] + fmt(target * e) + m[3];
         if (p < 1) requestAnimationFrame(step);
       }
-      el.textContent = m[1] + fmt(0) + m[3];
+      node.nodeValue = m[1] + fmt(0) + m[3];
       requestAnimationFrame(step);
     });
   }

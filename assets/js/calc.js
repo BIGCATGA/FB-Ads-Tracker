@@ -447,7 +447,7 @@
 
   // ---------- รูปแบบตัวเลข ----------
   var fmtInt = new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 });
-  function baht(n) { return n == null || isNaN(n) ? '–' : fmtInt.format(Math.round(n)) + ' ฿'; }
+  function baht(n) { return n == null || isNaN(n) ? '–' : fmtInt.format(Math.round(n)) + ' บาท'; }
   function int(n) { return n == null || isNaN(n) ? '–' : fmtInt.format(n); }
   function pct(n, d) { return n == null || isNaN(n) ? '–' : (n * 100).toFixed(d == null ? 0 : d) + '%'; }
   var TH_MONTH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
