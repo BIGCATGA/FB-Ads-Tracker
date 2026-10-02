@@ -1116,3 +1116,10 @@ table.t.kt td.gt, table.t.kt td.bt { font-weight: 600; }
 /* รูปสินค้าจริง: กลืนพื้นขาวของรูป jpg เข้ากับกล่อง */
 .pimg img { mix-blend-mode: multiply; padding: 4px; }
 :root[data-theme="dark"] .pimg img { mix-blend-mode: normal; background: #fff; border-radius: 10px; }
+/* v26: เอาพื้นครีมเหลืองออก */
+:root { --tgt: #f3f4f7; --tgt-t: #8a5d00; --primary-soft: #f4f4f7; }
+:root[data-theme="dark"] { --tgt: #22222c; --primary-soft: #26262f; }
+.kc-h .kc-art, .kt-art, :root[data-theme="dark"] .kc-h .kc-art, :root[data-theme="dark"] .kt-art { background: transparent !important; padding: 4px; }
+.pimg img { padding: 0; }
+.pimg.mb img { transform: scale(1.45); }
+.wb-bar.n { fill: var(--primary); }
