@@ -634,7 +634,7 @@
     if (rows.length || (data.fbads || []).length) return rows;
     // ยังไม่มีข้อมูลรายโฆษณา → ใช้ค่า Ads รายแคมเปญแทน
     return (data.spend || []).filter(function (s) { return s.source === 'fb' && s.date >= from && s.date <= to; })
-      .map(function (s) { return { date: s.date, campaign: s.campaign, adset: '', ad: '', spend: Number(s.amount) || 0, impressions: 0, reach: 0, clicks: 0, chats: Number(s.results) || 0 }; });
+      .map(function (s) { return { date: s.date, campaign: s.campaign, adset: '', ad: '', spend: Number(s.amount) || 0, impressions: 0, reach: 0, clicks: 0, link_clicks: 0, chats: Number(s.results) || 0 }; });
   }
   function costByCat(data, from, to) {
     var map = catMap(data), cats = {}, mixed = { fb: 0, fbc: 0, gg: 0, ggc: 0 };
@@ -690,13 +690,13 @@
   }
   /** ประสิทธิภาพ FB ช่วงหนึ่ง (แคมเปญเดียว หรือทั้งหมด) */
   function fbPerf(data, from, to, camp, ad) {
-    var o = { spend: 0, imp: 0, reach: 0, clk: 0, chat: 0, days: {} };
+    var o = { spend: 0, imp: 0, reach: 0, clk: 0, lclk: 0, chat: 0, days: {} };
     fbRows(data, from, to).forEach(function (r) {
       if (camp && r.campaign !== camp) return; if (ad && r.ad !== ad) return;
-      o.spend += Number(r.spend) || 0; o.imp += Number(r.impressions) || 0; o.reach += Number(r.reach) || 0; o.clk += Number(r.clicks) || 0; o.chat += Number(r.chats) || 0;
+      o.spend += Number(r.spend) || 0; o.imp += Number(r.impressions) || 0; o.reach += Number(r.reach) || 0; o.clk += Number(r.clicks) || 0; o.lclk += Number(r.link_clicks) || 0; o.chat += Number(r.chats) || 0;
     });
     o.reach = o.reach * (daysIncl(from, to) > 1 ? 0.72 : 1); // คนเดียวกันเห็นหลายวัน — ประมาณจากผลรวมรายวัน
-    o.ctr = o.imp ? o.clk / o.imp : null; o.cpm = o.imp ? o.spend / o.imp * 1000 : null; o.freq = o.reach ? o.imp / o.reach : null; o.cpc = o.chat ? o.spend / o.chat : null;
+    o.ctr = o.imp ? (o.lclk ? o.lclk : o.clk) / o.imp : null; o.cplc = o.lclk ? o.spend / o.lclk : null; o.cpm = o.imp ? o.spend / o.imp * 1000 : null; o.freq = o.reach ? o.imp / o.reach : null; o.cpc = o.chat ? o.spend / o.chat : null;
     return o;
   }
 

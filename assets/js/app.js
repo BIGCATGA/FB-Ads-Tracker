@@ -1797,8 +1797,11 @@
   // ============================================================
   var PM = {
     cpc: { l: 'ต้นทุนต่อแชท', f: function (v) { return F.baht(v); }, up: false, k: 'pct' },
+    imp: { l: 'อิมเพรสชัน', f: function (v) { return F.int(Math.round(v)); }, up: true, k: 'pct' },
     reach: { l: 'คนเห็นโฆษณา', f: function (v) { return F.int(Math.round(v)); }, up: true, k: 'pct' },
-    ctr: { l: 'CTR (% คนคลิก)', f: function (v) { return F.pct(v, 1); }, up: true, k: 'pt' },
+    lclk: { l: 'คลิกลิงก์', f: function (v) { return F.int(Math.round(v)); }, up: true, k: 'pct' },
+    cplc: { l: 'ต้นทุนต่อคลิกลิงก์', f: function (v) { return F.baht(v); }, up: false, k: 'pct' },
+    ctr: { l: 'CTR ลิงก์ (% คนคลิก)', f: function (v) { return F.pct(v, 1); }, up: true, k: 'pt' },
     freq: { l: 'ความถี่ (เห็นซ้ำ)', f: function (v) { return v == null ? '–' : v.toFixed(1) + ' ครั้ง'; }, up: false, k: 'abs' },
     cpm: { l: 'CPM (ต่อ 1,000 ครั้ง)', f: function (v) { return F.baht(v); }, up: false, k: 'pct' }
   };
@@ -1815,7 +1818,7 @@
     charts.push(['chP', 'line', { labels: days.map(function (d) { return F.thDate(d); }), tips: days.map(function (d) { return F.thDate(d, true); }), height: 300, fmt: met === 'ctr' ? function (v) { return (v * 100).toFixed(1) + '%'; } : met === 'freq' ? function (v) { return v.toFixed(1); } : function (v) { return F.int(Math.round(v)); },
       series: [{ name: 'ช่วงก่อน', color: 'var(--text-3)', width: 2, dash: '5 4', opacity: .6, values: pp }, { name: 'ช่วงนี้', color: 'var(--primary)', width: 3.5, area: true, values: pv }] }]);
     // funnel
-    var st = [['เห็นโฆษณา', cur.reach, old.reach, 'fb', 'Facebook'], ['คลิก', cur.clk, old.clk, 'fb', 'Facebook'], ['ทักแชท', cur.chat, old.chat, 'fb', 'Facebook'],
+    var st = [['เห็นโฆษณา', cur.reach, old.reach, 'fb', 'Facebook'], ['คลิกลิงก์', cur.lclk || cur.clk, old.lclk || old.clk, 'fb', 'Facebook'], ['ทักแชท', cur.chat, old.chat, 'fb', 'Facebook'],
       ['บันทึกเป็น Lead', m.leads, null, 'us', 'แอดมินบันทึก'], ['ประเมินราคา', m.funnel[2] ? m.funnel[2].n : null, null, 'us', 'แอดมินบันทึก'], ['ปิดได้', m.closed, null, 'us', 'แอดมินบันทึก']];
     var bench = [0.02, 0.05, 0.6, 0.5, 0.06], widths = [100, 84, 68, 54, 42, 30], fh = '', worst = null;
     st.forEach(function (s, i) {
