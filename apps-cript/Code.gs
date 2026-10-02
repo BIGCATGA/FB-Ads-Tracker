@@ -54,7 +54,7 @@ var SCHEMA = {
   Config: ['key', 'value'],
   Log:    ['at', 'user', 'action', 'sheet', 'row_id', 'data'],
   // ประสิทธิภาพโฆษณา Facebook รายวัน ระดับโฆษณา
-  FbAds:  ['date', 'campaign', 'adset', 'ad', 'spend', 'impressions', 'reach', 'clicks', 'chats'],
+  FbAds:  ['date', 'campaign', 'adset', 'ad', 'spend', 'impressions', 'reach', 'clicks', 'chats', 'link_clicks'],
   // Google Ads รายวัน (คัดลอกจากแท็บ METRICS)
   GAds:   ['date', 'campaign', 'cost', 'conversions', 'impressions', 'clicks'],
   // รับซื้อสำเร็จ (คัดลอกจากแท็บ Orders_MM_YYYY ของบริษัท)
@@ -115,6 +115,12 @@ function json_(obj) {
 // ============================================================
 // Setup
 // ============================================================
+/** ดึงข้อมูล Facebook ย้อนหลังใหม่ทั้งหมด 90 วัน (ใช้ครั้งเดียวหลังอัปเดต เพื่อเติม "คลิกลิงก์" ของวันเก่า) */
+function refetchFacebook() {
+  setConfig_('fb_synced_until', '');
+  syncFacebook();
+}
+
 function setup() {
   var ss = SpreadsheetApp.getActive();
   Object.keys(SCHEMA).forEach(function (name) {
@@ -573,6 +579,7 @@ function reimportFromOldSheet() {
 
 function rewriteTable_(name, objs) {
   var sh = sheet_(name), cols = SCHEMA[name];
+  sh.getRange(1, 1, 1, cols.length).setValues([cols]); // หัวตารางให้ตรงเสมอ (กันคอลัมน์ใหม่หาย)
   if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, cols.length).clearContent();
   appendObjects_(name, objs);
 }
@@ -746,7 +753,7 @@ function syncFacebook_(user) {
     adIns = fbGetAll_(FB_AD_ACCOUNT + '/insights', {
       level: 'ad', time_increment: 1, limit: 500,
       time_range: JSON.stringify({ since: since, until: today }),
-      fields: 'campaign_id,adset_name,ad_name,spend,impressions,reach,clicks,actions'
+      fields: 'campaign_id,adset_name,ad_name,spend,impressions,reach,clicks,inline_link_clicks,actions'
     });
   } catch (e) { adIns = null; } // ไม่กระทบค่า Ads หลัก
 
@@ -843,7 +850,7 @@ function syncFacebook_(user) {
         (r.actions || []).forEach(function (a) { if (a.action_type === 'onsite_conversion.messaging_conversation_started_7d') msg = Number(a.value) || 0; });
         if (!(Number(r.spend) > 0) && !(Number(r.impressions) > 0)) return;
         fa.push({ date: r.date_start, campaign: camp, adset: r.adset_name || '', ad: r.ad_name || '', spend: Math.round((Number(r.spend) || 0) * 100) / 100,
-                  impressions: Number(r.impressions) || 0, reach: Number(r.reach) || 0, clicks: Number(r.clicks) || 0, chats: msg });
+                  impressions: Number(r.impressions) || 0, reach: Number(r.reach) || 0, clicks: Number(r.clicks) || 0, chats: msg, link_clicks: Number(r.inline_link_clicks) || 0 });
       });
       fa.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
       rewriteTable_('FbAds', fa);
