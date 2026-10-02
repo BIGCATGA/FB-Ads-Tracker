@@ -1517,13 +1517,13 @@
   var PIMG_URL = {
     iphone: 'https://www.apple.com/th/iphone-duo/images/meta/iphone-duo_overview__bmsaaq50eyaa_og.png?202609150114',
     ipad: 'https://instore.studio7thailand.com/apple-product/ipad-pro-m4/images/flex_applecare_small_2x.png?1714498094200',
-    macbook: 'https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/macbook-air-size-unselect-202601-gallery-1_FMT_WHH?wid=690&hei=720&fmt=p-jpg&qlt=80&.v=YTFkSnBPS2tMZFdhaFNRRkx6VnJZaUd4WmthcldkemtncUgvMzhXenFEVndhQ3N1TEt4d0ZKdVZUQ3ZrNzhjK3cxNEx1QmdlVkdRQUhOMXl2K3pkY3dBb0pjWml6bllCL0Y5a1RKc2gxZjlFM2V1RWVXTHBHVzUxMVFmU1Z0Y2ZNdFgzTjZuSWt6SW96N2hDL1hWZkxR&traceId=1',
+    macbook: 'https://www.jib.co.th/img_master/product/original/2026032317003284195_1.jpg',
     notebook: 'https://notebookspec.com/web/wp-content/uploads/2025/11/omen-1.jpg',
     computer: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSxV9JRudbCedPWtotoSIu6GAR2YhgseFRD8YvneKCTYHX3zUzSjN4tIl_Q&s=10'
   };
   function pimg(k) {
     var alt = esc(PIMG_URL[k] || '');
-    return '<span class="pimg' + (k === 'macbook' ? ' mb' : '') + '"><svg viewBox="0 0 100 80" aria-hidden="true">' + (DEV[k] || '') + '</svg><img src="assets/img/' + k + '.png" data-alt="' + alt + '" alt="" referrerpolicy="no-referrer" loading="lazy"' +
+    return '<span class="pimg' + '' + '"><svg viewBox="0 0 100 80" aria-hidden="true">' + (DEV[k] || '') + '</svg><img src="assets/img/' + k + '.png" data-alt="' + alt + '" alt="" referrerpolicy="no-referrer" loading="lazy"' +
       ' onload="this.parentNode.classList.add(\'ok\')" onerror="var a=this.getAttribute(\'data-alt\');if(a){this.removeAttribute(\'data-alt\');this.src=a}else this.remove()"></span>';
   }
   function nb(v) { return v == null || !isFinite(v) ? '–' : F.int(Math.round(v)); }
