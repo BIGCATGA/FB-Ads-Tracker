@@ -613,6 +613,18 @@
     if (c === 'comset gaming' || c === 'comset office') return 'computer';
     return '';
   }
+  /** หมวดของเคสประเมิน/รับซื้อ — ชื่อตรงก่อน แล้วค่อยเดาจากคำ (Notebook-Gaming, โน้ตบุ๊ค, Laptop, NB …) */
+  function itemCat(c) {
+    var k = purchaseCat(c); if (k) return k;
+    var s = String(c || '').toLowerCase().replace(/[\s\-_\/().]+/g, '');
+    if (!s) return '';
+    if (/iphone|ไอโฟน/.test(s)) return 'iphone';
+    if (/ipad|ไอแพด/.test(s)) return 'ipad';
+    if (/macbook|แมคบุ๊|แม็คบุ๊/.test(s)) return 'macbook';
+    if (/notebook|laptop|โน้ตบุ|โน๊ตบุ|โน้ตบุ้|^nb/.test(s)) return 'notebook';
+    if (/comset|comp?set|computer|คอมเซ|คอมเซ็|คอมพิวเตอร์|คอมประกอบ|desktop|^pc/.test(s)) return 'computer';
+    return '';
+  }
   function guessCat(name) {
     var s = String(name || '').toLowerCase();
     if (/iphone/.test(s)) return 'iphone';
@@ -660,14 +672,14 @@
     });
     (data.purchases || []).forEach(function (p) {
       if (p.date < from || p.date > to) return;
-      var t = cats[purchaseCat(p.category)];
+      var t = cats[itemCat(p.category)];
       if (!t) return;
       if (p.fb) t.ufb++; else if (p.line) t.ugg++; else return;
       t.margin += p.sell - p.bought - p.repair;
     });
     (data.estimates || []).forEach(function (e) {
       if (e.date < from || e.date > to) return;
-      var t = cats[purchaseCat(e.category)];
+      var t = cats[itemCat(e.category)];
       if (!t) return;
       if (e.fb) t.efb++; else if (e.line) t.egg++;
     });
@@ -723,7 +735,7 @@
     runsOf: runsOf, needsNormalize: needsNormalize, levelState: levelState, campState: campState, budgetMode: budgetMode, firstStart: firstStart,
     spendDaily: spendDaily, spendCoverage: spendCoverage, runResults: runResults, runningDays: runningDays, daysIncl: daysIncl,
     closeDurations: closeDurations, durationStats: durationStats,
-    experiments: experiments, KPI_CATS: KPI_CATS, purchaseCat: purchaseCat, guessCat: guessCat, catMap: catMap, adCat: adCat, costByCat: costByCat, kpiTargets: kpiTargets, weeksBack: weeksBack, fbPerf: fbPerf, median: median, campaignDaily: campaignDaily, productList: productList, splitProduct: splitProduct, MIN_DAYS: MIN_DAYS,
+    experiments: experiments, KPI_CATS: KPI_CATS, purchaseCat: purchaseCat, itemCat: itemCat, guessCat: guessCat, catMap: catMap, adCat: adCat, costByCat: costByCat, kpiTargets: kpiTargets, weeksBack: weeksBack, fbPerf: fbPerf, median: median, campaignDaily: campaignDaily, productList: productList, splitProduct: splitProduct, MIN_DAYS: MIN_DAYS,
     fmt: { baht: baht, int: int, pct: pct, thDate: thDate, thRange: thRange }
   };
 })();
