@@ -1583,11 +1583,12 @@
         '<div class="kc-h"><span class="kc-art">' + pimg(c.k) + '</span><span class="kc-n"><b>' + c.n + '</b><small>' + F.int(Math.round(o.cv)) + ' Conv.</small></span>' +
           (pu == null ? '<span class="stp n">' + (o.cpu == null ? 'ยังไม่มีข้อมูล' : 'ยังไม่มีเป้า') + '</span>' : '<span class="stp ' + (ok ? 'g' : 'b') + '">' + (ok ? 'ผ่าน ' : 'เกิน ') + sgn(pu) + '</span>') + '</div>' +
         '<div class="kc-v ' + (o.cpu == null ? '' : ok ? 'ok' : 'ng') + '" data-n>' + nb(o.cpu) + (o.cpu == null ? '' : '<small>บาท / เครื่อง</small>') + '</div>' +
-        '<div class="kq">' +
-          '<span class="q tg"><i>เป้า</i><b>' + nb(t.tU) + '</b><small>บาท</small></span>' +
-          '<span class="q bu"><i>รับซื้อ</i><b data-n>' + F.int(o.u) + '</b><small>เครื่อง</small></span>' +
-          '<span class="q es"><i>เคสประเมิน</i><b data-n>' + F.int(o.est || 0) + '</b><small>เคส</small></span>' +
-          '<span class="q wn"><i>Win</i><b>' + (o.win == null ? '–' : Math.round(o.win * 100) + '%') + '</b></span>' +
+        (t.tU == null ? '<div class="ktg">ยังไม่มีเป้า</div>' : '<div class="ktg">เป้า <b>' + nb(t.tU) + '</b> บาท' + (o.cpu == null ? '' : ' · ' + (ok ? 'ถูกกว่าเป้า ' + F.int(Math.round(t.tU - o.cpu)) : 'แพงกว่าเป้า ' + F.int(Math.round(o.cpu - t.tU))) + ' บาท') + '</div>' +
+          (o.cpu == null ? '' : (function () { var mx = Math.max(o.cpu, t.tU) * 1.18; return '<div class="kbar"><i class="' + (ok ? 'g' : 'r') + '" style="width:' + (o.cpu / mx * 100).toFixed(1) + '%"></i><u style="left:' + (t.tU / mx * 100).toFixed(1) + '%"></u></div>'; })())) +
+        '<div class="kq3">' +
+          '<span class="q"><i>รับซื้อ</i><b data-n>' + F.int(o.u) + '</b><small>เครื่อง</small></span>' +
+          '<span class="q"><i>เคสประเมิน</i><b data-n>' + F.int(o.est || 0) + '</b><small>เคส</small></span>' +
+          '<span class="q"><i>Win</i><b>' + (o.win == null ? '–' : Math.round(o.win * 100) + '%') + '</b><small>&nbsp;</small></span>' +
         '</div>' +
         '<div class="kq-c"><span>Cost/Conv. <b>' + F.baht(o.cpcv) + '</b></span>' + (pc == null ? '' : '<span class="stp ' + (pc > 0 ? 'b' : 'g') + '">' + (pc > 0 ? 'เกินเป้า ' : 'ผ่าน ') + sgn(pc) + '</span>') + '</div></button>';
     }).join('') + '</div>';
@@ -1828,8 +1829,8 @@
       C.KPI_CATS.forEach(function (c) { dc[c.k][di].sp += cb[c.k].spend; dc[c.k][di].cv += cb[c.k].cv; });
     }
     function dowRow(name, arr) { var s = 0, c = 0; arr.forEach(function (x) { s += x.sp; c += x.cv; }); var av = c ? s / c : null;
-      return '<tr><td><b>' + esc(name) + '</b>' + (av ? '<div class="muted small">เฉลี่ย ' + F.baht(av) + '</div>' : '') + '</td>' + arr.map(function (x) { if (!x.cv || !av) return '<td class="r muted">–</td>'; var v = x.sp / x.cv, p = (v / av - 1) * 100, col = heatCol(v / av);
-        return '<td><div class="dw" style="background:' + col[1] + ';color:' + col[2] + '"><b>' + F.int(Math.round(v)) + '</b><small>' + (p > 0 ? '+' : '') + Math.round(p) + '%</small></div></td>'; }).join('') + '</tr>'; }
+      return '<tr><td><b>' + esc(name) + '</b>' + (av ? '<div class="muted small">เฉลี่ย ' + F.baht(av) + '</div>' : '') + '</td>' + arr.map(function (x) { if (!x.cv || !av) return '<td class="r muted">–</td>'; var v = x.sp / x.cv, p = (v / av - 1) * 100, hi = Math.abs(p) >= 15;
+        return '<td><div class="dw' + (hi ? (p < 0 ? ' hg' : ' hr') : '') + '"><b>' + F.int(Math.round(v)) + '</b><small>' + (p > 0 ? '+' : '') + Math.round(p) + '%</small></div></td>'; }).join('') + '</tr>'; }
     html += '<div class="card mt"><div class="card-head"><div><h2 class="card-title">Cost / Conversion · วันในสัปดาห์ × หมวดสินค้า</h2><div class="card-sub">Facebook + Google · ตัวเลขใหญ่ = บาทต่อ Conversion · % = เทียบค่าเฉลี่ยของหมวดนั้น</div></div></div>' +
       '<div class="table-wrap"><table class="t dwt"><thead><tr><th>หมวด</th>' + DOW_ORDER.map(function (d) { return '<th>' + DOW_S[d] + '</th>'; }).join('') + '</tr></thead><tbody>' +
       C.KPI_CATS.map(function (c) { return dowRow(c.n, dc[c.k]); }).join('') + '</tbody></table></div></div>';
@@ -1898,8 +1899,7 @@
 
     var items = byHour.map(function (b, i) { return { lab: hhLab(i), tip: hhRange(i) + ' น.', sp: b.sp, cv: b.ch, est: eHour[i] }; });
     html += '<div class="card mt"><div class="card-head"><div><h2 class="card-title">เคสประเมิน + Cost / แชท รายชั่วโมง (Facebook)</h2><div class="card-sub">เคสประเมิน = เคสจาก Facebook ที่โพสต์ในชั่วโมงนั้น · ค่าเฉลี่ย ' + F.baht(avg) + ' / แชท · รวมทุกวันในช่วงที่เลือก</div></div></div>' + barsLegend('แชท') +
-      '<div class="bx"><svg class="hbar" id="hourBars"></svg><div class="es-tip" id="hourTip"></div></div></div>';
-    draw.push(function () { drawBarsEst($('#hourBars'), $('#hourTip'), items, avg, 'แชท'); });
+      estBlocks(items, [['เช้า', '06:00–11:59', [6, 7, 8, 9, 10, 11]], ['บ่าย', '12:00–16:59', [12, 13, 14, 15, 16]], ['เย็น', '17:00–21:59', [17, 18, 19, 20, 21]], ['ดึก', '22:00–05:59', [22, 23, 0, 1, 2, 3, 4, 5]]], avg, 'แชท') + '</div>';
 
     // waste table
     var as = {}; rows.forEach(function (x) { var k = x.campaign + '\u0001' + x.adset, a = as[k] || (as[k] = { c: x.campaign, a: x.adset, h: [] }); var b = a.h[x.hour] || (a.h[x.hour] = { sp: 0, ch: 0 }); b.sp += x.spend; b.ch += x.chats; });
@@ -1941,13 +1941,12 @@
       '<div class="card ts"><span class="l">เคสประเมินจาก LINE</span><span class="v" data-n>' + F.int(eTot) + '<small>เคส</small></span><span class="s">' + (eTot ? 'ค่า Ads ' + F.baht(tot.sp / eTot) + ' / เคส' : '–') + '</span></div>' +
       '<div class="card ts good"><span class="l">วันที่ Cost/Conv. ต่ำสุด</span><span class="v">' + (dLo ? 'วัน' + DOW[dLo.d] : '–') + '</span><span class="s">' + (dLo && avg ? F.baht(dLo.cpc) + ' / Conv. · ต่ำกว่าเฉลี่ย ' + Math.round((1 - dLo.cpc / avg) * 100) + '%' : '') + '</span></div>' +
       '<div class="card ts bad"><span class="l">วันที่ Cost/Conv. สูงสุด</span><span class="v">' + (dHi ? 'วัน' + DOW[dHi.d] : '–') + '</span><span class="s">' + (dHi && avg ? F.baht(dHi.cpc) + ' / Conv. · สูงกว่าเฉลี่ย ' + Math.round((dHi.cpc / avg - 1) * 100) + '%' : '') + '</span></div></div>';
-    var di = days.map(function (d) { var b = byDay[d] || { sp: 0, cv: 0 }; return { lab: DOW_S[dowOf(d)] + ' ' + F.thDate(d), tip: 'วัน' + DOW[dowOf(d)] + ' ' + F.thDate(d, true), sp: b.sp, cv: b.cv, est: eDay[d] || 0 }; });
+    var di = days.map(function (d) { var b = byDay[d] || { sp: 0, cv: 0 }; return { lab: DOW_S[dowOf(d)] + '. ' + Number(d.slice(8)), tip: 'วัน' + DOW[dowOf(d)] + ' ' + F.thDate(d, true), sp: b.sp, cv: b.cv, est: eDay[d] || 0 }; });
     html += '<div class="card mt"><div class="card-head"><div><h2 class="card-title">เคสประเมิน + Cost / Conversion รายวัน (Google)</h2><div class="card-sub">เคสประเมิน = เคสจาก LINE วันนั้น · ค่าเฉลี่ย ' + F.baht(avg) + ' / Conv.</div></div></div>' + barsLegend('Conv.') +
-      '<div class="bx"><svg class="hbar" id="gDay"></svg><div class="es-tip" id="gDayTip"></div></div></div>';
+      estBlocks(di, weekGroups(days), avg, 'Conv.') + '</div>';
     var wi = dow.map(function (x, i) { return { lab: 'วัน' + DOW[DOW_ORDER[i]], tip: 'วัน' + DOW[DOW_ORDER[i]] + ' · รวม ' + x.n + ' วันในช่วงนี้', sp: x.sp, cv: x.cv, est: x.est }; });
     html += '<div class="card mt"><div class="card-head"><div><h2 class="card-title">เคสประเมิน + Cost / Conversion ตามวันในสัปดาห์ (Google)</h2><div class="card-sub">รวมทุกสัปดาห์ในช่วงที่เลือก · เคสประเมิน = เคสจาก LINE รวมของวันนั้น</div></div></div>' + barsLegend('Conv.') +
-      '<div class="bx"><svg class="hbar" id="gDow"></svg><div class="es-tip" id="gDowTip"></div></div></div>';
-    draw.push(function () { drawBarsEst($('#gDay'), $('#gDayTip'), di, avg, 'Conv.'); drawBarsEst($('#gDow'), $('#gDowTip'), wi, avg, 'Conv.'); });
+      estBlocks(wi, [['วันธรรมดา', 'จันทร์–ศุกร์', [0, 1, 2, 3, 4]], ['เสาร์–อาทิตย์', 'วันหยุด', [5, 6]]], avg, 'Conv.', true) + '</div>';
     return html;
   }
   /** แท่ง Cost/Conv. (เขียว/แดงเทียบค่าเฉลี่ย) · 2 แถวบนสุดมีป้ายกำกับ: "เคสประเมิน" และ "Cost / …" ตรงกับแท่งแต่ละแท่ง */
@@ -1983,7 +1982,26 @@
     });
   }
   function barsLegend(unit) {
-    return '<div class="bxl"><span><em class="bxs g"></em>Cost / ' + unit + ' ต่ำกว่าค่าเฉลี่ย</span><span><em class="bxs b"></em>สูงกว่าค่าเฉลี่ย</span><span><em class="bxd"></em>ค่าเฉลี่ย</span><span class="muted">ชี้ที่แท่งเพื่อดูยอดเงินและจำนวน ' + unit + '</span></div>';
+    return '<div class="bxl"><span><em class="bxe2"></em>เคสประเมิน</span><span><em class="bxs g"></em>Cost / ' + unit + ' ถูกกว่าเฉลี่ย</span><span><em class="bxs b"></em>แพงกว่าเฉลี่ย</span></div>';
+  }
+  /** กลุ่มรายสัปดาห์ (จันทร์–อาทิตย์) จากรายการวัน → [ชื่อ, ช่วง, index] */
+  function weekGroups(days) {
+    var g = [], cur = null;
+    days.forEach(function (d, i) { var dw = dowOf(d); if (!cur || dw === 1) { cur = ['สัปดาห์ ' + F.thDate(d), '', []]; g.push(cur); } cur[2].push(i); cur[1] = F.thRange(days[cur[2][0]], d); });
+    return g.reverse();
+  }
+  /** การ์ดแบ่งช่วง: แต่ละกลุ่มมี เคสประเมินรวม + Cost เฉลี่ย และรายการย่อย (แถบเหลือง = เคส, ป้าย = Cost) */
+  function estBlocks(items, groups, avg, unit, wide) {
+    var me = Math.max.apply(null, items.map(function (x) { return x.est; }).concat([1]));
+    return '<div class="eblk' + (wide ? ' wide' : '') + '">' + groups.map(function (g) {
+      var es = 0, sp = 0, cv = 0; g[2].forEach(function (i) { var x = items[i]; if (!x) return; es += x.est; sp += x.sp; cv += x.cv; });
+      var ca = cv ? sp / cv : null;
+      return '<div class="ebk"><h4>' + esc(g[0]) + '</h4><div class="tm">' + esc(g[1]) + '</div>' +
+        '<div class="two"><div><i>เคสประเมิน</i><b>' + F.int(es) + '</b></div><div><i>Cost / ' + unit + ' เฉลี่ย</i><b class="' + (ca == null ? '' : ca <= avg ? 'g' : 'r') + '">' + (ca == null ? '–' : F.int(Math.round(ca))) + '</b></div></div>' +
+        '<div class="hrs">' + g[2].map(function (i) { var x = items[i]; if (!x) return ''; var c = x.cv ? x.sp / x.cv : null;
+          return '<div class="hr" title="' + esc(x.tip) + ' · ใช้เงิน ' + F.baht(x.sp) + ' · ' + F.int(Math.round(x.cv)) + ' ' + unit + '"><span>' + esc(x.lab) + '</span><u style="width:' + (x.est / me * 100).toFixed(1) + '%"></u><s>' + F.int(x.est) + '</s>' +
+            (c == null ? '<em class="na">' + (x.sp > 0 ? 'ไม่มี' + unit : '–') + '</em>' : '<em class="' + (c <= avg ? 'g' : 'r') + '">' + F.int(Math.round(c)) + '</em>') + '</div>'; }).join('') + '</div></div>';
+    }).join('') + '</div>';
   }
   // ============================================================
   // เคสประเมิน — เทียบช่วงนี้กับช่วงก่อน แยกประเภทสินค้า
@@ -1994,7 +2012,7 @@
     var t = today(), now = new Date(), curH = now.getHours();
     var all = (S.data.estimates || []).filter(function (e) { return ef.h === 'all' || (ef.h === 'fb' ? e.fb : e.line); });
     var cfg, n, lim, side, pN = 99;
-    if (['d', 'w', 'm'].indexOf(ef.c) < 0) ef.c = 'w';
+    if (['d', 'w', 'm', 'c'].indexOf(ef.c) < 0) ef.c = 'w';
     var yd = C.addDays(t, -1); // นับเฉพาะวันที่จบแล้ว (ไม่รวมวันนี้)
     function diff(a, b) { return Math.round((new Date(a + 'T00:00:00') - new Date(b + 'T00:00:00')) / 864e5); }
     if (ef.c === 'd') {
@@ -2003,6 +2021,19 @@
       cfg = { r1: 'เมื่อวาน · วัน' + DOW[dowOf(yd)] + ' ' + F.thDate(yd), r2: 'เทียบ วัน' + DOW[dowOf(pd1)] + 'ก่อน ' + F.thDate(pd1) + ' (วันเดียวกันของสัปดาห์ก่อน)', prev: 'สัปดาห์ก่อน', unit: 'รายชั่วโมง', tt: 'เคสประเมินรายชั่วโมง · ' + F.thDate(yd),
         lab: function (i) { return hhmm(i); }, tip: function (i) { return F.thDate(yd) + ' ' + hhmm(i) + '–' + ('0' + i).slice(-2) + ':59'; }, ptip: function (i) { return F.thDate(pd1) + ' ' + hhmm(i); } };
       side = function (e) { return e.date === yd ? ['n', e.hour] : e.date === pd1 ? ['p', e.hour] : null; };
+    } else if (ef.c === 'c') {
+      if (!ef.cf || !ef.ct) { ef.ct = C.addDays(t, -1); ef.cf = C.addDays(ef.ct, -13); }
+      if (ef.cf > ef.ct) { var sw = ef.cf; ef.cf = ef.ct; ef.ct = sw; }
+      n = Math.min(diff(ef.ct, ef.cf) + 1, 120); lim = n;
+      if (!ef.pman || !ef.pf || !ef.pt) { ef.pt = C.addDays(ef.cf, -1); ef.pf = C.addDays(ef.pt, -(n - 1)); }
+      if (ef.pf > ef.pt) { var sw2 = ef.pf; ef.pf = ef.pt; ef.pt = sw2; }
+      pN = Math.min(diff(ef.pt, ef.pf) + 1, 120);
+      var cf = ef.cf, pf = ef.pf;
+      cfg = { r1: 'ช่วงที่เลือก · ' + F.thRange(cf, C.addDays(cf, n - 1)) + ' (' + n + ' วัน)', r2: 'เทียบ ' + F.thRange(pf, C.addDays(pf, pN - 1)) + ' (' + pN + ' วัน)' + (pN !== n ? ' · จำนวนวันไม่เท่ากัน' : ''), prev: 'ช่วงเทียบ', unit: 'รายวัน', tt: 'เคสประเมินรายวัน · ช่วงที่เลือก',
+        lab: function (i) { var d = C.addDays(cf, i); return n <= 7 ? DOW_S[dowOf(d)] + '. ' + Number(d.slice(8)) : F.thDate(d); },
+        tip: function (i) { var d = C.addDays(cf, i); return 'วัน' + DOW[dowOf(d)] + ' ' + F.thDate(d, true); }, ptip: function (i) { if (i >= pN) return 'ช่วงเทียบไม่มีวันนี้'; var d = C.addDays(pf, i); return 'วัน' + DOW[dowOf(d)] + ' ' + F.thDate(d); } };
+      var ce = C.addDays(cf, n - 1), pe2 = C.addDays(pf, pN - 1);
+      side = function (e) { if (e.date >= cf && e.date <= ce) return ['n', diff(e.date, cf)]; if (e.date >= pf && e.date <= pe2) return ['p', diff(e.date, pf)]; return null; };
     } else {
       n = ef.c === 'w' ? 7 : 30; lim = n;
       var s1 = C.addDays(yd, -(n - 1)), ps = C.addDays(s1, -n), pe = C.addDays(s1, -1);
@@ -2018,7 +2049,7 @@
       var k = String(e.cat || e.category || '').trim() || 'ไม่ระบุ', o = map[k] || (map[k] = { n: k, now: [], prev: [], N: 0, P: 0 });
       var j = ef.c === 'd' ? (e.hour >= 0 ? e.hour : -1) : s[1];
       if (s[0] === 'n') { if (j >= lim) return; o.N++; if (j >= 0) o.now[j] = (o.now[j] || 0) + 1; }
-      else { if (j < lim) o.P++; if (j >= 0) o.prev[j] = (o.prev[j] || 0) + 1; }
+      else { if (j < (ef.c === 'c' ? pN : lim)) o.P++; if (j >= 0) o.prev[j] = (o.prev[j] || 0) + 1; }
     });
     var D = Object.keys(map).map(function (k) { var o = map[k]; for (var j = 0; j < n; j++) { o.now[j] = j < lim ? (o.now[j] || 0) : null; o.prev[j] = j < pN ? (o.prev[j] || 0) : null; } return o; })
       .filter(function (o) { return o.N || o.P; }).sort(function (a, b) { return b.N - a.N || b.P - a.P; });
@@ -2030,8 +2061,11 @@
     function dlt(d) { var x = d.N - d.P; return (x > 0 ? '+' : '−') + F.int(Math.abs(x)) + ' เคส'; }
     var top = D[0], gr = pick(1), dr = pick(-1);
 
-    var html = '<div class="es-top"><div class="chip-group" role="group" aria-label="ช่วงที่เทียบ">' + [['d', 'เมื่อวาน vs สัปดาห์ก่อน'], ['w', '7 วัน vs 7 วันก่อนหน้า'], ['m', '30 วัน vs 30 วันก่อนหน้า']].map(function (p) { return '<button data-ec="' + p[0] + '" class="' + (ef.c === p[0] ? 'on' : '') + '">' + p[1] + '</button>'; }).join('') + '</div>' +
+    var html = '<div class="es-top"><div class="chip-group" role="group" aria-label="ช่วงที่เทียบ">' + [['d', 'เมื่อวาน vs สัปดาห์ก่อน'], ['w', '7 วัน vs 7 วันก่อนหน้า'], ['m', '30 วัน vs 30 วันก่อนหน้า'], ['c', 'กำหนดวันเอง']].map(function (p) { return '<button data-ec="' + p[0] + '" class="' + (ef.c === p[0] ? 'on' : '') + '">' + p[1] + '</button>'; }).join('') + '</div>' +
       '<div class="chip-group" role="group" aria-label="ช่องทาง">' + [['all', 'ทุกช่องทาง'], ['fb', 'Facebook'], ['line', 'LINE']].map(function (p) { return '<button data-eh="' + p[0] + '" class="' + (ef.h === p[0] ? 'on' : '') + '">' + p[1] + '</button>'; }).join('') + '</div></div>' +
+      (ef.c === 'c' ? '<div class="es-cus"><label><b>ช่วงที่ดู</b><input type="date" id="ecF" value="' + ef.cf + '"> – <input type="date" id="ecT" value="' + ef.ct + '"></label>' +
+        '<label><b>เทียบกับ</b><input type="date" id="epF" value="' + ef.pf + '"> – <input type="date" id="epT" value="' + ef.pt + '"></label>' +
+        (ef.pman ? '<button type="button" class="linkish" id="epAuto">ใช้ช่วงก่อนหน้าอัตโนมัติ</button>' : '<span class="muted small">ช่วงเทียบตั้งให้อัตโนมัติ = ช่วงก่อนหน้าที่ยาวเท่ากัน</span>') + '</div>' : '') +
       '<div class="es-rng"><span><span class="es-ring"></span><b>' + cfg.r1 + '</b></span><span><i></i>' + cfg.r2 + '</span></div>';
     if (!(S.data.estimates || []).length) {
       $('#page').innerHTML = html + '<div class="nudge">ยังไม่มีข้อมูลเคสประเมิน — วาง Code.gs ใหม่ แล้วกด ดึงข้อมูลตอนนี้ ในหน้าตั้งค่า</div>';
@@ -2077,6 +2111,13 @@
   function bindEst() {
     $$('[data-ec]').forEach(function (b) { b.onclick = function () { S.ef.c = b.dataset.ec; pageEst(); }; });
     $$('[data-eh]').forEach(function (b) { b.onclick = function () { S.ef.h = b.dataset.eh; pageEst(); }; });
+    if ($('#ecF')) {
+      $('#ecF').onchange = function () { if (this.value) { S.ef.cf = this.value; pageEst(); } };
+      $('#ecT').onchange = function () { if (this.value) { S.ef.ct = this.value; pageEst(); } };
+      $('#epF').onchange = function () { if (this.value) { S.ef.pf = this.value; S.ef.pman = true; pageEst(); } };
+      $('#epT').onchange = function () { if (this.value) { S.ef.pt = this.value; S.ef.pman = true; pageEst(); } };
+      if ($('#epAuto')) $('#epAuto').onclick = function () { S.ef.pman = false; pageEst(); };
+    }
     if ($('#esAll')) $('#esAll').onclick = function () { S.ef.all = !S.ef.all; pageEst(); };
   }
   var ES_DEFS = '<defs><linearGradient id="esNow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd23f"/><stop offset="1" stop-color="#f29a00"/></linearGradient><linearGradient id="esPrev" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="es-p1"/><stop offset="1" class="es-p2"/></linearGradient></defs>';
