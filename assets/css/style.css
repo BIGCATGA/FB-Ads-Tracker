@@ -1414,3 +1414,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 @media (max-width: 560px) { .btc .fn { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .btc .card-head > div { min-width: 0; } .bt-act { min-width: 0; max-width: 100%; } .bt-act select { max-width: 100%; min-width: 0; }
 @media (max-width: 560px) { .bt-act, .bt-act select, .bt-act .btn { width: 100%; } }
+/* v44: เวลาหยุดจริง */
+.pz-l { display: grid; gap: 2px; margin-top: 6px; font-size: 12.5px; color: #b06d00; }
+.pz-l small { font-size: 11px; color: var(--text-3); }
+.rh-date .pz-l { margin-top: 4px; }
