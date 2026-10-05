@@ -31,7 +31,7 @@ var FB_INBOX_SINCE = '2026-09-01';
 var PURCHASE_SHEET_ID = '1hsrvfwvkpZJE5Q6-75Fj5xg0FtePA-TceF8mJ8KF6iU'; // BIGCAT-TEST · แท็บ Orders_MM_YYYY
 var METRICS_SHEET_ID  = '1AEwjnQ0komRSwLi2-8TUj-SxAM0jvUgKYG1THfA-80Y'; // Google Ads · แท็บ METRICS // ดึงรายชื่อคนทักเพจตั้งแต่วันนี้เป็นต้นไป
 var FB_PAGE_ID = '';      // ว่าง = หาเพจให้เองจากโทเคน (ถ้ามีหลายเพจให้ใส่ ID เพจ Bigcat ตรงนี้)
-var BACKEND_VERSION = 9; // หน้าเว็บจะเช็คเลขนี้ — ถ้าต่ำกว่าที่ต้องการจะไม่ยอมบันทึก (กันข้อมูลหาย)
+var BACKEND_VERSION = 10; // หน้าเว็บจะเช็คเลขนี้ — ถ้าต่ำกว่าที่ต้องการจะไม่ยอมบันทึก (กันข้อมูลหาย)
 
 // ====== โครงสร้างตาราง ======
 var SCHEMA = {
@@ -58,9 +58,9 @@ var SCHEMA = {
   // Google Ads รายวัน (คัดลอกจากแท็บ METRICS)
   GAds:   ['date', 'campaign', 'cost', 'conversions', 'impressions', 'clicks'],
   // รับซื้อสำเร็จ (คัดลอกจากแท็บ Orders_MM_YYYY ของบริษัท)
-  Purchases: ['product_id', 'buy_date', 'seller', 'category', 'fb', 'line', 'bought', 'repair', 'sell', 'updated_at'],
+  Purchases: ['product_id', 'buy_date', 'seller', 'category', 'fb', 'line', 'bought', 'repair', 'sell', 'detail', 'updated_at'],
   // เคสประเมิน (คัดลอกจากแท็บ Estimations_MM_YYYY ของบริษัท · อ่านอย่างเดียว)
-  Estimates: ['est_id', 'est_date', 'hour', 'category', 'fb', 'line', 'status', 'updated_at'],
+  Estimates: ['est_id', 'est_date', 'hour', 'category', 'fb', 'line', 'status', 'detail', 'updated_at'],
   // ค่า Ads Facebook รายชั่วโมง ระดับ Ad set (เวลาตามบัญชีโฆษณา)
   FbHourly: ['date', 'hour', 'campaign', 'adset', 'spend', 'chats']
 };
@@ -243,8 +243,8 @@ function bootstrap_(user) {
     adsets: readTable_('AdSets'),
     fbads: tableOrEmpty_('FbAds'),
     gads: tableOrEmpty_('GAds'),
-    purchases: tableOrEmpty_('Purchases').map(function (r) { return [r.buy_date, r.category, r.fb ? 1 : 0, r.line ? 1 : 0, Number(r.bought) || 0, Number(r.repair) || 0, Number(r.sell) || 0, r.fb || '']; }),
-    estimates: tableOrEmpty_('Estimates').map(function (r) { return [r.est_date, r.hour === '' ? -1 : Number(r.hour), r.category, r.fb ? 1 : 0, r.line ? 1 : 0, /ปิดสำเร็จ/.test(r.status) ? 1 : 0]; }),
+    purchases: tableOrEmpty_('Purchases').map(function (r) { return [r.buy_date, r.category, r.fb ? 1 : 0, r.line ? 1 : 0, Number(r.bought) || 0, Number(r.repair) || 0, Number(r.sell) || 0, r.fb || '', needDetail_(r.category) ? r.detail || '' : '']; }),
+    estimates: tableOrEmpty_('Estimates').map(function (r) { return [r.est_date, r.hour === '' ? -1 : Number(r.hour), r.category, r.fb ? 1 : 0, r.line ? 1 : 0, /ปิดสำเร็จ/.test(r.status) ? 1 : 0, needDetail_(r.category) ? r.detail || '' : '']; }),
     fbhourly: (function () { var lim = addDays_(today_(), -92); return tableOrEmpty_('FbHourly').filter(function (r) { return String(r.date) >= lim; })
       .map(function (r) { return [r.date, Number(r.hour), r.campaign, r.adset, Number(r.spend) || 0, Number(r.chats) || 0]; }); })(),
     inbox: tableOrEmpty_('Inbox').filter(function (r) { return r.status !== 'ad' && (!r.first_date || String(r.first_date) >= FB_INBOX_SINCE); }),
@@ -1183,7 +1183,7 @@ function syncPurchases_() {
       out.push({ product_id: id, buy_date: buyDate_(r[h.BuyDate]), seller: h['ชื่อคนขาย'] != null ? r[h['ชื่อคนขาย']] : '',
         category: String(r[h['หมวดหมู่']] || '').trim(), fb: h.FB != null ? String(r[h.FB] || '').trim() : '', line: h.LINE != null ? String(r[h.LINE] || '').trim() : '',
         bought: h.BoughtPrice != null ? num_(r[h.BoughtPrice]) : 0, repair: h.RepairCost != null ? num_(r[h.RepairCost]) : 0,
-        sell: h.SellPrice != null ? num_(r[h.SellPrice]) : 0, updated_at: now });
+        sell: h.SellPrice != null ? num_(r[h.SellPrice]) : 0, detail: detailOf_(r, h), updated_at: now });
     }
   });
   var map = {};
@@ -1195,6 +1195,15 @@ function syncPurchases_() {
 }
 
 /** เคสประเมิน: แท็บ Estimations_MM_YYYY ของบริษัท (อ่านอย่างเดียว) · 1 แถว = 1 เคส ตาม EstimateID */
+/** ชื่อรุ่นสินค้า (ตัดให้สั้น) — หน้าเว็บใช้เดาหมวดเมื่อบอทใส่หมวดผิด เช่น โน้ตบุ๊กเป็น "อื่นๆ" */
+function detailOf_(r, h) {
+  var cols = ['รายละเอียดสินค้า', 'ชื่อสินค้า', 'ProductName', 'Product', 'Model', 'รุ่น', 'Description'];
+  for (var i = 0; i < cols.length; i++) if (h[cols[i]] != null) return String(r[h[cols[i]]] || '').replace(/\s+/g, ' ').trim().slice(0, 70);
+  return '';
+}
+/** ส่งชื่อรุ่นไปหน้าเว็บเฉพาะแถวที่หมวดไม่ชัด (ลดขนาดข้อมูล) */
+function needDetail_(cat) { return !/^(iphone|ipad|macbook|apple watch|airpods|apple accessories|game console|notebook gaming|notebook office|comset gaming|comset office)$/i.test(String(cat || '').trim()); }
+
 function syncEstimates_() {
   if (!PURCHASE_SHEET_ID) return 0;
   var ss = SpreadsheetApp.openById(PURCHASE_SHEET_ID), out = [], now = new Date().toISOString();
@@ -1214,7 +1223,7 @@ function syncEstimates_() {
       if (!d) continue;
       out.push({ est_id: id, est_date: d, hour: hm ? Number(hm[1]) : '', category: String(r[h['หมวดหมู่']] || '').trim(),
         fb: h.FB != null ? String(r[h.FB] || '').trim() : '', line: h.LINE != null ? String(r[h.LINE] || '').trim() : '',
-        status: h['สถานะ'] != null ? String(r[h['สถานะ']] || '').trim() : '', updated_at: now });
+        status: h['สถานะ'] != null ? String(r[h['สถานะ']] || '').trim() : '', detail: detailOf_(r, h), updated_at: now });
     }
   });
   var map = {};
