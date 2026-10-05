@@ -300,6 +300,7 @@
     var prevR = prev ? [C.addDays(f.from, -nDays), C.addDays(f.from, -1)] : null;
     var perf = perfSection(f, m, prevR, charts);
     html += perf;
+    html += budgetTiersCard(f.campaign);
 
     // ---------- 2) Lead + ปิดได้ ตามเวลา ----------
     html += section('Lead และเคสที่ปิดได้ — แต่ละวัน', 'ดูว่าช่วงไหนคนทักเยอะ/น้อย และเพิ่มงบแล้ว Lead ขึ้นตามไหม',
@@ -389,6 +390,7 @@
       $('#fTo').onchange = function () { f.to = this.value; if (f.to < f.from) f.from = f.to; pageDashboard(); };
     }
     $('#fCamp').onchange = function () { f.campaign = this.value; pageDashboard(); };
+    if ($('#btSel')) $('#btSel').onchange = function () { S.btSel = this.value; pageDashboard(); };
     $$('[data-ctab]').forEach(function (b) { b.onclick = function () { S.chartTab = b.dataset.ctab; pageDashboard(); }; });
     $('#btnSummary').onclick = function () { openSummary(m); };
     $$('[data-pm]').forEach(function (b) { b.onclick = function () { S.pmetric = b.dataset.pm; pageDashboard(); }; });
@@ -422,6 +424,46 @@
       map: function (k) { return rows.map(function (r) { return Math.round(r[k] * 100) / 100; }); }
     };
   }
+  // ---------- การ์ด "ผลงานตามงบ/วัน" (แบบ A3) ----------
+  function budgetTiersCard(fCamp) {
+    var td = today(), daily = C.spendDaily(S.data), opts = [];
+    var camps = {}; (S.data.budgets || []).forEach(function (b) { if (b.campaign && Number(b.daily_budget) > 0) camps[b.campaign + '\u0001' + (b.adset || '')] = b.start_date > (camps[b.campaign + '\u0001' + (b.adset || '')] || '') ? b.start_date : camps[b.campaign + '\u0001' + (b.adset || '')]; });
+    Object.keys(camps).sort(function (a, b) { return camps[b] < camps[a] ? -1 : 1; }).forEach(function (k) { var p = k.split('\u0001'); opts.push({ k: k, camp: p[0], lv: p[1], label: p[0] + (p[1] ? ' › ' + p[1] : '') }); });
+    if (!opts.length) return '';
+    var sel = opts.filter(function (o) { return o.k === S.btSel; })[0] || (fCamp && opts.filter(function (o) { return o.camp === fCamp; })[0]) || opts[0];
+    var runs = C.runResults(S.data, sel.camp, sel.lv, td, daily).filter(function (r) { return !r.future; });
+    var tiers = {}, order = [];
+    runs.forEach(function (r) {
+      var t = tiers[r.daily]; if (!t) { t = tiers[r.daily] = { amt: r.daily, runs: [], days: 0, leads: 0, spend: 0, closed: 0, from: r.from, to: r.plannedTo, ongoing: false, series: [] }; order.push(t); }
+      t.runs.push(r); t.days += r.days; t.leads += r.leads; t.spend += r.spend; t.closed += r.closed; t.to = r.plannedTo; if (r.ongoing) t.ongoing = true;
+      C.campaignDaily(S.data, sel.camp, sel.lv, r.from, r.to).forEach(function (d) { t.series.push(d.leads); });
+    });
+    order.forEach(function (t) { t.lpd = t.days ? t.leads / t.days : 0; t.cpl = t.leads && t.spend ? t.spend / t.leads : null; t.last = t.runs[t.runs.length - 1].from; });
+    // ล่าสุดก่อน แล้วเรียงตามเวลาที่ใช้งบนั้นล่าสุด (ใหม่ → เก่า) · โชว์ไม่เกิน 4
+    var list = order.slice().sort(function (a, b) { return a.last < b.last ? 1 : -1; }).slice(0, 4);
+    var cur = list[0], prev = list[1];
+    function pc(a, b) { return b ? Math.round((a - b) / b * 100) : null; }
+    var better = cur && prev && cur.cpl != null && prev.cpl != null ? cur.cpl <= prev.cpl : null;
+    function spark(a, col) { if (a.length < 2) return '<svg viewBox="0 0 100 40"></svg>'; var mx = Math.max.apply(null, a.concat([1])), n = a.length, p = a.map(function (v, i) { return (i / (n - 1) * 100).toFixed(1) + ',' + (38 - v / mx * 34).toFixed(1); }).join(' ');
+      return '<svg viewBox="0 0 100 40" preserveAspectRatio="none"><polygon points="0,40 ' + p + ' 100,40" fill="' + col + '" opacity=".15"/><polyline points="' + p + '" fill="none" stroke="' + col + '" stroke-width="2.4" vector-effect="non-scaling-stroke"/></svg>'; }
+    var html = '<div class="card mt btc"><div class="card-head"><div><h2 class="card-title">ผลงานตามงบ/วัน</h2><div class="card-sub">เส้น = Lead แต่ละวันในงบนั้น · ไม่นับวันที่หยุด · งบเท่ากันหลายช่วงรวมเป็นการ์ดเดียว</div></div>' +
+      '<select class="field-inline" id="btSel">' + opts.map(function (o) { return opt(o.k, o.label, sel.k); }).join('') + '</select></div><div class="bt-grid">';
+    html += list.map(function (t, i) {
+      var isCur = i === 0, pz = t.runs.length - 1, cpCol = isCur && better != null ? (better ? 'g' : 'r') : '', lpCol = isCur && prev ? (t.lpd >= prev.lpd ? 'g' : 'r') : '';
+      return '<div class="bt-c' + (isCur ? ' cur' : '') + '"><div class="top"><div class="bd">' + F.int(t.amt) + '<small>บาท/วัน</small></div>' +
+        (isCur ? '<span class="stp ' + (better == null ? 'n' : better ? 'g' : 'b') + '">' + (t.ongoing ? 'ยิงอยู่' : 'ล่าสุด') + (better == null ? '' : better ? ' · คุ้มกว่า' : ' · แพงกว่า') + '</span>' : '<span class="stp n">งบเดิม</span>') + '</div>' +
+        '<div class="per">' + F.thDate(t.from) + ' – ' + (t.ongoing ? 'ยังยิงอยู่' : F.thDate(t.to || td)) + ' · ยิง ' + t.days + ' วัน' + (pz ? ' · ปิด/เปิด ' + pz + ' ครั้ง' : '') + '</div>' +
+        spark(t.series, isCur ? '#f5a800' : '#8c8d9f') +
+        '<div class="m3"><div><i>Lead/วัน</i><b class="' + lpCol + '">' + t.lpd.toFixed(1) + '</b></div><div><i>ต้นทุน/Lead</i><b class="' + cpCol + '">' + (t.cpl == null ? '–' : F.int(Math.round(t.cpl))) + '</b></div><div><i>ปิดได้</i><b>' + t.closed + '</b></div></div></div>';
+    }).join('') + '</div>';
+    if (cur && prev && prev.days) {
+      var a = pc(cur.lpd, prev.lpd), b = cur.cpl != null && prev.cpl != null ? pc(cur.cpl, prev.cpl) : null;
+      html += '<div class="bt-v ' + (better === false ? 'bad' : '') + '"><span class="stp ' + (better === false ? 'b' : 'g') + '">สรุป</span>งบ ' + F.int(cur.amt) + ' ได้ Lead/วัน ' + (a >= 0 ? 'มากขึ้น ' : 'น้อยลง ') + Math.abs(a) + '%' +
+        (b == null ? '' : ' และต้นทุน/Lead ' + (b <= 0 ? 'ถูกลง ' : 'แพงขึ้น ') + Math.abs(b) + '%') + ' เทียบกับงบ ' + F.int(prev.amt) + (cur.days < 3 ? ' · ยิงงบนี้แค่ ' + cur.days + ' วัน ตัวเลขยังไม่นิ่ง' : '') + '</div>';
+    }
+    return html + '</div>';
+  }
+
   // ---------- การ์ด "ปรับงบแล้วคุ้มไหม" (ใช้ทั้ง Dashboard และหน้าแคมเปญ) ----------
   var V_ICON = { good: '✓', bad: '✕', flat: '≈', wait: '…', nodata: '–' };
   var V_SHORT = { good: 'คุ้ม', bad: 'ไม่คุ้ม', flat: 'พอ ๆ เดิม', wait: 'รอผล', nodata: 'ไม่มี Lead' };
