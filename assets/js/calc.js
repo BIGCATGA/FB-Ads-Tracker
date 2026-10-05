@@ -541,6 +541,40 @@
       lpd: [b.leadsPerDay, a.leadsPerDay], lpdChange: lpdCh, cpl: [cb.v, ca.v], cplChange: cplCh };
   }
   /** ทุกครั้งที่เปลี่ยนรอบ (ปรับงบ / กลับมายิง) → 1 การทดลอง */
+  /** เวลาที่โฆษณาเปิดจริงในช่วง from..to (รวมวัน) → { hours, pauses:[{off,on,hrs,by}], src: 'fb' | 'hourly' | 'day' }
+   *  1) ประวัติเปิด/ปิดจาก Facebook (แม่นระดับนาที)  2) ค่า Ads รายชั่วโมง (ชั่วโมงที่มีค่าใช้จ่าย)  3) นับเป็นวันเต็ม */
+  function tmin(s) { var m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(s || ''); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0)) / 60000 : 0; }
+  function tstr(x) { var d = new Date(x * 60000); return d.toISOString().slice(0, 10) + ' ' + d.toISOString().slice(11, 16); }
+  function activeTime(data, camp, adset, from, to, nowStr) {
+    var now = nowStr || (function () { var d = new Date(); return iso(d) + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); })();
+    var S0 = tmin(from + ' 00:00'), E0 = Math.min(tmin(to + ' 23:59') + 1, tmin(now));
+    if (E0 <= S0) return { hours: 0, pauses: [], src: 'day' };
+    var ev = (data.fbstatus || []).filter(function (e) { return e.campaign === camp && (e.lvl === 'c' || (adset && e.lvl === 's' && e.adset === adset)); });
+    if (ev.length) {
+      // ก่อนเหตุการณ์แรก = สถานะตรงข้ามกับเหตุการณ์แรกของแต่ละระดับ
+      var st = { c: true, s: true }, on = true, pauses = [], cur = null, acc = 0, t0 = S0, seen = {};
+      ev.forEach(function (e) { if (!seen[e.lvl]) { seen[e.lvl] = 1; st[e.lvl] = !e.on; } });
+      ev.forEach(function (e) { if (tmin(e.t) <= S0) st[e.lvl] = e.on; });
+      on = st.c && st.s;
+      if (!on) cur = { off: tstr(S0), by: '' };
+      ev.forEach(function (e) {
+        var x = tmin(e.t); if (x <= S0 || x > E0) return;
+        st[e.lvl] = e.on; var nOn = st.c && st.s; if (nOn === on) return;
+        if (on) { acc += x - t0; cur = { off: e.t, by: e.by }; } else { t0 = x; if (cur) { cur.on = e.t; cur.hrs = (x - tmin(cur.off)) / 60; pauses.push(cur); cur = null; } }
+        on = nOn;
+      });
+      if (on) acc += E0 - t0; else if (cur) { cur.on = ''; cur.hrs = (E0 - tmin(cur.off)) / 60; pauses.push(cur); }
+      return { hours: acc / 60, pauses: pauses.filter(function (p) { return p.hrs >= 0.25; }), src: 'fb' };
+    }
+    var hr = (data.fbhourly || []).filter(function (h) { return h.campaign === camp && (!adset || h.adset === adset) && h.date >= from && h.date <= to && h.spend > 0; });
+    if (hr.length) {
+      var act = {}; hr.forEach(function (h) { act[h.date + ' ' + ('0' + h.hour).slice(-2) + ':00'] = 1; });
+      var keys = Object.keys(act).sort(), ps = [];
+      for (var i = 1; i < keys.length; i++) { var g = (tmin(keys[i]) - tmin(keys[i - 1])) / 60 - 1; if (g >= 8) ps.push({ off: tstr(tmin(keys[i - 1]) + 60), on: keys[i], hrs: g, by: '' }); }
+      return { hours: keys.length, pauses: ps, src: 'hourly' };
+    }
+    return { hours: null, pauses: [], src: 'day' };
+  }
   /** ตัดข้อความอัตโนมัติจาก Facebook (หยุด/เปิดยิงใน Facebook) และข้อความซ้ำออก */
   function cleanNote(n) { var seen = {}; return String(n || '').split(' · ').filter(function (x) { x = x.trim(); if (!x || /^(หยุดใน Facebook|เปิดยิงใน Facebook)$/.test(x) || seen[x]) return false; seen[x] = 1; return true; }).join(' · '); }
   /** รวมรอบที่งบ/วันเท่าเดิมติดกัน (แค่ปิดแล้วเปิดใหม่) เป็นรอบเดียว — การเทียบ "ปรับงบแล้วคุ้มไหม" จะเกิดเฉพาะตอนงบเปลี่ยนจริง */
@@ -770,7 +804,7 @@
     runsOf: runsOf, needsNormalize: needsNormalize, levelState: levelState, campState: campState, budgetMode: budgetMode, firstStart: firstStart,
     spendDaily: spendDaily, spendCoverage: spendCoverage, runResults: runResults, runningDays: runningDays, daysIncl: daysIncl,
     closeDurations: closeDurations, durationStats: durationStats,
-    experiments: experiments, mergeSameBudget: mergeSameBudget, cleanNote: cleanNote, KPI_CATS: KPI_CATS, purchaseCat: purchaseCat, itemCat: itemCat, prodCat: prodCat, guessCat: guessCat, catMap: catMap, adCat: adCat, costByCat: costByCat, kpiTargets: kpiTargets, weeksBack: weeksBack, fbPerf: fbPerf, median: median, campaignDaily: campaignDaily, productList: productList, splitProduct: splitProduct, MIN_DAYS: MIN_DAYS,
+    experiments: experiments, activeTime: activeTime, mergeSameBudget: mergeSameBudget, cleanNote: cleanNote, KPI_CATS: KPI_CATS, purchaseCat: purchaseCat, itemCat: itemCat, prodCat: prodCat, guessCat: guessCat, catMap: catMap, adCat: adCat, costByCat: costByCat, kpiTargets: kpiTargets, weeksBack: weeksBack, fbPerf: fbPerf, median: median, campaignDaily: campaignDaily, productList: productList, splitProduct: splitProduct, MIN_DAYS: MIN_DAYS,
     fmt: { baht: baht, int: int, pct: pct, thDate: thDate, thRange: thRange }
   };
 })();

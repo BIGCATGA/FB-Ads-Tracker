@@ -128,6 +128,7 @@
     return {
       me: 'ผู้ใช้ตัวอย่าง',
       chats: chats, ads: ads, spend: spend, campaigns: campaigns, budgets: budgets,
+      fbstatus: [['2026-09-22 22:10', 'c', CAMP.BIRD, '', 0, 'แอดมิน มิ้นท์'], ['2026-09-24 09:30', 'c', CAMP.BIRD, '', 1, 'แอดมิน มิ้นท์'], ['2026-09-30 21:45', 'c', CAMP.BIRD, '', 0, 'แอดมิน ปีม'], ['2026-10-02 10:05', 'c', CAMP.BIRD, '', 1, 'แอดมิน ปีม'], ['2026-10-03 23:00', 'c', CAMP.BIRD, '', 0, 'แอดมิน มิ้นท์'], ['2026-10-05 08:40', 'c', CAMP.BIRD, '', 1, 'แอดมิน มิ้นท์']],
       adsets: (function () {
         var seen = {}, out = [];
         ads.forEach(function (a, i) {

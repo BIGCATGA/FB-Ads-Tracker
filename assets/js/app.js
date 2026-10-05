@@ -82,6 +82,7 @@
     d.purchases = (d.purchases || []).map(function (a) { var o = Array.isArray(a) ? { date: nd(a[0]), category: a[1], fb: !!a[2], line: !!a[3], bought: a[4], repair: a[5], sell: a[6], fbName: a[7] || '', detail: a[8] || '' } : a, pc = C.prodCat(o.category, o.detail); o.k = pc.k; o.cat = pc.sub; o.guess = pc.guess; return o; });
     d.estimates = (d.estimates || []).map(function (a) { var o = Array.isArray(a) ? { date: nd(a[0]), hour: Number(a[1]), category: a[2], fb: !!a[3], line: !!a[4], closed: !!a[5], detail: a[6] || '' } : a, pc = C.prodCat(o.category, o.detail); o.k = pc.k; o.cat = pc.sub; o.guess = pc.guess; return o; }).filter(function (e) { return e.date; });
     d.fbhourly = (d.fbhourly || []).map(function (a) { return Array.isArray(a) ? { date: nd(a[0]), hour: Number(a[1]) || 0, campaign: a[2], adset: a[3], spend: Number(a[4]) || 0, chats: Number(a[5]) || 0 } : a; }).filter(function (e) { return e.date; });
+    d.fbstatus = (d.fbstatus || []).map(function (a) { return Array.isArray(a) ? { t: String(a[0]), lvl: a[1], campaign: a[2], adset: a[3] || '', on: !!a[4], by: a[5] || '' } : a; }).sort(function (a, b) { return a.t < b.t ? -1 : 1; });
     d.inbox = (d.inbox || []).map(function (r) { r.psid = String(r.psid); r.first_date = nd(r.first_date); r.last_date = nd(r.last_date); return r; });
     d.spend = d.spend.filter(function (s) { return s.date; });
     return d;
@@ -426,6 +427,12 @@
       map: function (k) { return rows.map(function (r) { return Math.round(r[k] * 100) / 100; }); }
     };
   }
+  // เวลาเปิด/ปิด → ข้อความ
+  function tShort(t) { return t ? F.thDate(t.slice(0, 10)) + (t.length > 10 ? ' ' + t.slice(11, 16) : '') : 'ตอนนี้'; }
+  function durTxt(h) { return h == null ? '' : h < 48 ? (Math.round(h * 10) / 10) + ' ชม.' : (Math.round(h / 24 * 10) / 10) + ' วัน'; }
+  function pauseTxt(p) { return p.d1 ? (p.d1 === p.d2 ? F.thDate(p.d1) : F.thRange(p.d1, p.d2)) + ' (ทั้งวัน)' : tShort(p.off) + ' → ' + (p.on ? tShort(p.on) : 'ยังปิดอยู่') + ' (' + durTxt(p.hrs) + ')'; }
+  function pausesHtml(ps, src) { if (!ps.length) return ''; return '<div class="pz-l">' + ps.slice(0, 4).map(function (p) { return '<span>หยุด ' + pauseTxt(p) + (p.by ? ' · ' + esc(p.by) : '') + '</span>'; }).join('') + (ps.length > 4 ? '<span>+ อีก ' + (ps.length - 4) + ' ครั้ง</span>' : '') + '<small>' + (src === 'fb' ? 'เวลาจากประวัติการแก้ไขใน Facebook' : src === 'hourly' ? 'ประมาณจากค่า Ads รายชั่วโมง' : 'ระดับวัน') + '</small></div>'; }
+
   // ---------- การ์ด "ผลงานตามงบ/วัน" (แบบ Y) ----------
   function budgetTierData(fCamp) {
     var td = today(), daily = C.spendDaily(S.data), opts = [], last = {};
@@ -442,6 +449,9 @@
       C.campaignDaily(S.data, sel.camp, sel.lv, r.from, r.to).forEach(function (d) { t.series.push(d.leads); });
     });
     order.forEach(function (t) {
+      var at = C.activeTime(S.data, sel.camp, sel.lv, t.from, t.to || td);
+      t.src = at.src; t.pz = at.src === 'day' ? t.runs.slice(1).map(function (r, i) { var pt = t.runs[i].plannedTo || td; return { d1: C.addDays(pt, 1), d2: C.addDays(r.from, -1) }; }).filter(function (x) { return x.d1 <= x.d2; }) : at.pauses;
+      if (at.src !== 'day' && at.hours > 0) t.days = at.hours / 24;
       var chats = S.data.chats.filter(function (c) { return c.campaign === sel.camp && (!sel.lv || c.adset === sel.lv) && inRuns(t, c.date); });
       var ppl = C.uniquePeople(chats);
       t.leads = ppl.filter(function (p) { return C.stageOf(p.status) >= 1; }).length;
@@ -470,7 +480,7 @@
       var pv = list[i + 1] || null, isCur = i === 0, better = pv && t.cpl != null && pv.cpl != null ? t.cpl <= pv.cpl : null, tab = S.btTab[t.amt] || 'c';
       var badge = isCur ? '<span class="stp ' + (better == null ? 'n' : better ? 'g' : 'b') + '">' + (t.ongoing ? 'ยิงอยู่' : 'ล่าสุด') + (better == null ? '' : better ? ' · คุ้มกว่า' : ' · แพงกว่า') + '</span>' : '<span class="stp n">งบเดิม</span>';
       return '<div class="ty' + (isCur ? ' cur' : '') + '"><div class="top"><div class="bd">' + F.int(t.amt) + '<small>บาท/วัน</small></div>' + badge + '</div>' +
-        '<div class="per">' + F.thDate(t.from) + ' – ' + (t.ongoing ? 'ยังยิงอยู่' : F.thDate(t.to || td)) + ' · ยิง ' + t.days + ' วัน' + (t.runs.length > 1 ? ' · ปิด/เปิด ' + (t.runs.length - 1) + ' ครั้ง' : '') + ' · ใช้เงิน <b>' + F.baht(t.spend) + '</b></div>' +
+        '<div class="per">' + F.thDate(t.from) + ' – ' + (t.ongoing ? 'ยังยิงอยู่' : F.thDate(t.to || td)) + ' · เปิดจริง ' + durTxt(t.days * 24) + (t.pz.length ? ' · ปิด/เปิด ' + t.pz.length + ' ครั้ง' : '') + ' · ใช้เงิน <b>' + F.baht(t.spend) + '</b></div>' + pausesHtml(t.pz, t.src) +
         (pv ? '<div class="vs">เทียบกับงบ ' + F.int(pv.amt) + ' บาท/วัน</div>' : '') +
         '<div class="big3"><div><i>ต้นทุน/Lead</i><b>' + (t.cpl == null ? '–' : F.int(Math.round(t.cpl))) + '</b>' + dl(t.cpl, pv && pv.cpl, false) + '</div>' +
           '<div><i>Lead/วัน</i><b>' + t.lpd.toFixed(1) + '</b>' + dl(t.lpd, pv && pv.lpd, true) + '</div>' +
@@ -491,7 +501,8 @@
     var D = budgetTierData(fCamp); if (!D) return '';
     var L = ['📊 ผลงานตามงบ/วัน', 'แคมเปญ: ' + D.sel.label, ''];
     D.list.forEach(function (t, i) {
-      L.push((i ? '◀️' : '▶️') + ' งบ ' + F.int(t.amt) + ' บาท/วัน (' + F.thDate(t.from) + ' – ' + (t.ongoing ? 'ปัจจุบัน' : F.thDate(t.to || D.td)) + ' · ' + t.days + ' วัน)');
+      L.push((i ? '◀️' : '▶️') + ' งบ ' + F.int(t.amt) + ' บาท/วัน (' + F.thDate(t.from) + ' – ' + (t.ongoing ? 'ปัจจุบัน' : F.thDate(t.to || D.td)) + ' · เปิดจริง ' + durTxt(t.days * 24) + ')');
+      t.pz.forEach(function (p) { L.push('  · หยุด ' + pauseTxt(p)); });
       L.push('• ใช้เงิน ' + F.baht(t.spend));
       if (t.imp) L.push('• เห็นโฆษณา ' + F.int(t.imp) + (t.clk ? ' · คลิก ' + F.int(t.clk) + ' (CTR ' + (t.ctr * 100).toFixed(2) + '%)' : ''));
       L.push('• Lead ' + t.leads + ' · ' + t.lpd.toFixed(1) + '/วัน' + (t.cpl != null ? ' · ' + F.baht(t.cpl) + '/Lead' : ''));
@@ -1122,6 +1133,8 @@
         mg.push({ run: r.run, from: r.from, to: r.to, plannedTo: r.plannedTo, days: r.days, future: r.future, ongoing: r.ongoing, daily: r.daily, spend: r.spend, leads: r.leads,
           leadsPerDay: r.leadsPerDay, cpl: r.cpl, note: r.note, pauses: [], parts: 1 });
       });
+      mg.forEach(function (m) { if (m.future) return; var at = C.activeTime(S.data, cp.name, g.lv, m.from, m.plannedTo || td);
+        m.src = at.src; if (at.src !== 'day') { m.pz = at.pauses; if (at.hours > 0) { m.days = at.hours / 24; m.leadsPerDay = m.leads / m.days; } } else m.pz = m.pauses.map(function (p) { return { d1: p[0], d2: p[1] }; }); });
       function cleanNote(n) { var seen = {}; return String(n || '').split(' · ').filter(function (x) { x = x.trim(); if (!x || /^(หยุดใน Facebook|เปิดยิงใน Facebook)$/.test(x) || seen[x]) return false; seen[x] = 1; return true; }).join(' · '); }
       mg.forEach(function (r, i) {
         if (prevTo && r.from > C.addDays(prevTo, 1)) {
@@ -1132,8 +1145,8 @@
         html += '<div class="rh-row click' + (r.ongoing ? ' live' : '') + (r.future ? ' future' : '') + '" data-run="' + esc(r.run.id) + '">' +
           '<span class="rh-no">' + (i + 1) + '</span>' +
           '<div class="rh-date"><b>' + F.thDate(r.from, true) + ' – ' + (r.plannedTo ? F.thDate(r.plannedTo, true) : '<span class="live-t">ยังยิงอยู่</span>') + '</b>' +
-          '<span>' + (r.future ? 'ตั้งเวลาไว้' : 'ยิง ' + r.days + ' วัน') + (cleanNote(r.note) ? ' · ' + esc(cleanNote(r.note)) : '') +
-            (r.pauses.length ? ' · <span class="rh-pz">ปิด/เปิด ' + r.pauses.length + ' ครั้ง (หยุด ' + r.pauses.map(function (p) { return p[0] === p[1] ? F.thDate(p[0]) : F.thRange(p[0], p[1]); }).join(', ') + ')</span>' : '') + (r.run.legacy ? ' · <span class="dup">ตรวจวันจบ</span>' : '') + '</span></div>' +
+          '<span>' + (r.future ? 'ตั้งเวลาไว้' : 'เปิดจริง ' + durTxt(r.days * 24)) + (cleanNote(r.note) ? ' · ' + esc(cleanNote(r.note)) : '') +
+            (r.pz && r.pz.length ? ' · <span class="rh-pz">ปิด/เปิด ' + r.pz.length + ' ครั้ง</span>' + pausesHtml(r.pz, r.src) : '') + (r.run.legacy ? ' · <span class="dup">ตรวจวันจบ</span>' : '') + '</span></div>' +
           '<div class="rh-bud"><b>' + F.baht(r.daily) + '</b><span>ต่อวัน</span></div>' +
           '<div class="rh-res">' + (r.future ? '<span>–</span>' : '<b>' + r.leads + ' Lead</b><span>' + r.leadsPerDay.toFixed(1) + '/วัน · ' + (r.cpl != null ? F.baht(r.cpl) + '/Lead' : r.spend ? 'ยังไม่มี Lead' : 'ยังไม่กรอกค่า Ads') + '</span>') + '</div>' +
           '<span class="rh-edit">แก้ ›</span></div>';
