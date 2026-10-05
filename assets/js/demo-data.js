@@ -93,14 +93,17 @@
     var budgets = [
       [CAMP.ENG, 'AS-1', '2026-08-24', 180, ''], [CAMP.ENG, 'AS-2', '2026-08-24', 180, ''],
       [CAMP.MSG01, 'ADS-01', '2026-08-29', 300, ''],
-      [CAMP.BIRD, '', '2026-09-04', 350, 'เริ่มยิง CBO 350/วัน'],
-      [CAMP.BIRD, '', '2026-09-14', 500, 'ทดลองเพิ่มงบ +43% ดูว่า Lead/วัน ขึ้นตามไหม'],
+      [CAMP.BIRD, '', '2026-09-04', 350, 'เริ่มยิง CBO 350/วัน', '2026-09-13'],
+      [CAMP.BIRD, '', '2026-09-14', 500, 'ทดลองเพิ่มงบ +43% ดูว่า Lead/วัน ขึ้นตามไหม · หยุดใน Facebook · หยุดใน Facebook', '2026-09-22'],
+      [CAMP.BIRD, '', '2026-09-24', 500, 'เปิดยิงใน Facebook · หยุดใน Facebook · หยุดใน Facebook', '2026-09-30'],
+      [CAMP.BIRD, '', '2026-10-02', 500, 'เปิดยิงใน Facebook · หยุดใน Facebook', '2026-10-03'],
+      [CAMP.BIRD, '', '2026-10-05', 500, 'เปิดยิงใน Facebook', ''],
       [CAMP.PS, 'AD-SET PS', '2026-09-07', 120, ''],
       [CAMP.PS, 'AD-SET PS', '2026-09-13', 0, 'หยุดยิง — คนทักมาขอซื้อมากกว่าขาย'],
       [CAMP.COM, 'Ad Set A : Comset', '2026-09-15', 150, 'ทดสอบกลุ่ม Comset'],
       [CAMP.COM, 'Ad Set A : Comset', '2026-09-19', 250, 'ทดลองเพิ่มงบ']
     ].map(function (b, i) {
-      return { id: 'b' + i, campaign: b[0], adset: b[1], start_date: b[2], daily_budget: b[3], note: b[4], created_by: 'ตัวอย่าง', created_at: '' };
+      return { id: 'b' + i, campaign: b[0], adset: b[1], start_date: b[2], end_date: b[5] || '', daily_budget: b[3], note: b[4], created_by: 'ตัวอย่าง', created_at: '' };
     });
 
     // ค่า Ads จริง = งบที่ตั้ง ±15% (งบระดับแคมเปญหารเท่า ๆ กันตาม Ad set ที่เปิด)

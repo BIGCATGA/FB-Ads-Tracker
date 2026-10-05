@@ -1021,7 +1021,22 @@
       if (groups.length > 1 || g.lv) html += '<div class="rh-grp">' + (g.lv ? 'Ad set: ' + esc(g.lv) : 'ทั้งแคมเปญ (CBO)') + '</div>';
       html += '<div class="rh">';
       var prevTo = null;
-      g.rows.forEach(function (r, i) {
+      // รวมรอบที่งบ/วันเท่าเดิมติดกัน (แค่หยุดแล้วเปิดใหม่) เป็นรอบเดียว · เก็บช่วงหยุดไว้แสดงข้างใน
+      var mg = [];
+      g.rows.forEach(function (r) {
+        var m = mg[mg.length - 1];
+        if (m && !r.future && !m.future && m.daily === r.daily) {
+          var pt = m.plannedTo || td;
+          if (r.from > C.addDays(pt, 1)) m.pauses.push([C.addDays(pt, 1), C.addDays(r.from, -1)]);
+          m.plannedTo = r.plannedTo; m.to = r.to; m.days += r.days; m.leads += r.leads; m.spend += r.spend; m.ongoing = r.ongoing; m.run = r.run; m.parts++;
+          m.cpl = m.leads && m.spend ? m.spend / m.leads : null; m.leadsPerDay = m.days ? m.leads / m.days : 0;
+          return;
+        }
+        mg.push({ run: r.run, from: r.from, to: r.to, plannedTo: r.plannedTo, days: r.days, future: r.future, ongoing: r.ongoing, daily: r.daily, spend: r.spend, leads: r.leads,
+          leadsPerDay: r.leadsPerDay, cpl: r.cpl, note: r.note, pauses: [], parts: 1 });
+      });
+      function cleanNote(n) { var seen = {}; return String(n || '').split(' · ').filter(function (x) { x = x.trim(); if (!x || /^(หยุดใน Facebook|เปิดยิงใน Facebook)$/.test(x) || seen[x]) return false; seen[x] = 1; return true; }).join(' · '); }
+      mg.forEach(function (r, i) {
         if (prevTo && r.from > C.addDays(prevTo, 1)) {
           var gf = C.addDays(prevTo, 1), gt = C.addDays(r.from, -1);
           html += '<div class="rh-gap">หยุด ' + C.daysIncl(gf, gt) + ' วัน · ' + F.thRange(gf, gt) + '</div>';
@@ -1030,7 +1045,8 @@
         html += '<div class="rh-row click' + (r.ongoing ? ' live' : '') + (r.future ? ' future' : '') + '" data-run="' + esc(r.run.id) + '">' +
           '<span class="rh-no">' + (i + 1) + '</span>' +
           '<div class="rh-date"><b>' + F.thDate(r.from, true) + ' – ' + (r.plannedTo ? F.thDate(r.plannedTo, true) : '<span class="live-t">ยังยิงอยู่</span>') + '</b>' +
-          '<span>' + (r.future ? 'ตั้งเวลาไว้' : r.days + ' วัน') + (r.note ? ' · ' + esc(r.note) : '') + (r.run.legacy ? ' · <span class="dup">ตรวจวันจบ</span>' : '') + '</span></div>' +
+          '<span>' + (r.future ? 'ตั้งเวลาไว้' : 'ยิง ' + r.days + ' วัน') + (cleanNote(r.note) ? ' · ' + esc(cleanNote(r.note)) : '') +
+            (r.pauses.length ? ' · <span class="rh-pz">ปิด/เปิด ' + r.pauses.length + ' ครั้ง (หยุด ' + r.pauses.map(function (p) { return p[0] === p[1] ? F.thDate(p[0]) : F.thRange(p[0], p[1]); }).join(', ') + ')</span>' : '') + (r.run.legacy ? ' · <span class="dup">ตรวจวันจบ</span>' : '') + '</span></div>' +
           '<div class="rh-bud"><b>' + F.baht(r.daily) + '</b><span>ต่อวัน</span></div>' +
           '<div class="rh-res">' + (r.future ? '<span>–</span>' : '<b>' + r.leads + ' Lead</b><span>' + r.leadsPerDay.toFixed(1) + '/วัน · ' + (r.cpl != null ? F.baht(r.cpl) + '/Lead' : r.spend ? 'ยังไม่มี Lead' : 'ยังไม่กรอกค่า Ads') + '</span>') + '</div>' +
           '<span class="rh-edit">แก้ ›</span></div>';
