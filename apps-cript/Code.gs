@@ -31,7 +31,7 @@ var FB_INBOX_SINCE = '2026-09-01';
 var PURCHASE_SHEET_ID = '1hsrvfwvkpZJE5Q6-75Fj5xg0FtePA-TceF8mJ8KF6iU'; // BIGCAT-TEST · แท็บ Orders_MM_YYYY
 var METRICS_SHEET_ID  = '1AEwjnQ0komRSwLi2-8TUj-SxAM0jvUgKYG1THfA-80Y'; // Google Ads · แท็บ METRICS // ดึงรายชื่อคนทักเพจตั้งแต่วันนี้เป็นต้นไป
 var FB_PAGE_ID = '';      // ว่าง = หาเพจให้เองจากโทเคน (ถ้ามีหลายเพจให้ใส่ ID เพจ Bigcat ตรงนี้)
-var BACKEND_VERSION = 12; // หน้าเว็บจะเช็คเลขนี้ — ถ้าต่ำกว่าที่ต้องการจะไม่ยอมบันทึก (กันข้อมูลหาย)
+var BACKEND_VERSION = 13; // หน้าเว็บจะเช็คเลขนี้ — ถ้าต่ำกว่าที่ต้องการจะไม่ยอมบันทึก (กันข้อมูลหาย)
 
 // ====== โครงสร้างตาราง ======
 var SCHEMA = {
@@ -62,10 +62,12 @@ var SCHEMA = {
   // เคสประเมิน (คัดลอกจากแท็บ Estimations_MM_YYYY ของบริษัท · อ่านอย่างเดียว)
   Estimates: ['est_id', 'est_date', 'hour', 'category', 'fb', 'line', 'status', 'detail', 'updated_at'],
   // ค่า Ads Facebook รายชั่วโมง ระดับ Ad set (เวลาตามบัญชีโฆษณา)
-  FbHourly: ['date', 'hour', 'campaign', 'adset', 'spend', 'chats']
+  FbHourly: ['date', 'hour', 'campaign', 'adset', 'spend', 'chats'],
+  // เวลาเปิด/ปิดจริง (จากประวัติการแก้ไขของบัญชีโฆษณา) · time = yyyy-MM-dd HH:mm เวลาไทย
+  FbStatus: ['time', 'level', 'campaign', 'adset', 'state', 'by', 'fb_id']
 };
 // คอลัมน์ที่ต้องเก็บเป็นข้อความ: วันที่ (กันชีตแปลงรูปแบบ) และ ID ของ Facebook (ยาวเกิน 15 หลัก ถ้าเป็นตัวเลขชีตจะปัดเลขท้ายทิ้ง)
-var TEXT_COL = /date|psid|fb_id|chat_id|product_id|est_id/;
+var TEXT_COL = /date|psid|fb_id|chat_id|product_id|est_id|^time$/;
 var DEFAULT_CONFIG = { target_cost_per_case: 1000, brand: 'BIGCAT' };
 var STATUSES = ['1-ทักแล้วเงียบ', '2-มีข้อมูลเครื่อง', 'X-ของไม่ตรง', '3-ประเมินราคาแล้ว',
                 '7-สินค้าไม่รับซื้อ', '4-นัดรับของ', '5-ปิดการขาย', '6-ขอซื้อสินค้า'];
@@ -123,6 +125,7 @@ function json_(obj) {
 function refetchFacebook() {
   setConfig_('fb_synced_until', '');
   setConfig_('fb_hourly_until', '');
+  setConfig_('fb_activity_until', '');
   syncFacebook();
 }
 
@@ -245,6 +248,7 @@ function bootstrap_(user) {
     gads: tableOrEmpty_('GAds'),
     purchases: tableOrEmpty_('Purchases').map(function (r) { return [r.buy_date, r.category, r.fb ? 1 : 0, r.line ? 1 : 0, Number(r.bought) || 0, Number(r.repair) || 0, Number(r.sell) || 0, r.fb || '', needDetail_(r.category) ? r.detail || '' : '']; }),
     estimates: tableOrEmpty_('Estimates').map(function (r) { return [r.est_date, r.hour === '' ? -1 : Number(r.hour), r.category, r.fb ? 1 : 0, r.line ? 1 : 0, /ปิดสำเร็จ/.test(r.status) ? 1 : 0, needDetail_(r.category) ? r.detail || '' : '']; }),
+    fbstatus: tableOrEmpty_('FbStatus').map(function (r) { return [String(r.time), r.level, r.campaign, r.adset || '', r.state === 'on' ? 1 : 0, r.by || '']; }),
     fbhourly: (function () { var lim = addDays_(today_(), -92); return tableOrEmpty_('FbHourly').filter(function (r) { return String(r.date) >= lim; })
       .map(function (r) { return [r.date, Number(r.hour), r.campaign, r.adset, Number(r.spend) || 0, Number(r.chats) || 0]; }); })(),
     inbox: tableOrEmpty_('Inbox').filter(function (r) { return r.status !== 'ad' && (!r.first_date || String(r.first_date) >= FB_INBOX_SINCE); }),
@@ -774,6 +778,12 @@ function syncFacebook_(user) {
       fields: 'campaign_id,adset_name,spend,actions'
     });
   } catch (e) { hrIns = null; sum_hrError = String(e && e.message || e); }
+  // ประวัติการเปิด/ปิด (Activity log) — ครั้งแรกย้อนหลัง 120 วัน
+  var actSince = cfg.fb_activity_until ? addDays_(normDate_(cfg.fb_activity_until) || today, -3) : addDays_(today, -120), acts = null, actErr = '';
+  try {
+    acts = fbGetAll_(FB_AD_ACCOUNT + '/activities', { fields: 'event_time,event_type,object_id,object_name,actor_name,extra_data', limit: 500,
+      since: Math.floor(new Date(actSince + 'T00:00:00+07:00').getTime() / 1000) });
+  } catch (e) { acts = null; actErr = String(e && e.message || e); }
 
   var spentCamp = {}, firstSpend = {}, lastSpend = {};
   ins.forEach(function (r) {
@@ -895,6 +905,30 @@ function syncFacebook_(user) {
       sum.hourlyRows = hr.length;
     }
 
+    // ---- 5.3) เวลาเปิด/ปิด ----
+    if (acts) {
+      var setCamp = {}; fbSets.forEach(function (fs) { setCamp[fs.id] = { camp: campName[fs.campaign_id], name: fs.name }; });
+      var keepS = addDays_(today, -150), st = tableOrEmpty_('FbStatus').filter(function (x) { return String(x.time).slice(0, 10) >= keepS && String(x.time).slice(0, 10) < actSince; });
+      acts.forEach(function (a) {
+        var et = String(a.event_type || ''), lvl = /campaign/.test(et) ? 'c' : /ad_set|adset/.test(et) ? 's' : '';
+        if (!lvl || !/run_status|status/.test(et)) return;
+        var nv = '';
+        try { var x = typeof a.extra_data === 'string' ? JSON.parse(a.extra_data) : (a.extra_data || {}); nv = x.new_value; if (nv && typeof nv === 'object') nv = nv.status || nv.value || JSON.stringify(nv); } catch (e) { nv = String(a.extra_data || ''); }
+        nv = String(nv || '').toLowerCase();
+        var on = /active|resume|on\b|เปิด/.test(nv) && !/inactive|pause|off|ปิด/.test(nv), off = /pause|inactive|off|ปิด|archiv|delet/.test(nv);
+        if (!on && !off) return;
+        var camp = '', adset = '';
+        if (lvl === 'c') camp = campName[a.object_id] || ''; else if (setCamp[a.object_id]) { camp = setCamp[a.object_id].camp || ''; adset = setCamp[a.object_id].name; }
+        if (!camp) return;
+        var t = Utilities.formatDate(new Date(a.event_time), 'Asia/Bangkok', 'yyyy-MM-dd HH:mm');
+        st.push({ time: t, level: lvl, campaign: camp, adset: adset, state: on ? 'on' : 'off', by: a.actor_name || '', fb_id: String(a.object_id) });
+      });
+      var seenS = {}; st = st.filter(function (x) { var k = x.time + '|' + x.fb_id + '|' + x.state; if (seenS[k]) return false; seenS[k] = 1; return true; })
+        .sort(function (a, b) { return a.time < b.time ? -1 : 1; });
+      rewriteTable_('FbStatus', st);
+      sum.statusEvents = st.length;
+    }
+
     // ---- 6) รอบการยิง: งบ/วันที่ตั้งใน Facebook ตอนนี้ ----
     var budgets = readTable_('Budgets'), yest = addDays_(today, -1);
     function level(camp, adset, active, amount, fbId) {
@@ -937,6 +971,8 @@ function syncFacebook_(user) {
   setConfig_('fb_synced_until', today);
   if (hrIns) setConfig_('fb_hourly_until', today);
   setConfig_('fb_hourly_error', sum_hrError);
+  if (acts) setConfig_('fb_activity_until', today);
+  setConfig_('fb_activity_error', actErr);
 
   // ---- 7) แชทลูกค้าจาก Inbox ของเพจ (แยกส่วน — ถ้าพังจะไม่กระทบค่า Ads) ----
   try {
