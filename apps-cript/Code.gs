@@ -31,7 +31,7 @@ var FB_INBOX_SINCE = '2026-09-01';
 var PURCHASE_SHEET_ID = '1hsrvfwvkpZJE5Q6-75Fj5xg0FtePA-TceF8mJ8KF6iU'; // BIGCAT-TEST · แท็บ Orders_MM_YYYY
 var METRICS_SHEET_ID  = '1AEwjnQ0komRSwLi2-8TUj-SxAM0jvUgKYG1THfA-80Y'; // Google Ads · แท็บ METRICS // ดึงรายชื่อคนทักเพจตั้งแต่วันนี้เป็นต้นไป
 var FB_PAGE_ID = '';      // ว่าง = หาเพจให้เองจากโทเคน (ถ้ามีหลายเพจให้ใส่ ID เพจ Bigcat ตรงนี้)
-var BACKEND_VERSION = 10; // หน้าเว็บจะเช็คเลขนี้ — ถ้าต่ำกว่าที่ต้องการจะไม่ยอมบันทึก (กันข้อมูลหาย)
+var BACKEND_VERSION = 11; // หน้าเว็บจะเช็คเลขนี้ — ถ้าต่ำกว่าที่ต้องการจะไม่ยอมบันทึก (กันข้อมูลหาย)
 
 // ====== โครงสร้างตาราง ======
 var SCHEMA = {
@@ -808,13 +808,15 @@ function syncFacebook_(user) {
     rewriteTable_('Campaigns', camps);
 
     // ---- 3) Ad set ----
-    var sets = readTable_('AdSets'), setInfo = {};
+    var sets = readTable_('AdSets'), setInfo = {}, liveSet = {};
+    fbSets.forEach(function (fs) { liveSet[fs.id] = true; });
     fbSets.forEach(function (fs) {
       var camp = campName[fs.campaign_id];
       if (!camp) return;
       var row = sets.filter(function (a) { return String(a.fb_id) === fs.id; })[0];
       if (row && row.name !== fs.name) { renameAdset_(camp, row.name, fs.name, 'facebook'); row.name = fs.name; sum.renamed++; }
-      if (!row) row = sets.filter(function (a) { return a.campaign === camp && a.name === fs.name; })[0];
+      // จับคู่ด้วยชื่อเฉพาะแถวที่ยังไม่ผูกกับ Ad set อื่นที่ยังอยู่ใน Facebook (กัน Ad set ที่ duplicate ชื่อซ้ำมาทับกัน)
+      if (!row) row = sets.filter(function (a) { return a.campaign === camp && a.name === fs.name && (!a.fb_id || !liveSet[String(a.fb_id)]); })[0];
       if (!row) { row = { id: newId_('AdSets'), campaign: camp, name: fs.name, active: true, note: 'ดึงจาก Facebook' }; sets.push(row); sum.adsets++; }
       row.fb_id = fs.id; row.campaign = camp;
       row.active = fs.effective_status === 'ACTIVE';
@@ -823,13 +825,14 @@ function syncFacebook_(user) {
     rewriteTable_('AdSets', sets);
 
     // ---- 4) โฆษณา (ให้เลือกในหน้าบันทึกแชท) ----
-    var ads = readTable_('Ads');
+    var ads = readTable_('Ads'), liveAd = {};
+    fbAds.forEach(function (fa) { liveAd[fa.id] = true; });
     fbAds.forEach(function (fa) {
       var si = setInfo[fa.adset_id];
       if (!si) return;
       // จับคู่ด้วย id ก่อน แล้วค่อยชื่อ+แคมเปญ (id เก่าบางแถวอาจเพี้ยนจากชีตปัดตัวเลข)
       var row = ads.filter(function (a) { return String(a.fb_id) === fa.id; })[0] ||
-                ads.filter(function (a) { return a.ad_name === fa.name && a.campaign === si.camp; })[0];
+                ads.filter(function (a) { return a.ad_name === fa.name && a.campaign === si.camp && (!a.fb_id || !liveAd[String(a.fb_id)]); })[0];
       if (!row) {
         row = { id: newId_('Ads'), ad_name: fa.name, post_url: '', creative_url: '', note: 'ดึงจาก Facebook' };
         ads.push(row); sum.ads++;
@@ -839,7 +842,7 @@ function syncFacebook_(user) {
     });
     // ลบแถวโฆษณาซ้ำ (ชื่อ + Ad set + แคมเปญ เดียวกัน)
     var seenAd = {};
-    ads = ads.filter(function (a) { var k = a.ad_name + '|' + a.adset + '|' + a.campaign; if (seenAd[k]) return false; seenAd[k] = true; return true; });
+    ads = ads.filter(function (a) { var k = a.fb_id && liveAd[String(a.fb_id)] ? 'id|' + a.fb_id : a.ad_name + '|' + a.adset + '|' + a.campaign; if (seenAd[k]) return false; seenAd[k] = true; return true; });
     rewriteTable_('Ads', ads);
 
     // ---- 5) ค่า Ads รายวัน (แทนที่แถว Facebook เดิมในช่วงที่ดึง) ----
