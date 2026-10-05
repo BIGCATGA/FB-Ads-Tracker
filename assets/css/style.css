@@ -1268,3 +1268,35 @@ svg.es-svg { width: 100%; display: block; overflow: visible; font-family: inheri
 @media (max-width: 560px) { .es-k4 { grid-template-columns: minmax(0, 1fr); } .es-k .v.es-num { font-size: 30px; } .es-sm { grid-template-columns: minmax(0, 1fr); } }
 @media (prefers-reduced-motion: reduce) { .es-ring, .es-k .v, .es-dn .es-dseg, .es-smc .es-spn { animation: none !important; } .es-smc .es-spn { stroke-dashoffset: 0; } .es-k .v { color: var(--text); background: none; } }
 @media (max-width: 560px) { .es-top .chip-group { flex-wrap: wrap; overflow: visible; max-width: 100%; border-radius: 18px; } .es-top .chip-group button { padding-inline: 11px; font-size: 13px; } }
+/* v32: แท่งเกินสเกล (+300% ขึ้นไป) — ตัดที่ขอบ + ลายหยัก */
+.dbar.clip.r { border-radius: 0; background: linear-gradient(90deg, var(--bad) calc(100% - 14px), transparent calc(100% - 14px)), repeating-linear-gradient(135deg, var(--bad) 0 4px, transparent 4px 8px); }
+.dbar.clip.l { border-radius: 0; background: linear-gradient(270deg, var(--good) calc(100% - 14px), transparent calc(100% - 14px)), repeating-linear-gradient(45deg, var(--good) 0 4px, transparent 4px 8px); }
+/* v32: วิเคราะห์ช่วงเวลา — Google Ads + เคสประเมินซ้อนในกราฟ + เวลาเต็ม */
+.tsrc button { font-weight: 600; }
+.hmt { min-width: 960px; }
+.hmt th { font-size: 10.5px; white-space: nowrap; } .hmt th b { font-size: 12px; color: var(--text); font-weight: 700; }
+.hmt td { position: relative; height: 36px; }
+.hmt td .eb { position: absolute; top: -5px; right: -5px; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 8px; background: #fff; color: #9a5b00; border: 1.5px solid #f5a800; font-size: 9.5px; font-weight: 700; font-style: normal; line-height: 13px; text-align: center; z-index: 1; }
+.ebx { display: inline-block; min-width: 16px; height: 16px; border-radius: 8px; border: 1.5px solid #f5a800; color: #9a5b00; background: #fff; font-size: 10px; font-weight: 700; line-height: 13px; text-align: center; vertical-align: 1px; }
+.htip .ebt { color: #b06d00; }
+.bx { position: relative; }
+svg.hbar .eband { fill: var(--bg-soft); }
+svg.hbar .ec { fill: #f5a800; }
+svg.hbar .ect { fill: #3d2a00; font-size: 11px; font-weight: 700; font-family: inherit; pointer-events: none; }
+svg.hbar .eband-l { fill: #b06d00; font-weight: 600; }
+svg.hbar g.grp { transition: opacity .2s; cursor: pointer; }
+svg.hbar.hov g.grp:not(:hover) { opacity: .45; }
+.nudge.soft { background: var(--bg-soft); border-color: var(--line); color: var(--text-2); margin-bottom: 16px; }
+:root[data-theme="dark"] .hmt td .eb, :root[data-theme="dark"] .ebx { background: #2b2b38; color: #ffc44d; }
+:root[data-theme="dark"] .htip .ebt, :root[data-theme="dark"] svg.hbar .eband-l { color: #ffc44d; fill: #ffc44d; }
+@media (max-width: 860px) { .tsrc { width: 100%; } .tsrc button { flex: 1; } }
+/* v33: ป้ายบนหัวแท่ง — เคสประเมิน + Cost */
+svg.hbar .ep { fill: #ffd23f; stroke: #f5a800; stroke-width: 1.2; }
+svg.hbar .ept { fill: #3d2a00; font-size: 11px; font-weight: 700; font-family: inherit; pointer-events: none; }
+.bxl { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font-size: 13px; color: var(--text-2); margin: -4px 0 10px; }
+.bxl span { display: inline-flex; align-items: center; gap: 6px; }
+.bxl em { font-style: normal; display: inline-block; }
+.bxl .bxe { display: inline-grid; place-items: center; min-width: 24px; height: 18px; padding: 0 6px; border-radius: 9px; background: #ffd23f; border: 1.2px solid #f5a800; color: #3d2a00; font-size: 11px; font-weight: 700; }
+.bxl strong { font-weight: 700; color: var(--text); }
+.bxl .bxs { width: 12px; height: 12px; border-radius: 3px; } .bxl .bxs.g { background: var(--good); } .bxl .bxs.b { background: var(--bad); }
+.bxl .bxd { width: 18px; height: 0; border-top: 2px dashed var(--text-2); }
