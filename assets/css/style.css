@@ -1300,3 +1300,28 @@ svg.hbar .ept { fill: #3d2a00; font-size: 11px; font-weight: 700; font-family: i
 .bxl strong { font-weight: 700; color: var(--text); }
 .bxl .bxs { width: 12px; height: 12px; border-radius: 3px; } .bxl .bxs.g { background: var(--good); } .bxl .bxs.b { background: var(--bad); }
 .bxl .bxd { width: 18px; height: 0; border-top: 2px dashed var(--text-2); }
+/* v35: แถวป้ายกำกับบนกราฟ (เคสประเมิน / Cost) */
+svg.hbar .rowb.e { fill: #fff6d6; } svg.hbar .rowb.c { fill: var(--bg-soft); }
+svg.hbar .rowl { font-size: 12px; font-weight: 700; font-family: inherit; } svg.hbar .rowl.e { fill: #a86600; } svg.hbar .rowl.c { fill: var(--text-2); }
+svg.hbar .rowv { font-weight: 700; font-family: inherit; font-variant-numeric: tabular-nums; pointer-events: none; }
+svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.hbar .rowv.b { fill: var(--bad); } svg.hbar .rowv.n { fill: var(--text-3); }
+:root[data-theme="dark"] svg.hbar .rowb.e { fill: #3a2e10; } :root[data-theme="dark"] svg.hbar .rowl.e, :root[data-theme="dark"] svg.hbar .rowv.e { fill: #ffc44d; }
+/* v35: การ์ดหมวด — ตัวเลขใหญ่ขึ้น + สีตามความหมาย */
+.kc-v { font-size: 32px; } .kc-v.ok { color: var(--good); } .kc-v.ng { color: var(--bad); }
+.kq { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 0 2px; margin-top: 4px; }
+.kq .q { display: grid; gap: 0; border-radius: 10px; padding: 6px 9px; text-align: left; min-width: 0; }
+.kq .q i { font-style: normal; font-size: 11.5px; font-weight: 600; opacity: .85; }
+.kq .q b { font-size: 19px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.kq .q small { font-size: 11px; opacity: .8; margin-top: -2px; }
+.kq .q.tg { background: var(--tgt, #fff3cc); color: #7a5600; }
+.kq .q.bu { background: var(--good-bg); color: var(--good); }
+.kq .q.es { background: #fff1dc; color: #b45f00; }
+.kq .q.wn { background: #e8f0ff; color: #2a5bd7; }
+.kq-c { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; padding: 8px 4px 0; margin-top: 6px; border-top: 1px solid var(--line); font-size: 13px; color: var(--text-3); }
+.kq-c b { font-size: 15px; color: var(--text); font-weight: 700; }
+:root[data-theme="dark"] .kq .q.tg { background: #3d3210; color: #f5c84c; }
+:root[data-theme="dark"] .kq .q.es { background: #3a2a10; color: #ffb357; }
+:root[data-theme="dark"] .kq .q.wn { background: #1a2748; color: #8fb2ff; }
+.e3 .v { font-size: 34px; } .e3-0 .v { color: #c46a00; } .e3-2 .v { color: #2a5bd7; }
+:root[data-theme="dark"] .e3-0 .v { color: #ffb357; } :root[data-theme="dark"] .e3-2 .v { color: #8fb2ff; }
+@media (max-width: 560px) { .kc-v { font-size: 24px; } .kq .q b { font-size: 16px; } .kq .q { padding: 5px 7px; } }
