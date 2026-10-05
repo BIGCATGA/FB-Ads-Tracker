@@ -1370,3 +1370,19 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 .kq3 .q i { white-space: nowrap; font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
 .eblk.wide .ebk .hr { grid-template-columns: 84px minmax(0, 1fr) 34px 54px; }
 .rh-pz { color: #b06d00; }
+/* v42: ผลงานตามงบ/วัน (A3) */
+.btc .card-head { flex-wrap: wrap; gap: 10px; }
+.bt-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.bt-c { border: 1px solid var(--line); border-radius: 16px; padding: 16px; min-width: 0; }
+.bt-c.cur { border: 2px solid #f5a800; }
+.bt-c .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.bt-c .bd { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; } .bt-c .bd small { font-size: 13px; color: var(--text-3); font-weight: 500; margin-left: 4px; }
+.bt-c .per { font-size: 12.5px; color: var(--text-3); }
+.bt-c svg { display: block; width: 100%; height: 70px; margin: 10px 0; }
+.bt-c .m3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.bt-c .m3 div { background: #f5f6f8; border-radius: 10px; padding: 8px; text-align: center; } .bt-c .m3 i { display: block; font-style: normal; font-size: 11.5px; color: #55566a; }
+.bt-c .m3 b { font-size: 19px; color: #111; font-variant-numeric: tabular-nums; } .bt-c .m3 b.g { color: var(--good); } .bt-c .m3 b.r { color: var(--bad); }
+:root[data-theme="dark"] .bt-c .m3 div { background: #24242e; } :root[data-theme="dark"] .bt-c .m3 b:not(.g):not(.r) { color: #f2f2f5; }
+.bt-v { margin-top: 14px; background: #e3f9ec; border-radius: 12px; padding: 10px 14px; font-size: 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; color: #111; }
+.bt-v.bad { background: #fde8e5; }
+@media (max-width: 760px) { .bt-grid { grid-template-columns: minmax(0, 1fr); } }
