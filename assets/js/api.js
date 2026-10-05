@@ -36,6 +36,51 @@
     });
   }
 
+  // ---------- แถบกำลังโหลด / กำลังบันทึก ----------
+  var busyN = 0, busyEl = null, busyT0 = 0, hideT = null;
+  function busyText(action) {
+    if (/^save|^inboxDecide/.test(action)) return ['กำลังบันทึกข้อมูล…', 'อย่าเพิ่งปิดหน้านี้'];
+    if (/^delete/.test(action)) return ['กำลังลบข้อมูล…', 'อย่าเพิ่งปิดหน้านี้'];
+    if (/^rename/.test(action)) return ['กำลังเปลี่ยนชื่อ…', 'ระบบอัปเดตข้อมูลที่เกี่ยวข้องให้ด้วย'];
+    if (/sync|Sync|refetch/.test(action)) return ['กำลังดึงข้อมูลล่าสุด…', 'Facebook · Google Ads · ชีตรับซื้อ อาจใช้เวลา 1–2 นาที'];
+    if (action === 'bootstrap') return ['กำลังโหลดข้อมูล…', ''];
+    if (action === 'login') return ['กำลังเข้าสู่ระบบ…', ''];
+    return ['กำลังทำงาน…', ''];
+  }
+  function busyStart(action) {
+    var quiet = action === 'bootstrap' && !document.querySelector('.app');
+    if (quiet) return null;
+    var t = busyText(action), block = action !== 'bootstrap';
+    if (!busyEl) {
+      busyEl = document.createElement('div');
+      busyEl.className = 'busy';
+      busyEl.setAttribute('role', 'status'); busyEl.setAttribute('aria-live', 'polite');
+      busyEl.innerHTML = '<div class="busy-top"><i></i></div><div class="busy-box"><span class="busy-sp"></span><div><b></b><small></small><div class="busy-bar"><i></i></div></div></div>';
+      document.body.appendChild(busyEl);
+    }
+    clearTimeout(hideT);
+    busyN++; busyT0 = Date.now();
+    busyEl.querySelector('b').textContent = t[0]; busyEl.querySelector('small').textContent = t[1];
+    busyEl.classList.remove('done', 'err');
+    busyEl.classList.toggle('block', block || busyEl.classList.contains('block') && busyN > 1);
+    busyEl.classList.add('on');
+    return { action: action };
+  }
+  function busyEnd(b, ok) {
+    if (!b || !busyEl) return;
+    busyN = Math.max(0, busyN - 1);
+    if (busyN) return;
+    var wait = Math.max(0, 450 - (Date.now() - busyT0));
+    hideT = setTimeout(function () {
+      if (ok && b.action !== 'bootstrap' && b.action !== 'login') {
+        busyEl.classList.add(ok ? 'done' : 'err');
+        busyEl.querySelector('b').textContent = /^delete/.test(b.action) ? 'ลบแล้ว' : /sync|Sync/.test(b.action) ? 'ดึงข้อมูลเสร็จแล้ว' : 'บันทึกแล้ว';
+        busyEl.querySelector('small').textContent = '';
+        hideT = setTimeout(function () { busyEl.classList.remove('on', 'block', 'done'); }, 700);
+      } else busyEl.classList.remove('on', 'block', 'done');
+    }, wait);
+  }
+
   // ---------- โหมดตัวอย่าง ----------
   var demo = null;
   function demoDb() {
@@ -149,7 +194,11 @@
     isDemo: !URL_,
     MIN_BACKEND: 8,
     outdated: false,
-    call: function (action, payload) { return URL_ ? remote(action, payload) : local(action, payload || {}); },
+    call: function (action, payload) {
+      var b = busyStart(action);
+      var pr = URL_ ? remote(action, payload) : Promise.resolve().then(function () { return local(action, payload || {}); });
+      return pr.then(function (r) { busyEnd(b, true); return r; }, function (e) { busyEnd(b, false); throw e; });
+    },
     token: function (v) { return store('fbat_token', v); },
     userName: function (v) { return store('fbat_user', v); },
     resetDemo: function () { store(DEMO_KEY, null); demo = null; },

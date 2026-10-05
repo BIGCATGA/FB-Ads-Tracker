@@ -146,6 +146,19 @@
           P.forEach(function (p) { var n = Math.floor(p[1] * (0.4 + r() * 1.2)); for (var k = 0; k < n; k++) { var fb = r() < 0.4, ln = !fb && r() < 0.85, b = 10000 + Math.round(r() * 10000); out.push([ds, p[0], fb ? 1 : 0, ln ? 1 : 0, b, 0, b + Math.round(p[2] * (0.7 + r() * 0.6)), '']); } }); }
         return out;
       })(),
+      estimates: (function () {
+        var out = [], t = new Date(), P = [['iPhone', 9], ['iPad', 5], ['MacBook', 3], ['Notebook Gaming', 3], ['Notebook Office', 2], ['Comset Gaming', 2], ['AirPods', 4], ['Apple Watch', 2], ['Game Console', 2]];
+        for (var i = 120; i >= 0; i--) { var d = new Date(t); d.setDate(d.getDate() - i); var ds = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2), wk = d.getDay() === 0 || d.getDay() === 6;
+          P.forEach(function (p) { var n = Math.floor(p[1] * (0.5 + r()) * (wk ? 0.8 : 1)); for (var k = 0; k < n; k++) { var h = Math.floor(8 + r() * 15) % 24, fb = r() < 0.35; out.push([ds, h, p[0], fb ? 1 : 0, fb ? 0 : 1, r() < 0.4 ? 1 : 0]); } }); }
+        return out;
+      })(),
+      fbhourly: (function () {
+        var out = [], W = [0.2, 0.1, 0.1, 0.1, 0.1, 0.2, 0.4, 0.7, 0.9, 1, 1, 1.1, 1.1, 1, 1, 1, 1.1, 1.2, 1.3, 1.5, 1.6, 1.5, 1.2, 0.6], ws = W.reduce(function (a, b) { return a + b; }, 0);
+        spend.forEach(function (x) { if (!x.adset) return; var dow = new Date(x.date + 'T00:00:00').getDay(), wk = dow === 0 || dow === 6;
+          W.forEach(function (w, h) { var sp = x.amount * w / ws, eff = (h >= 1 && h <= 6 ? 0.1 : h >= 19 && h <= 22 ? 1.6 : 1) * (wk ? 0.75 : 1), ex = sp / 28 * eff * (0.6 + r() * 0.8), ch = Math.floor(ex) + (r() < ex - Math.floor(ex) ? 1 : 0);
+            if (sp > 0.5) out.push([x.date, h, x.campaign, x.adset, Math.round(sp * 100) / 100, ch]); }); });
+        return out;
+      })(),
       inbox: (function () {
         var t = new Date(), iso = function (n) { var d = new Date(t); d.setDate(d.getDate() - n); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); };
         var P = [['Nok Siriporn', 0, 'สนใจขาย iPhone 13 ครับ', 'Ad Set A : iPhone 11 / 12 / 13:3|Ad Set B : iPhone 14 / 15 / 16 / 17:2'],

@@ -629,16 +629,24 @@
     if (o && o !== 'auto') return o;
     return guessCat(detail) || guessCat(campaign) || (platform === 'f' ? 'mixed' : 'none');
   }
+  /** ค่า Ads Facebook รายวัน: ใช้ข้อมูลรายโฆษณา (FbAds) ก่อน
+   *  วัน/แคมเปญไหนยังไม่มีข้อมูลรายโฆษณา → ใช้ค่า Ads รายแคมเปญ (Spend) แทน กันยอดหายช่วงก่อนเริ่มดึงรายโฆษณา */
   function fbRows(data, from, to) {
-    var rows = (data.fbads || []).filter(function (r) { return r.date >= from && r.date <= to; });
-    if (rows.length || (data.fbads || []).length) return rows;
-    // ยังไม่มีข้อมูลรายโฆษณา → ใช้ค่า Ads รายแคมเปญแทน
-    return (data.spend || []).filter(function (s) { return s.source === 'fb' && s.date >= from && s.date <= to; })
-      .map(function (s) { return { date: s.date, campaign: s.campaign, adset: '', ad: '', spend: Number(s.amount) || 0, impressions: 0, reach: 0, clicks: 0, link_clicks: 0, chats: Number(s.results) || 0 }; });
+    var rows = [], has = {};
+    (data.fbads || []).forEach(function (r) {
+      if (r.date < from || r.date > to) return;
+      rows.push(r); has[r.campaign + '|' + r.date] = true;
+    });
+    spendDaily(data).forEach(function (s) {
+      if (s.date < from || s.date > to || !s.campaign || has[s.campaign + '|' + s.date]) return;
+      if (!(s.amount > 0) && !s.results) return;
+      rows.push({ date: s.date, campaign: s.campaign, adset: s.adset || '', ad: '', spend: s.amount, impressions: 0, reach: 0, clicks: 0, link_clicks: 0, chats: s.results || 0, est: true });
+    });
+    return rows;
   }
   function costByCat(data, from, to) {
     var map = catMap(data), cats = {}, mixed = { fb: 0, fbc: 0, gg: 0, ggc: 0 };
-    KPI_CATS.forEach(function (c) { cats[c.k] = { fb: 0, gg: 0, fbc: 0, ggc: 0, ufb: 0, ugg: 0, margin: 0 }; });
+    KPI_CATS.forEach(function (c) { cats[c.k] = { fb: 0, gg: 0, fbc: 0, ggc: 0, ufb: 0, ugg: 0, efb: 0, egg: 0, margin: 0 }; });
     fbRows(data, from, to).forEach(function (r) {
       var k = adCat(map, 'f', r.campaign, r.adset + ' ' + r.ad);
       if (k === 'none') return;
@@ -657,6 +665,12 @@
       if (p.fb) t.ufb++; else if (p.line) t.ugg++; else return;
       t.margin += p.sell - p.bought - p.repair;
     });
+    (data.estimates || []).forEach(function (e) {
+      if (e.date < from || e.date > to) return;
+      var t = cats[purchaseCat(e.category)];
+      if (!t) return;
+      if (e.fb) t.efb++; else if (e.line) t.egg++;
+    });
     // แคมเปญที่ไม่ระบุหมวด → กระจายตามสัดส่วน Conversion
     var totC = 0; KPI_CATS.forEach(function (c) { var t = cats[c.k]; totC += t.fbc + t.ggc; });
     KPI_CATS.forEach(function (c) {
@@ -665,6 +679,7 @@
       t.spend = t.fb + t.gg; t.cv = t.fbc + t.ggc; t.u = t.ufb + t.ugg;
       t.cpcv = t.cv ? t.spend / t.cv : null; t.cpu = t.u ? t.spend / t.u : null;
       t.avgM = t.u ? t.margin / t.u : null; t.close = t.cv ? t.u / t.cv : null;
+      t.est = t.efb + t.egg; t.cpe = t.est ? t.spend / t.est : null; t.win = t.est ? t.u / t.est : null;
     });
     return { cats: cats, mixed: mixed };
   }
@@ -690,13 +705,13 @@
   }
   /** ประสิทธิภาพ FB ช่วงหนึ่ง (แคมเปญเดียว หรือทั้งหมด) */
   function fbPerf(data, from, to, camp, ad) {
-    var o = { spend: 0, imp: 0, reach: 0, clk: 0, lclk: 0, chat: 0, days: {} };
+    var o = { spend: 0, spi: 0, imp: 0, reach: 0, clk: 0, lclk: 0, chat: 0, days: {} };
     fbRows(data, from, to).forEach(function (r) {
       if (camp && r.campaign !== camp) return; if (ad && r.ad !== ad) return;
-      o.spend += Number(r.spend) || 0; o.imp += Number(r.impressions) || 0; o.reach += Number(r.reach) || 0; o.clk += Number(r.clicks) || 0; o.lclk += Number(r.link_clicks) || 0; o.chat += Number(r.chats) || 0;
+      o.spend += Number(r.spend) || 0; if (!r.est) o.spi += Number(r.spend) || 0; o.imp += Number(r.impressions) || 0; o.reach += Number(r.reach) || 0; o.clk += Number(r.clicks) || 0; o.lclk += Number(r.link_clicks) || 0; o.chat += Number(r.chats) || 0;
     });
     o.reach = o.reach * (daysIncl(from, to) > 1 ? 0.72 : 1); // คนเดียวกันเห็นหลายวัน — ประมาณจากผลรวมรายวัน
-    o.ctr = o.imp ? (o.lclk ? o.lclk : o.clk) / o.imp : null; o.cplc = o.lclk ? o.spend / o.lclk : null; o.cpm = o.imp ? o.spend / o.imp * 1000 : null; o.freq = o.reach ? o.imp / o.reach : null; o.cpc = o.chat ? o.spend / o.chat : null;
+    o.ctr = o.imp ? (o.lclk ? o.lclk : o.clk) / o.imp : null; o.cplc = o.lclk ? o.spi / o.lclk : null; o.cpm = o.imp ? o.spi / o.imp * 1000 : null; o.freq = o.reach ? o.imp / o.reach : null; o.cpc = o.chat ? o.spend / o.chat : null;
     return o;
   }
 

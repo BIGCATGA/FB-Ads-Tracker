@@ -28,18 +28,20 @@
     check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16.5 9.5"/></svg>',
     coin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><ellipse cx="12" cy="7" rx="7" ry="3"/><path d="M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/></svg>',
     copy: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></svg>',
+    est: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M9 3.5h6v3H9zM8.5 11h7M8.5 14.5h7M8.5 18h4"/></svg>',
+    clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
     chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
     link: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></svg>'
   };
   var NAV = [
     { id: 'kpi', label: 'ต้นทุนต่อหมวด', short: 'ต้นทุน', icon: I.coin, group: 'biz' },
+    { id: 'est', label: 'เคสประเมิน', short: 'ประเมิน', icon: I.est, group: 'biz' },
+    { id: 'time', label: 'วิเคราะห์ช่วงเวลา', short: 'ช่วงเวลา', icon: I.clock, group: 'biz' },
     { id: 'dashboard', label: 'ภาพรวม Ads Facebook', short: 'ภาพรวม FB', icon: I.dash, group: 'fb' },
     { id: 'chats', label: 'บันทึกแชท', short: 'แชท', icon: I.chat, group: 'fb' },
     { id: 'campaigns', label: 'แคมเปญ', short: 'แคมเปญ', icon: I.mega, group: 'fb' },
     { id: 'settings', label: 'ตั้งค่า', short: 'ตั้งค่า', icon: I.gear, group: 'sys' }
   ];
-  var FB_LOGO = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#1877F2"/><path d="M13.4 19v-6.1h2l.3-2.4h-2.3V9c0-.7.2-1.2 1.2-1.2h1.3V5.7c-.2 0-1-.1-1.9-.1-1.9 0-3.2 1.2-3.2 3.3v1.7H8.7v2.4h2.1V19z" fill="#fff"/></svg>';
-  var GG_LOGO = '<svg viewBox="0 0 24 24"><path d="M21.6 12.2c0-.7-.1-1.3-.2-1.9H12v3.6h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.2z" fill="#4285F4"/><path d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z" fill="#34A853"/><path d="M6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3.1a10 10 0 0 0 0 9.1z" fill="#FBBC05"/><path d="M12 6c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.4L6.4 10C7.2 7.7 9.4 6 12 6z" fill="#EA4335"/></svg>';
 
   // ---------- Helpers ----------
   function $(sel, el) { return (el || document).querySelector(sel); }
@@ -78,6 +80,8 @@
     d.fbads = (d.fbads || []).map(function (r) { r.date = nd(r.date); return r; });
     d.gads = (d.gads || []).map(function (r) { r.date = nd(r.date); r.cost = Number(r.cost) || 0; r.conversions = Number(r.conversions) || 0; return r; });
     d.purchases = (d.purchases || []).map(function (a) { return Array.isArray(a) ? { date: nd(a[0]), category: a[1], fb: !!a[2], line: !!a[3], bought: a[4], repair: a[5], sell: a[6], fbName: a[7] || '' } : a; });
+    d.estimates = (d.estimates || []).map(function (a) { return Array.isArray(a) ? { date: nd(a[0]), hour: Number(a[1]), category: a[2], fb: !!a[3], line: !!a[4], closed: !!a[5] } : a; }).filter(function (e) { return e.date; });
+    d.fbhourly = (d.fbhourly || []).map(function (a) { return Array.isArray(a) ? { date: nd(a[0]), hour: Number(a[1]) || 0, campaign: a[2], adset: a[3], spend: Number(a[4]) || 0, chats: Number(a[5]) || 0 } : a; }).filter(function (e) { return e.date; });
     d.inbox = (d.inbox || []).map(function (r) { r.psid = String(r.psid); r.first_date = nd(r.first_date); r.last_date = nd(r.last_date); return r; });
     d.spend = d.spend.filter(function (s) { return s.date; });
     return d;
@@ -193,10 +197,10 @@
     var byId = {}; NAV.forEach(function (n) { byId[n.id] = n; });
     var fbIn = NAV.filter(function (n) { return n.group === 'fb'; }), fbAct = fbIn.some(function (n) { return n.id === S.page; });
     var lastSync = S.data.config.fb_last_sync ? new Date(S.data.config.fb_last_sync) : null;
-    var nav = '<div class="nlab">ภาพรวมธุรกิจ</div>' + nItem(byId.kpi, true) +
+    var nav = '<div class="nlab">ภาพรวมธุรกิจ</div>' + nItem(byId.kpi, true) + nItem(byId.est) + nItem(byId.time) +
       '<div class="nlab">ช่องทางโฆษณา</div>' +
-      '<div class="ngrp' + (fbOpen || fbAct ? ' open' : '') + '"><button class="ngh" id="fbGrp"><span class="logo">' + FB_LOGO + '</span><b>Facebook Ads</b><span class="chev">' + I.chev + '</span></button><div class="nsub">' + fbIn.map(function (n) { return nItem(n); }).join('') + '</div></div>' +
-      '<div class="ngrp soon"><div class="ngh"><span class="logo">' + GG_LOGO + '</span><b>Google Ads</b><span class="soon-t">เร็วๆ นี้</span></div></div>';
+      '<div class="ngrp' + (fbOpen || fbAct ? ' open' : '') + '"><button class="ngh" id="fbGrp"><b>Facebook Ads</b><span class="chev">' + I.chev + '</span></button><div class="nsub">' + fbIn.map(function (n) { return nItem(n); }).join('') + '</div></div>' +
+      '<div class="ngrp soon"><div class="ngh"><b>Google Ads</b><span class="soon-t">เร็วๆ นี้</span></div></div>';
     var bnav = NAV.map(function (n) { var cnt = n.id === 'chats' ? pendN : 0; return '<button data-nav="' + n.id + '" class="' + (S.page === n.id ? 'active' : '') + '">' + n.icon + '<span>' + n.short + '</span>' + (cnt ? '<i class="nav-badge">' + (cnt > 99 ? '99+' : cnt) + '</i>' : '') + '</button>'; }).join('');
     var title = NAV.filter(function (n) { return n.id === S.page; })[0].label;
     root.innerHTML =
@@ -235,7 +239,7 @@
     };
     if (S.page === 'chats') $('#globalSearch').oninput = function () { S.chatFilter.q = this.value.trim(); renderChatList(); };
 
-    ({ dashboard: pageDashboard, chats: pageChats, campaigns: pageCampaigns, kpi: pageKpi, settings: pageSettings })[S.page]();
+    ({ dashboard: pageDashboard, chats: pageChats, campaigns: pageCampaigns, kpi: pageKpi, est: pageEst, time: pageTime, settings: pageSettings })[S.page]();
   }
 
   function go(page) {
@@ -1551,9 +1555,9 @@
     // รวมทุกหมวด
     var tot = { spend: 0, cv: 0, u: 0, fb: 0, gg: 0, fbc: 0, ggc: 0, ufb: 0, ugg: 0, tu: 0, tc: 0, wu: 0, wc: 0 };
     C.KPI_CATS.forEach(function (c) { var o = res[c.k], t = T[c.k];
-      ['spend', 'cv', 'u', 'fb', 'gg', 'fbc', 'ggc', 'ufb', 'ugg'].forEach(function (k) { tot[k] += o[k] || 0; });
+      ['spend', 'cv', 'u', 'fb', 'gg', 'fbc', 'ggc', 'ufb', 'ugg', 'est'].forEach(function (k) { tot[k] = (tot[k] || 0) + (o[k] || 0); });
       if (t.tU != null && o.u) { tot.tu += t.tU * o.u; tot.wu += o.u; } if (t.tC != null && o.cv) { tot.tc += t.tC * o.cv; tot.wc += o.cv; } });
-    tot.cpu = tot.u ? tot.spend / tot.u : null; tot.cpcv = tot.cv ? tot.spend / tot.cv : null;
+    tot.cpu = tot.u ? tot.spend / tot.u : null; tot.cpcv = tot.cv ? tot.spend / tot.cv : null; tot.cpe = tot.est ? tot.spend / tot.est : null; tot.win = tot.est ? tot.u / tot.est : null;
     var TT = { tU: tot.wu ? tot.tu / tot.wu : null, tC: tot.wc ? tot.tc / tot.wc : null };
 
     // 0) สรุปรวม 5 หมวด (แสดงอันดับแรก)
@@ -1565,6 +1569,11 @@
     }
     html += '<div class="sum2k">' + sumCard('Cost / เครื่องที่รับซื้อสำเร็จ · รวม 5 หมวด', tot.cpu, TT.tU, tot.u, 'เครื่อง (มาจาก FB / LINE)') +
       sumCard('Cost / Conversion · รวม 5 หมวด', tot.cpcv, TT.tC, F.int(Math.round(tot.cv)), 'Conversion (แชท FB + Conversion Google)') + '</div>';
+    var hasEst = (S.data.estimates || []).length > 0;
+    html += '<div class="est3">' + [['เคสประเมิน · รวม 5 หมวด', hasEst ? F.int(tot.est) : '–', 'เคส', 'ลูกค้าส่งข้อมูลเครื่องมาประเมิน (FB + LINE)'],
+      ['Cost / เคสประเมิน', hasEst ? nb(tot.cpe) : '–', 'บาท', 'ค่า Ads ÷ เคสประเมิน'],
+      ['Win rate', hasEst && tot.win != null ? (tot.win * 100).toFixed(1) : '–', '%', 'รับซื้อสำเร็จ ÷ เคสประเมิน']].map(function (x) {
+        return '<div class="card e3"><span class="l">' + x[0] + '</span><span class="v" data-n>' + x[1] + (x[1] === '–' ? '' : '<small>' + x[2] + '</small>') + '</span><span class="s">' + (hasEst ? x[3] : 'ยังไม่มีข้อมูล — อัปเดต Apps Script แล้วกด ดึงข้อมูลตอนนี้') + '</span></div>'; }).join('') + '</div>';
 
     // 1) การ์ดสินค้า
     html += '<div class="kc5">' + C.KPI_CATS.map(function (c) {
@@ -1575,6 +1584,7 @@
           (pu == null ? '<span class="stp n">' + (o.cpu == null ? 'ยังไม่มีข้อมูล' : 'ยังไม่มีเป้า') + '</span>' : '<span class="stp ' + (ok ? 'g' : 'b') + '">' + (ok ? 'ผ่าน ' : 'เกิน ') + sgn(pu) + '</span>') + '</div>' +
         '<div class="kc-v" data-n>' + nb(o.cpu) + (o.cpu == null ? '' : '<small>บาท / เครื่อง</small>') + '</div>' +
         '<div class="kc-row"><span>เป้า <b>' + nb(t.tU) + '</b></span><span>รับ <b>' + o.u + '</b> เครื่อง</span></div>' +
+        '<div class="kc-row sub"><span>ประเมิน <b>' + F.int(o.est || 0) + '</b> เคส</span><span>Win <b>' + (o.win == null ? '–' : Math.round(o.win * 100) + '%') + '</b></span></div>' +
         '<div class="kc-row sub"><span>Cost/Conv. <b>' + F.baht(o.cpcv) + '</b></span>' + (pc == null ? '' : '<span class="' + (pc > 0 ? 'bt' : 'gt') + '">' + sgn(pc) + '</span>') + '</div></button>';
     }).join('') + '</div>';
 
@@ -1668,11 +1678,12 @@
     var rows = C.KPI_CATS.map(function (c) { var o = res[c.k], t = T[c.k];
       return '<tr><td><b>' + c.n + '</b></td><td class="r fbv">' + nb(o.fb) + '</td><td class="r ggv">' + nb(o.gg) + '</td><td class="r"><b>' + nb(o.spend) + '</b></td>' +
         '<td class="r">' + F.int(Math.round(o.cv)) + '</td><td class="r"><b>' + nb(o.cpcv) + '</b></td><td class="r">' + nb(t.tC) + '</td><td class="r ' + (pctOf(o.cpcv, t.tC) > 0 ? 'bt' : 'gt') + '">' + (pctOf(o.cpcv, t.tC) == null ? '–' : sgn(pctOf(o.cpcv, t.tC))) + '</td>' +
+        '<td class="r">' + F.int(o.est || 0) + '</td><td class="r"><b>' + nb(o.cpe) + '</b></td><td class="r">' + (o.win == null ? '–' : Math.round(o.win * 100) + '%') + '</td>' +
         '<td class="r">' + o.u + '</td><td class="r"><b>' + nb(o.cpu) + '</b></td><td class="r">' + nb(t.tU) + '</td><td class="r ' + (pctOf(o.cpu, t.tU) > 0 ? 'bt' : 'gt') + '">' + (pctOf(o.cpu, t.tU) == null ? '–' : sgn(pctOf(o.cpu, t.tU))) + '</td>' +
         '<td class="r">' + nb(o.avgM) + '</td><td class="r">' + (o.cpu != null && o.avgM ? Math.round(o.cpu / o.avgM * 100) + '%' : '–') + '</td></tr>'; }).join('');
-    html += '<div class="card mt"><h2 class="card-title">ตัวเลขทั้งหมด</h2><div class="card-sub">หน่วยเป็นบาท · ± คือห่างจากเป้ากี่ % · FB = แชทจากโฆษณา + เครื่องที่ช่อง FB มีชื่อ · Google = Conversion Google Ads + เครื่องที่ช่อง LINE มีชื่อ</div>' +
-      '<div class="table-wrap" style="margin-top:12px"><table class="t kt"><thead><tr><th>หมวด</th><th class="r">ค่า Ads FB</th><th class="r">ค่า Ads Google</th><th class="r">รวม</th><th class="r">Conv.</th><th class="r">Cost/Conv.</th><th class="r">เป้า</th><th class="r">±</th><th class="r">เครื่อง</th><th class="r">Cost/เครื่อง</th><th class="r">เป้า</th><th class="r">±</th><th class="r">กำไร/เครื่อง</th><th class="r">Ads % กำไร</th></tr></thead><tbody>' + rows +
-      '<tr class="tot"><td>รวม</td><td class="r">' + nb(tot.fb) + '</td><td class="r">' + nb(tot.gg) + '</td><td class="r">' + nb(tot.spend) + '</td><td class="r">' + F.int(Math.round(tot.cv)) + '</td><td class="r">' + nb(tot.cpcv) + '</td><td class="r">' + nb(TT.tC) + '</td><td class="r ' + (pctOf(tot.cpcv, TT.tC) > 0 ? 'bt' : 'gt') + '">' + (pctOf(tot.cpcv, TT.tC) == null ? '–' : sgn(pctOf(tot.cpcv, TT.tC))) + '</td><td class="r">' + tot.u + '</td><td class="r">' + nb(tot.cpu) + '</td><td class="r">' + nb(TT.tU) + '</td><td class="r ' + (pctOf(tot.cpu, TT.tU) > 0 ? 'bt' : 'gt') + '">' + (pctOf(tot.cpu, TT.tU) == null ? '–' : sgn(pctOf(tot.cpu, TT.tU))) + '</td><td></td><td></td></tr></tbody></table></div></div>';
+    html += '<div class="card mt"><h2 class="card-title">ตัวเลขทั้งหมด</h2><div class="card-sub">หน่วยเป็นบาท · ± คือห่างจากเป้ากี่ % · Win rate = เครื่อง ÷ เคสประเมิน · FB = แชทจากโฆษณา + เครื่องที่ช่อง FB มีชื่อ · Google = Conversion Google Ads + เครื่องที่ช่อง LINE มีชื่อ</div>' +
+      '<div class="table-wrap" style="margin-top:12px"><table class="t kt"><thead><tr><th>หมวด</th><th class="r">ค่า Ads FB</th><th class="r">ค่า Ads Google</th><th class="r">รวม</th><th class="r">Conv.</th><th class="r">Cost/Conv.</th><th class="r">เป้า</th><th class="r">±</th><th class="r">เคสประเมิน</th><th class="r">Cost/เคส</th><th class="r">Win rate</th><th class="r">เครื่อง</th><th class="r">Cost/เครื่อง</th><th class="r">เป้า</th><th class="r">±</th><th class="r">กำไร/เครื่อง</th><th class="r">Ads % กำไร</th></tr></thead><tbody>' + rows +
+      '<tr class="tot"><td>รวม</td><td class="r">' + nb(tot.fb) + '</td><td class="r">' + nb(tot.gg) + '</td><td class="r">' + nb(tot.spend) + '</td><td class="r">' + F.int(Math.round(tot.cv)) + '</td><td class="r">' + nb(tot.cpcv) + '</td><td class="r">' + nb(TT.tC) + '</td><td class="r ' + (pctOf(tot.cpcv, TT.tC) > 0 ? 'bt' : 'gt') + '">' + (pctOf(tot.cpcv, TT.tC) == null ? '–' : sgn(pctOf(tot.cpcv, TT.tC))) + '</td><td class="r">' + F.int(tot.est || 0) + '</td><td class="r">' + nb(tot.cpe) + '</td><td class="r">' + (tot.win == null ? '–' : Math.round(tot.win * 100) + '%') + '</td><td class="r">' + tot.u + '</td><td class="r">' + nb(tot.cpu) + '</td><td class="r">' + nb(TT.tU) + '</td><td class="r ' + (pctOf(tot.cpu, TT.tU) > 0 ? 'bt' : 'gt') + '">' + (pctOf(tot.cpu, TT.tU) == null ? '–' : sgn(pctOf(tot.cpu, TT.tU))) + '</td><td></td><td></td></tr></tbody></table></div></div>';
 
     // 7) ตั้งเป้า
     var tq = T[kf.cat];
@@ -1760,6 +1771,319 @@
         tip.style.left = ((L + i * gw + gw / 2) / W * bx.width) + 'px'; tip.style.top = (y(v == null ? 0 : v) / H * bx.height + 40) + 'px'; tip.style.opacity = 1; };
       r.onmouseleave = function () { tip.style.opacity = 0; };
     });
+  }
+
+  // ============================================================
+  // วิเคราะห์ช่วงเวลา (ตัวเลข + กราฟ เท่านั้น)
+  // ============================================================
+  var DOW = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัส', 'ศุกร์', 'เสาร์'], DOW_ORDER = [1, 2, 3, 4, 5, 6, 0], DOW_S = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+  function dowOf(d) { return new Date(d + 'T00:00:00').getDay(); }
+  /** สีตามอัตราส่วนเทียบค่าเฉลี่ย: ต่ำ = เขียว · สูง = แดง (ค่าใช้จ่าย) */
+  var HB = [[0.7, '#1e9a58', '#fff'], [0.9, '#86c98a', '#13361f'], [1.15, '#f3d65a', '#3d2f00'], [1.6, '#f19a45', '#3d1d00'], [Infinity, '#d64545', '#fff']];
+  function heatCol(ratio) { for (var i = 0; i < HB.length; i++) if (ratio <= HB[i][0]) return HB[i]; return HB[HB.length - 1]; }
+  function hhmm(h) { return ('0' + h).slice(-2) + ':00'; }
+  function pageTime() {
+    var tf = S.tf || (S.tf = { preset: '30d', from: '', to: '', camp: '', est: 'all' });
+    if (tf.preset !== 'custom') { var r = C.presetRange(tf.preset, S.data, today()); tf.from = r.from; tf.to = r.to; }
+    var presets = [['7d', '7 วัน'], ['30d', '30 วัน'], ['3m', '3 เดือน'], ['custom', 'กำหนดเอง']];
+    var hr = (S.data.fbhourly || []).filter(function (x) { return x.date >= tf.from && x.date <= tf.to; });
+    var camps = {}; hr.forEach(function (x) { camps[x.campaign] = (camps[x.campaign] || 0) + x.spend; });
+    if (tf.camp && !camps[tf.camp]) tf.camp = '';
+    var rows = tf.camp ? hr.filter(function (x) { return x.campaign === tf.camp; }) : hr;
+    var html = '<div class="filters"><div class="chip-group">' + presets.map(function (p) { return '<button data-tp="' + p[0] + '" class="' + (tf.preset === p[0] ? 'on' : '') + '">' + p[1] + '</button>'; }).join('') + '</div>' +
+      (tf.preset === 'custom' ? '<input type="date" class="field-inline" id="tFrom" value="' + tf.from + '"><input type="date" class="field-inline" id="tTo" value="' + tf.to + '">' : '<span class="muted">' + F.thRange(tf.from, tf.to) + '</span>') +
+      '<select class="field-inline" id="tCamp"><option value="">ทุกแคมเปญ Facebook</option>' + Object.keys(camps).sort(function (a, b) { return camps[b] - camps[a]; }).map(function (c) { return opt(c, c, tf.camp); }).join('') + '</select></div>';
+
+    // ---- รวมรายวัน×ชั่วโมง ----
+    var cell = {}, byHour = [], tot = { sp: 0, ch: 0 };
+    for (var h = 0; h < 24; h++) byHour.push({ sp: 0, ch: 0 });
+    rows.forEach(function (x) { var k = dowOf(x.date) + '|' + x.hour, c = cell[k] || (cell[k] = { sp: 0, ch: 0 }); c.sp += x.spend; c.ch += x.chats; byHour[x.hour].sp += x.spend; byHour[x.hour].ch += x.chats; tot.sp += x.spend; tot.ch += x.chats; });
+    var avg = tot.ch ? tot.sp / tot.ch : null, nDays = Math.max(1, Math.round((new Date(tf.to) - new Date(tf.from)) / 864e5) + 1), minCell = Math.max(30, tot.sp / 168 * 0.25);
+    var zero = 0, zeroN = 0; Object.keys(cell).forEach(function (k) { var c = cell[k]; if (!c.ch && c.sp >= minCell) { zero += c.sp; zeroN++; } });
+    var hb = byHour.map(function (b, i) { return { h: i, cpc: b.ch ? b.sp / b.ch : null, sp: b.sp, ch: b.ch }; }).filter(function (b) { return b.cpc != null && b.sp >= tot.sp * 0.01; });
+    var best = hb.slice().sort(function (a, b) { return a.cpc - b.cpc; })[0], worst = hb.slice().sort(function (a, b) { return b.cpc - a.cpc; })[0];
+    var dd = DOW_ORDER.map(function (d) { var s = 0, c = 0; for (var h = 0; h < 24; h++) { var x = cell[d + '|' + h]; if (x) { s += x.sp; c += x.ch; } } return { d: d, cpc: c ? s / c : null }; }).filter(function (x) { return x.cpc != null; });
+    var dHi = dd.slice().sort(function (a, b) { return b.cpc - a.cpc; })[0];
+
+    if (!hr.length) {
+      html += '<div class="nudge">ยังไม่มีข้อมูลรายชั่วโมงของ Facebook — วาง Code.gs ใหม่ → Run <b>refetchFacebook</b> หนึ่งครั้ง → Deploy เวอร์ชันใหม่' + (S.data.config.fb_hourly_error ? ' · ' + esc(S.data.config.fb_hourly_error) : '') + '</div>';
+    } else {
+      html += '<div class="tstat">' +
+        '<div class="card ts"><span class="l">ค่า Ads Facebook</span><span class="v" data-n>' + F.int(Math.round(tot.sp)) + '<small>บาท</small></span><span class="s">' + F.int(tot.ch) + ' แชท · เฉลี่ย ' + F.baht(avg) + ' / แชท</span></div>' +
+        '<div class="card ts bad"><span class="l">ใช้เงินในช่วงที่ไม่มีคนทัก</span><span class="v" data-n>' + F.int(Math.round(zero)) + '<small>บาท</small></span><span class="s">' + (tot.sp ? Math.round(zero / tot.sp * 100) : 0) + '% ของค่า Ads · ' + zeroN + ' ช่องในตาราง</span></div>' +
+        '<div class="card ts good"><span class="l">ชั่วโมงที่ Cost/แชท ต่ำสุด</span><span class="v">' + (best ? hhmm(best.h) : '–') + '</span><span class="s">' + (best ? F.baht(best.cpc) + ' / แชท · ต่ำกว่าเฉลี่ย ' + Math.round((1 - best.cpc / avg) * 100) + '%' : '') + '</span></div>' +
+        '<div class="card ts"><span class="l">วันที่ Cost/แชท สูงสุด</span><span class="v">' + (dHi ? DOW[dHi.d] : '–') + '</span><span class="s">' + (dHi ? F.baht(dHi.cpc) + ' / แชท · สูงกว่าเฉลี่ย ' + Math.round((dHi.cpc / avg - 1) * 100) + '%' : '') + '</span></div></div>';
+
+      // heatmap
+      var hm = '<table class="hmt"><colgroup><col class="c0">' + Array(25).join('<col>') + '</colgroup><tr><th></th>' + Array.apply(null, Array(24)).map(function (_, h) { return '<th>' + h + '</th>'; }).join('') + '</tr>';
+      DOW_ORDER.forEach(function (d) {
+        hm += '<tr><td class="dn">' + DOW[d] + '</td>';
+        for (var h = 0; h < 24; h++) {
+          var c = cell[d + '|' + h];
+          if (!c || c.sp < minCell) { hm += '<td class="e" data-k="' + d + '|' + h + '"></td>'; continue; }
+          if (!c.ch) { hm += '<td class="z" data-k="' + d + '|' + h + '">0</td>'; continue; }
+          var v = c.sp / c.ch, col = heatCol(v / avg);
+          hm += '<td data-k="' + d + '|' + h + '" style="background:' + col[1] + ';color:' + col[2] + '">' + Math.round(v) + '</td>';
+        }
+        hm += '</tr>';
+      });
+      hm += '</table>';
+      html += '<div class="card mt"><div class="card-head"><div><h2 class="card-title">Cost / แชท · วัน × ชั่วโมง (Facebook)</h2><div class="card-sub">ตัวเลขในช่อง = บาทต่อแชท · รวมทุกสัปดาห์ในช่วงที่เลือก · ชี้ช่องเพื่อดูยอดเงินและจำนวนแชท</div></div></div>' +
+        '<div class="hmw">' + hm + '</div><div class="hlg">' + ['ถูกมาก', 'ถูก', 'ใกล้ค่าเฉลี่ย', 'แพง', 'แพงมาก'].map(function (t, i) { return '<span><i style="background:' + HB[i][1] + '"></i>' + t + '</span>'; }).join('') +
+        '<span><i style="background:#3b3b48"></i>ใช้เงิน ไม่มีแชท</span><span><i class="e"></i>ใช้เงินน้อย</span><span class="avg">ค่าเฉลี่ย ' + F.baht(avg) + ' / แชท</span></div><div class="htip" id="hmTip">ชี้ช่องในตาราง</div></div>';
+
+      // hour bars
+      html += '<div class="card mt"><div class="card-head"><div><h2 class="card-title">Cost / แชท · รายชั่วโมง</h2><div class="card-sub">แท่งเขียว = ต่ำกว่าค่าเฉลี่ย · แท่งแดง = สูงกว่าค่าเฉลี่ย · เส้นประ = ค่าเฉลี่ย ' + F.baht(avg) + '</div></div></div><svg class="hbar" id="hourBars"></svg></div>';
+
+      // waste table: ad set × ช่วงชั่วโมงต่อเนื่อง ที่ไม่มีแชท หรือแพงกว่าเฉลี่ย 3 เท่าขึ้นไป
+      var as = {}; rows.forEach(function (x) { var k = x.campaign + '\u0001' + x.adset, a = as[k] || (as[k] = { c: x.campaign, a: x.adset, h: [] }); var b = a.h[x.hour] || (a.h[x.hour] = { sp: 0, ch: 0 }); b.sp += x.spend; b.ch += x.chats; });
+      var blocks = [];
+      Object.keys(as).forEach(function (k) { var a = as[k], cur = null;
+        for (var h = 0; h <= 24; h++) { var b = a.h[h], bad = b && b.sp > 0 && (!b.ch || b.sp / b.ch >= avg * 3);
+          if (bad) { if (!cur) cur = { c: a.c, a: a.a, h1: h, h2: h, sp: 0, ch: 0 }; cur.h2 = h; cur.sp += b.sp; cur.ch += b.ch; }
+          else if (cur) { blocks.push(cur); cur = null; } } });
+      blocks = blocks.filter(function (b) { return b.sp >= Math.max(300, 10 * nDays / 30 * 30) || b.sp >= 300; }).sort(function (a, b) { return b.sp - a.sp; }).slice(0, 15);
+      html += '<div class="card mt"><div class="card-head"><div><h2 class="card-title">ช่วงเวลาที่ใช้เงินแต่ไม่มีแชท หรือ Cost/แชท สูงกว่าเฉลี่ย 3 เท่า</h2><div class="card-sub">แยกตาม Ad set · รวมช่วงชั่วโมงที่ติดกัน · แสดงเฉพาะที่ใช้เงินตั้งแต่ 300 บาท</div></div></div>' +
+        (blocks.length ? '<div class="table-wrap"><table class="t"><thead><tr><th>Ad set</th><th>ช่วงเวลา</th><th class="r">ใช้เงิน</th><th class="r">แชท</th><th class="r">Cost/แชท</th><th class="r">เทียบค่าเฉลี่ย</th></tr></thead><tbody>' +
+          blocks.map(function (b) { var cp = b.ch ? b.sp / b.ch : null;
+            return '<tr><td><b>' + esc(b.a || '–') + '</b><div class="muted small">' + esc(b.c) + '</div></td><td>' + hhmm(b.h1) + '–' + ('0' + b.h2).slice(-2) + ':59</td><td class="r">' + F.baht(b.sp) + '</td><td class="r">' + b.ch + '</td><td class="r">' + (cp ? F.baht(cp) : '–') + '</td>' +
+              '<td class="r">' + (cp ? '<span class="stp b">แพงกว่า ' + (cp / avg).toFixed(1) + ' เท่า</span>' : '<span class="stp b">ไม่มีแชท</span>') + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<div class="empty">ไม่มีช่วงเวลาที่เข้าเงื่อนไข</div>') + '</div>';
+    }
+
+    // ---- เคสประเมินตามเวลาโพสต์ ----
+    var es = (S.data.estimates || []).filter(function (e) { return e.date >= tf.from && e.date <= tf.to && e.hour >= 0 && (tf.est === 'all' || (tf.est === 'fb' ? e.fb : e.line)); });
+    var ec = {}, emax = 0; es.forEach(function (e) { var k = dowOf(e.date) + '|' + e.hour; ec[k] = (ec[k] || 0) + 1; if (ec[k] > emax) emax = ec[k]; });
+    var ehm = '<table class="hmt"><colgroup><col class="c0">' + Array(25).join('<col>') + '</colgroup><tr><th></th>' + Array.apply(null, Array(24)).map(function (_, h) { return '<th>' + h + '</th>'; }).join('') + '</tr>';
+    DOW_ORDER.forEach(function (d) { ehm += '<tr><td class="dn">' + DOW[d] + '</td>'; for (var h = 0; h < 24; h++) { var n = ec[d + '|' + h] || 0, a = emax ? n / emax : 0;
+      ehm += n ? '<td style="background:rgba(232,159,0,' + (0.15 + a * 0.85).toFixed(2) + ');color:' + (a > 0.55 ? '#fff' : '#3d2f00') + '">' + n + '</td>' : '<td class="e"></td>'; } ehm += '</tr>'; });
+    ehm += '</table>';
+    html += '<div class="card mt"><div class="card-head"><div><h2 class="card-title">เคสประเมินเข้ามา · วัน × ชั่วโมง</h2><div class="card-sub">นับจากเวลาโพสต์ในชีตเคสประเมิน · ทุกหมวด · ' + F.int(es.length) + ' เคส · สีเข้ม = เคสเยอะ</div></div>' +
+      '<div class="tabs" style="margin:0"><button data-te="all" class="' + (tf.est === 'all' ? 'on' : '') + '">ทั้งหมด</button><button data-te="fb" class="' + (tf.est === 'fb' ? 'on' : '') + '">Facebook</button><button data-te="line" class="' + (tf.est === 'line' ? 'on' : '') + '">LINE</button></div></div>' +
+      (S.data.estimates && S.data.estimates.length ? '<div class="hmw">' + ehm + '</div>' : '<div class="nudge">ยังไม่มีข้อมูลเคสประเมิน — วาง Code.gs ใหม่ แล้วกด ดึงข้อมูลตอนนี้ ในหน้าตั้งค่า</div>') + '</div>';
+
+    // ---- วันในสัปดาห์ × หมวด (FB + Google) ----
+    var dc = {}; C.KPI_CATS.forEach(function (c) { dc[c.k] = DOW_ORDER.map(function () { return { sp: 0, cv: 0 }; }); });
+    for (var dte = tf.from, g = 0; dte <= tf.to && g < 400; dte = C.addDays(dte, 1), g++) {
+      var di = DOW_ORDER.indexOf(dowOf(dte)), cb = C.costByCat(S.data, dte, dte).cats;
+      C.KPI_CATS.forEach(function (c) { dc[c.k][di].sp += cb[c.k].spend; dc[c.k][di].cv += cb[c.k].cv; });
+    }
+    function dowRow(name, arr) { var s = 0, c = 0; arr.forEach(function (x) { s += x.sp; c += x.cv; }); var av = c ? s / c : null;
+      return '<tr><td><b>' + esc(name) + '</b>' + (av ? '<div class="muted small">เฉลี่ย ' + F.baht(av) + '</div>' : '') + '</td>' + arr.map(function (x) { if (!x.cv || !av) return '<td class="r muted">–</td>'; var v = x.sp / x.cv, p = (v / av - 1) * 100, col = heatCol(v / av);
+        return '<td><div class="dw" style="background:' + col[1] + ';color:' + col[2] + '"><b>' + F.int(Math.round(v)) + '</b><small>' + (p > 0 ? '+' : '') + Math.round(p) + '%</small></div></td>'; }).join('') + '</tr>'; }
+    html += '<div class="card mt"><div class="card-head"><div><h2 class="card-title">Cost / Conversion · วันในสัปดาห์ × หมวดสินค้า</h2><div class="card-sub">Facebook + Google · ตัวเลขใหญ่ = บาทต่อ Conversion · % = เทียบค่าเฉลี่ยของหมวดนั้น</div></div></div>' +
+      '<div class="table-wrap"><table class="t dwt"><thead><tr><th>หมวด</th>' + DOW_ORDER.map(function (d) { return '<th>' + DOW_S[d] + '</th>'; }).join('') + '</tr></thead><tbody>' +
+      C.KPI_CATS.map(function (c) { return dowRow(c.n, dc[c.k]); }).join('') + '</tbody></table></div></div>';
+
+    // ---- วันในสัปดาห์ × แคมเปญ ----
+    var ck = {};
+    function addC(name, src, d, sp, cv) { var k = src + '|' + name, o = ck[k] || (ck[k] = { name: name, src: src, tot: 0, a: DOW_ORDER.map(function () { return { sp: 0, cv: 0 }; }) }); var i = DOW_ORDER.indexOf(dowOf(d)); o.a[i].sp += sp; o.a[i].cv += cv; o.tot += sp; }
+    hr.forEach(function (x) { addC(x.campaign, 'Facebook', x.date, x.spend, x.chats); });
+    (S.data.gads || []).forEach(function (x) { if (x.date >= tf.from && x.date <= tf.to) addC(x.campaign, 'Google', x.date, x.cost, x.conversions); });
+    var cl = Object.keys(ck).map(function (k) { return ck[k]; }).filter(function (o) { return o.tot > 0; }).sort(function (a, b) { return b.tot - a.tot; }).slice(0, 12);
+    html += '<div class="card mt"><div class="card-head"><div><h2 class="card-title">Cost / Conversion · วันในสัปดาห์ × แคมเปญ</h2><div class="card-sub">12 แคมเปญที่ใช้เงินมากสุดในช่วงนี้ · Facebook = บาทต่อแชท · Google = บาทต่อ Conversion · % = เทียบค่าเฉลี่ยของแคมเปญนั้น</div></div></div>' +
+      (cl.length ? '<div class="table-wrap"><table class="t dwt"><thead><tr><th>แคมเปญ</th>' + DOW_ORDER.map(function (d) { return '<th>' + DOW_S[d] + '</th>'; }).join('') + '</tr></thead><tbody>' +
+        cl.map(function (o) { return dowRow(o.name, o.a).replace('</b>', '</b> <span class="srcb ' + (o.src === 'Facebook' ? 'f' : 'g') + '">' + (o.src === 'Facebook' ? 'FB' : 'G') + '</span>'); }).join('') + '</tbody></table></div>' : '<div class="empty">ยังไม่มีข้อมูล</div>') + '</div>';
+
+    $('#page').innerHTML = html;
+    Charts.countUp($('#page'));
+    S.drawCharts = function () { drawHourBars($('#hourBars'), byHour, avg); };
+    S.drawCharts();
+    $$('.hmt td[data-k]').forEach(function (td) { td.onmouseenter = function () { var c = cell[td.dataset.k] || { sp: 0, ch: 0 }, p = td.dataset.k.split('|');
+      $('#hmTip').innerHTML = '<b>' + DOW[+p[0]] + ' ' + hhmm(+p[1]) + '–' + ('0' + p[1]).slice(-2) + ':59</b> · ใช้เงิน ' + F.baht(c.sp) + ' · ' + c.ch + ' แชท' + (c.ch ? ' · ' + F.baht(c.sp / c.ch) + ' / แชท' : ''); }; });
+    $$('[data-tp]').forEach(function (b) { b.onclick = function () { tf.preset = b.dataset.tp; pageTime(); }; });
+    $$('[data-te]').forEach(function (b) { b.onclick = function () { tf.est = b.dataset.te; pageTime(); }; });
+    if ($('#tFrom')) { $('#tFrom').onchange = function () { tf.from = this.value; pageTime(); }; $('#tTo').onchange = function () { tf.to = this.value; pageTime(); }; }
+    $('#tCamp').onchange = function () { tf.camp = this.value; pageTime(); };
+  }
+  // ============================================================
+  // เคสประเมิน — เทียบช่วงนี้กับช่วงก่อน แยกประเภทสินค้า
+  // ============================================================
+  var EST_COL = ['#f5a800', '#2a78d6', '#16a172', '#e8590c', '#7c5cff', '#d6336c', '#0f9da8', '#8f6a00', '#5f6b7a', '#b45fd1', '#2f9e44', '#9aa0ae'];
+  function pageEst() {
+    var ef = S.ef || (S.ef = { c: 'm', h: 'all' });
+    var t = today(), now = new Date(), curH = now.getHours();
+    var all = (S.data.estimates || []).filter(function (e) { return ef.h === 'all' || (ef.h === 'fb' ? e.fb : e.line); });
+    var cfg, n, lim, side, pN = 99;
+    if (ef.c === 'd') {
+      var yd = C.addDays(t, -1);
+      n = 24; lim = curH + 1;
+      cfg = { r1: 'วันนี้ ' + F.thDate(t), r2: 'เทียบ เมื่อวาน ' + F.thDate(yd) + ' (นับถึง ' + hhmm(curH).slice(0, 2) + ':59 เท่ากัน)', prev: 'เมื่อวาน', unit: 'รายชั่วโมง', tt: 'เคสประเมินรายชั่วโมง',
+        lab: function (i) { return i + ':00'; }, tip: function (i) { return F.thDate(t) + ' ' + hhmm(i) + '–' + ('0' + i).slice(-2) + ':59'; }, ptip: function (i) { return F.thDate(yd) + ' ' + hhmm(i); } };
+      side = function (e) { return e.date === t ? ['n', e.hour] : e.date === yd ? ['p', e.hour] : null; };
+    } else if (ef.c === 'w') {
+      var off = (new Date(t + 'T00:00:00').getDay() + 6) % 7, ws = C.addDays(t, -off), pws = C.addDays(ws, -7);
+      n = 7; lim = off + 1;
+      cfg = { r1: 'สัปดาห์นี้ ' + F.thRange(ws, C.addDays(ws, 6)), r2: 'เทียบ ' + F.thRange(pws, C.addDays(pws, 6)) + (off < 6 ? ' (นับถึงวัน' + DOW[dowOf(t)] + ' เท่ากัน)' : ''), prev: 'สัปดาห์ก่อน', unit: 'รายวัน', tt: 'เคสประเมินรายวัน',
+        lab: function (i) { var d = C.addDays(ws, i); return DOW_S[dowOf(d)] + '. ' + Number(d.slice(8)); }, tip: function (i) { var d = C.addDays(ws, i); return DOW[dowOf(d)] + ' ' + F.thDate(d); }, ptip: function (i) { return F.thDate(C.addDays(pws, i)); } };
+      side = function (e) { if (e.date >= ws && e.date <= C.addDays(ws, 6)) return ['n', Math.round((new Date(e.date) - new Date(ws)) / 864e5)]; if (e.date >= pws && e.date < ws) return ['p', Math.round((new Date(e.date) - new Date(pws)) / 864e5)]; return null; };
+    } else {
+      var y = +t.slice(0, 4), m = +t.slice(5, 7), ym = t.slice(0, 7), dayN = +t.slice(8), pd = new Date(y, m - 2, 1), pym = pd.getFullYear() + '-' + ('0' + (pd.getMonth() + 1)).slice(-2), pDays = new Date(y, m - 1, 0).getDate();
+      n = new Date(y, m, 0).getDate(); lim = dayN; pN = pDays;
+      cfg = { r1: 'เดือนนี้ ' + F.thRange(ym + '-01', t) + ' (ถึงวันนี้)', r2: 'เทียบ ' + F.thRange(pym + '-01', pym + '-' + ('0' + Math.min(dayN, pDays)).slice(-2)) + ' (ช่วงวันเดียวกันของเดือนก่อน)', prev: 'เดือนก่อน', unit: 'รายวัน', tt: 'เคสประเมินรายวัน · ' + C.fmt.thDate(ym + '-01').split(' ')[1] + ' เทียบ ' + C.fmt.thDate(pym + '-01').split(' ')[1],
+        lab: function (i) { return F.thDate(ym + '-' + ('0' + (i + 1)).slice(-2)); }, tip: function (i) { return F.thDate(ym + '-' + ('0' + (i + 1)).slice(-2), true); }, ptip: function (i) { return i < pDays ? F.thDate(pym + '-' + ('0' + (i + 1)).slice(-2)) : 'ไม่มีวันนี้'; } };
+      side = function (e) { var k = e.date.slice(0, 7); return k === ym ? ['n', +e.date.slice(8) - 1] : k === pym ? ['p', +e.date.slice(8) - 1] : null; };
+    }
+    // ---- รวมตามประเภทสินค้า ----
+    var map = {};
+    all.forEach(function (e) {
+      var s = side(e); if (!s) return;
+      var k = String(e.category || '').trim() || 'ไม่ระบุ', o = map[k] || (map[k] = { n: k, now: [], prev: [], N: 0, P: 0 });
+      var j = ef.c === 'd' ? (e.hour >= 0 ? e.hour : -1) : s[1];
+      if (s[0] === 'n') { if (j >= lim) return; o.N++; if (j >= 0) o.now[j] = (o.now[j] || 0) + 1; }
+      else { if (j < lim) o.P++; if (j >= 0) o.prev[j] = (o.prev[j] || 0) + 1; }
+    });
+    var D = Object.keys(map).map(function (k) { var o = map[k]; for (var j = 0; j < n; j++) { o.now[j] = j < lim ? (o.now[j] || 0) : null; o.prev[j] = j < pN ? (o.prev[j] || 0) : null; } return o; })
+      .filter(function (o) { return o.N || o.P; }).sort(function (a, b) { return b.N - a.N || b.P - a.P; });
+    D.forEach(function (d, i) { d.col = EST_COL[i % EST_COL.length]; });
+    var N = 0, P = 0; D.forEach(function (d) { N += d.N; P += d.P; });
+    function chg(a, b) { if (!b) return a ? ['n', 'ใหม่'] : ['n', 'เท่าเดิม']; var p = (a - b) / b * 100; if (Math.abs(p) < 1) return ['n', 'เท่าเดิม']; return [p > 0 ? 'g' : 'b', (p > 0 ? 'เพิ่มขึ้น ' : 'ลดลง ') + F.int(Math.round(Math.abs(p))) + '%']; }
+    function pick(dir) { function f(minP) { return D.filter(function (d) { return d.P >= minP && (dir > 0 ? d.N > d.P : d.N < d.P); }); }
+      var c = f(3); if (!c.length) c = f(1); return c.sort(function (a, b) { return dir * ((b.N / b.P) - (a.N / a.P)) || (b.P - a.P); })[0]; }
+    var top = D[0], gr = pick(1), dr = pick(-1);
+
+    var html = '<div class="es-top"><div class="chip-group" role="group" aria-label="ช่วงที่เทียบ">' + [['d', 'วันนี้ vs เมื่อวาน'], ['w', 'สัปดาห์นี้ vs สัปดาห์ก่อน'], ['m', 'เดือนนี้ vs เดือนก่อน']].map(function (p) { return '<button data-ec="' + p[0] + '" class="' + (ef.c === p[0] ? 'on' : '') + '">' + p[1] + '</button>'; }).join('') + '</div>' +
+      '<div class="chip-group" role="group" aria-label="ช่องทาง">' + [['all', 'ทุกช่องทาง'], ['fb', 'Facebook'], ['line', 'LINE']].map(function (p) { return '<button data-eh="' + p[0] + '" class="' + (ef.h === p[0] ? 'on' : '') + '">' + p[1] + '</button>'; }).join('') + '</div></div>' +
+      '<div class="es-rng"><span><span class="es-ring"></span><b>' + cfg.r1 + '</b></span><span><i></i>' + cfg.r2 + '</span></div>';
+    if (!(S.data.estimates || []).length) {
+      $('#page').innerHTML = html + '<div class="nudge">ยังไม่มีข้อมูลเคสประเมิน — วาง Code.gs ใหม่ แล้วกด ดึงข้อมูลตอนนี้ ในหน้าตั้งค่า</div>';
+      bindEst(); S.drawCharts = null; return;
+    }
+    function kc(l, v, big, c, s) { return '<div class="card es-k"><div class="l">' + l + '</div><div class="v' + (big ? ' es-num' : ' es-name') + '"' + (big ? ' data-n' : '') + '>' + v + '</div><div class="row"><span class="es-chg ' + c[0] + '">' + c[1] + '</span>' + (s || '') + '</div></div>'; }
+    html += '<section class="es-k4">' +
+      kc('เคสประเมินทั้งหมด', F.int(N) + '<small>เคส</small>', true, chg(N, P), cfg.prev + ' ' + F.int(P)) +
+      kc('ประเภทที่มากสุด', top ? esc(top.n) : '–', false, ['n', top ? F.int(top.N) + ' เคส · ' + (N ? Math.round(top.N / N * 100) : 0) + '%' : '–']) +
+      kc('เพิ่มขึ้นมากสุด', gr ? esc(gr.n) : '–', false, gr ? chg(gr.N, gr.P) : ['n', 'ไม่มี'], gr ? F.int(gr.P) + ' → ' + F.int(gr.N) + ' เคส' : '') +
+      kc('ลดลงมากสุด', dr ? esc(dr.n) : '–', false, dr ? chg(dr.N, dr.P) : ['n', 'ไม่มี'], dr ? F.int(dr.P) + ' → ' + F.int(dr.N) + ' เคส' : '') + '</section>';
+    html += '<section class="card mt"><div class="card-head"><div><h2 class="card-title">เคสประเมินแยกประเภทสินค้า</h2><div class="card-sub">แท่งเหลือง = ช่วงนี้ · แท่งเทา = ' + cfg.prev + ' · ตัวเลขสีใต้ชื่อ = เปลี่ยนจากช่วงก่อน · เรียงจากมากไปน้อย</div></div></div>' +
+      '<div class="es-lg"><span><i class="a"></i>ช่วงนี้</span><span><i class="p"></i>' + cfg.prev + '</span></div><div class="es-cw"><div class="es-scroll"><svg class="es-svg" id="esCat" role="img" aria-label="เคสประเมินแยกประเภทสินค้า"></svg></div><div class="es-tip" id="esTip1"></div></div></section>';
+    html += '<section class="es-g2 mt"><div class="card"><div class="card-head"><div><h2 class="card-title">' + cfg.tt + '</h2><div class="card-sub">ทุกประเภทสินค้ารวมกัน · ตัวเลขบนแท่ง = เคส · เส้นเทา = ' + cfg.prev + '</div></div></div>' +
+      '<div class="es-lg"><span><i class="a"></i>ช่วงนี้</span><span><i class="ln"></i>' + cfg.prev + '</span></div><div class="es-cw"><svg class="es-svg" id="esTr"></svg><div class="es-tip" id="esTip2"></div></div></div>' +
+      '<div class="card"><div class="card-head"><div><h2 class="card-title">สัดส่วนประเภทสินค้า</h2><div class="card-sub">ช่วงนี้ · % ของเคสทั้งหมด</div></div></div><div class="es-dnw" id="esDn"></div></div></section>';
+    html += '<section class="card mt"><div class="card-head"><div><h2 class="card-title">แนวโน้มรายประเภท</h2><div class="card-sub">' + cfg.unit + ' · เส้นเหลือง = ช่วงนี้ · เส้นเทา = ' + cfg.prev + '</div></div></div><div class="es-sm">' +
+      D.slice(0, 8).map(function (d) { var w = chg(d.N, d.P); return '<div class="es-smc"><div class="h"><b>' + esc(d.n) + '</b><span class="' + w[0] + '">' + w[1] + '</span></div><div class="v"><span data-n>' + F.int(d.N) + '</span><small>เคส · ก่อน ' + F.int(d.P) + '</small></div>' + esSpark(d.now, d.prev, n) + '</div>'; }).join('') + '</div></section>';
+
+    // donut
+    var r = 70, CI = 2 * Math.PI * r, o2 = 0, top6 = D.slice(0, 6), rest = N, parts = top6.filter(function (d) { return d.N; }).map(function (d) { rest -= d.N; return [d.n, d.N, d.col]; });
+    if (rest > 0) parts.push(['อื่น ๆ', rest, '#c9ccd6']);
+    var ds = '<svg viewBox="0 0 180 180"><circle cx="90" cy="90" r="' + r + '" fill="none" class="es-dtrack" stroke-width="26"/>';
+    parts.forEach(function (p) { var L = N ? p[1] / N * CI : 0; ds += '<circle class="es-dseg" cx="90" cy="90" r="' + r + '" fill="none" stroke="' + p[2] + '" stroke-width="26" stroke-dasharray="' + Math.max(L - 2, 0) + ' ' + CI + '" stroke-dashoffset="' + (-o2) + '"/>'; o2 += L; });
+    var dnHtml = '<div class="es-dn">' + ds + '</svg><div class="c"><b data-n>' + F.int(N) + '</b><span>เคส</span></div></div><div class="es-dl">' +
+      (parts.length ? parts.map(function (p) { return '<div><i style="background:' + p[2] + '"></i><span>' + esc(p[0]) + '</span><b>' + F.int(p[1]) + '</b><small>' + (N ? Math.round(p[1] / N * 100) : 0) + '%</small></div>'; }).join('') : '<div class="muted">ยังไม่มีเคสในช่วงนี้</div>') + '</div>';
+
+    $('#page').innerHTML = html;
+    $('#esDn').innerHTML = dnHtml;
+    var tn = [], tp = [];
+    for (var j = 0; j < n; j++) { var a = j < lim ? 0 : null, b = j < pN ? 0 : null; D.forEach(function (d) { if (a != null) a += d.now[j] || 0; if (b != null) b += d.prev[j]; }); tn.push(a); tp.push(b); }
+    var lastW = -1;
+    S.drawCharts = function (force) {
+      var w = ($('#esTr') || {}).clientWidth; if (!force && w === lastW) return; lastW = w;
+      esCat($('#esCat'), $('#esTip1'), D, cfg, chg); esTrend($('#esTr'), $('#esTip2'), tn, tp, cfg, chg);
+    };
+    S.drawCharts(true);
+    Charts.countUp($('#page'));
+    bindEst();
+  }
+  function bindEst() {
+    $$('[data-ec]').forEach(function (b) { b.onclick = function () { S.ef.c = b.dataset.ec; pageEst(); }; });
+    $$('[data-eh]').forEach(function (b) { b.onclick = function () { S.ef.h = b.dataset.eh; pageEst(); }; });
+  }
+  var ES_DEFS = '<defs><linearGradient id="esNow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd23f"/><stop offset="1" stop-color="#f29a00"/></linearGradient><linearGradient id="esPrev" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="es-p1"/><stop offset="1" class="es-p2"/></linearGradient></defs>';
+  function esReduced() { return window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches; }
+  /** แท่งงอกขึ้น (เด้งเล็กน้อย) + ตัวเลขบนแท่งวิ่งตาม */
+  function esGrow(items, dur) {
+    var t0 = performance.now(), still = esReduced();
+    (function f(ts) { var done = true;
+      items.forEach(function (it) { var p = still ? 1 : Math.max(0, Math.min(1, (ts - t0 - it.d) / dur)); if (p < 1) done = false;
+        var e = p < 1 ? 1 - Math.pow(1 - p, 3) * (1 - Math.sin(p * Math.PI) * 0.12) : 1, h = it.h * Math.min(e, 1.04);
+        it.r.setAttribute('y', it.base - h); it.r.setAttribute('height', Math.max(h, 0));
+        if (it.t) { it.t.setAttribute('y', it.base - h - 7); it.t.textContent = F.int(Math.round(it.v * Math.min(1, p * 1.15))); it.t.style.opacity = Math.min(1, p * 2); } });
+      if (!done) requestAnimationFrame(f); })(t0);
+  }
+  function esTipAt(tip, svg, x, y, W, H, html) {
+    var b = svg.getBoundingClientRect(), wr = tip.parentNode.getBoundingClientRect();
+    tip.innerHTML = html; var tw = tip.offsetWidth || 180, px = b.left - wr.left + x / W * b.width;
+    px = Math.max(tw / 2 + 4, Math.min(wr.width - tw / 2 - 4, px));
+    tip.style.left = px + 'px'; tip.style.top = (b.top - wr.top + y / H * b.height) + 'px'; tip.style.opacity = 1;
+  }
+  function esCat(svg, tip, D, cfg, chg) {
+    if (!svg) return;
+    var box = svg.parentNode.clientWidth || 900, n = Math.max(D.length, 1), W = Math.max(box, n * 64), nar = box < 600, H = nar ? 320 : 370, L = 4, R = 4, T = 40, B = nar ? 70 : 58, pw = W - L - R, ph = H - T - B, gw = pw / n, bw = Math.min(30, gw * 0.32), base = T + ph;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.style.height = H + 'px'; svg.style.width = W + 'px';
+    var mx = Math.max.apply(null, D.map(function (d) { return Math.max(d.N, d.P); }).concat([1])) * 1.15;
+    function y(v) { return base - v / mx * ph; }
+    var o = ES_DEFS;
+    for (var g = 1; g <= 3; g++) o += '<line class="es-grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + (base - ph * g / 3.4) + '" y2="' + (base - ph * g / 3.4) + '" stroke-dasharray="3 5"/>';
+    o += '<line class="es-base" x1="' + L + '" x2="' + (W - R) + '" y1="' + base + '" y2="' + base + '" stroke-width="2"/>';
+    D.forEach(function (d, i) {
+      var cx = L + i * gw + gw / 2, xa = cx - bw - 2, xp = cx + 2, w = chg(d.N, d.P), pc = d.P ? Math.round((d.N - d.P) / d.P * 100) : null;
+      o += '<g class="grp"><rect x="' + (cx - gw / 2) + '" y="' + T + '" width="' + gw + '" height="' + ph + '" fill="transparent"/>';
+      o += '<rect class="col a" x="' + xa + '" y="' + base + '" width="' + bw + '" height="0" rx="6" fill="url(#esNow)"/><rect class="col p" x="' + xp + '" y="' + base + '" width="' + bw + '" height="0" rx="6" fill="url(#esPrev)"/>';
+      o += '<text class="es-va" x="' + (xa + bw / 2) + '" y="' + base + '" text-anchor="middle" font-size="' + (nar ? 10.5 : 13) + '" style="opacity:0">0</text>';
+      o += '<text class="es-vp" x="' + (xp + bw / 2) + '" y="' + base + '" text-anchor="middle" font-size="' + (nar ? 9.5 : 11) + '" style="opacity:0">0</text>';
+      var lab = /^[A-Za-z]/.test(d.n) ? d.n.split(' ') : [d.n];
+      o += '<text class="es-n1" x="' + cx + '" y="' + (base + 18) + '" text-anchor="middle" font-size="' + (nar ? 10.5 : 12.5) + '">' + esc(lab[0]) + '</text>';
+      if (lab[1]) o += '<text class="es-n2" x="' + cx + '" y="' + (base + 33) + '" text-anchor="middle" font-size="' + (nar ? 10 : 11.5) + '">' + esc(lab.slice(1).join(' ')) + '</text>';
+      o += '<text class="es-pc ' + w[0] + '" x="' + cx + '" y="' + (base + (lab[1] ? 50 : 35)) + '" text-anchor="middle" font-size="' + (nar ? 10 : 12) + '">' + (pc == null ? (d.N ? 'ใหม่' : '') : pc === 0 ? '0%' : (pc > 0 ? '▲ +' : '▼ ') + pc + '%') + '</text></g>';
+    });
+    svg.innerHTML = o;
+    var items = [];
+    $$('g.grp', svg).forEach(function (g, i) { var d = D[i];
+      items.push({ r: $('.a', g), t: $('.es-va', g), h: base - y(d.N), v: d.N, base: base, d: i * 70 });
+      items.push({ r: $('.p', g), t: $('.es-vp', g), h: base - y(d.P), v: d.P, base: base, d: i * 70 + 120 });
+      g.onmouseenter = function () { svg.classList.add('hov'); var w = chg(d.N, d.P);
+        esTipAt(tip, svg, L + i * gw + gw / 2, y(Math.max(d.N, d.P)) - 10, W, H, '<b>' + esc(d.n) + '</b><div><span><i style="background:#f5a800"></i>ช่วงนี้</span><span>' + F.int(d.N) + ' เคส</span></div><div><span><i style="background:#cfd2dc"></i>' + cfg.prev + '</span><span>' + F.int(d.P) + ' เคส</span></div><div><span>เปลี่ยน</span><span>' + w[1] + '</span></div>'); };
+      g.onmouseleave = function () { svg.classList.remove('hov'); tip.style.opacity = 0; };
+    });
+    esGrow(items, 900);
+  }
+  function esTrend(svg, tip, tn, tp, cfg, chg) {
+    if (!svg) return;
+    var W = svg.clientWidth || 700, H = 310, L = 4, R = 4, T = 26, B = 30, pw = W - L - R, ph = H - T - B, n = tn.length, gw = pw / n, bw = Math.min(40, gw * 0.6), base = T + ph;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.style.height = H + 'px';
+    var mx = Math.max.apply(null, tn.concat(tp).filter(function (v) { return v != null; }).concat([1])) * 1.2;
+    function y(v) { return base - v / mx * ph; }
+    var o = ES_DEFS + '<line class="es-base" x1="' + L + '" x2="' + (W - R) + '" y1="' + base + '" y2="' + base + '" stroke-width="2"/>',
+      step = n > 20 ? (W < 600 ? 6 : 3) : n > 12 ? (W < 600 ? 4 : 2) : 1, vstep = gw < 16 ? (gw < 11 ? 3 : 2) : 1;
+    tn.forEach(function (v, i) { var cx = L + i * gw + gw / 2;
+      o += '<g class="grp"><rect x="' + (cx - gw / 2) + '" y="' + T + '" width="' + gw + '" height="' + ph + '" fill="transparent"/>';
+      if (v != null) o += '<rect class="col a" x="' + (cx - bw / 2) + '" y="' + base + '" width="' + bw + '" height="0" rx="' + Math.min(6, bw / 3) + '" fill="url(#esNow)"/>' + (i % vstep === 0 ? '<text class="es-va" x="' + cx + '" y="' + base + '" text-anchor="middle" font-size="' + (gw < 20 ? 10 : 12) + '" style="opacity:0">0</text>' : '');
+      else o += '<rect class="es-fut" x="' + (cx - bw / 2) + '" y="' + (base - 4) + '" width="' + bw + '" height="4" rx="2"/>';
+      o += '</g>';
+      if (i % step === 0) o += '<text class="es-x" x="' + cx + '" y="' + (H - 8) + '" text-anchor="middle">' + cfg.lab(i) + '</text>';
+    });
+    o += '<polyline class="es-pl" points="' + tp.map(function (v, i) { return v == null ? null : (L + i * gw + gw / 2) + ',' + y(v); }).filter(Boolean).join(' ') + '" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+    svg.innerHTML = o;
+    var pl = $('.es-pl', svg), len = pl.getTotalLength ? pl.getTotalLength() : 2000;
+    if (!esReduced()) { pl.style.strokeDasharray = len; pl.style.strokeDashoffset = len; pl.style.transition = 'stroke-dashoffset 1.4s ease .3s'; requestAnimationFrame(function () { requestAnimationFrame(function () { pl.style.strokeDashoffset = 0; }); }); }
+    var items = [];
+    $$('g.grp', svg).forEach(function (g, i) { var a = $('.a', g);
+      if (a) items.push({ r: a, t: $('.es-va', g), h: base - y(tn[i]), v: tn[i], base: base, d: i * 35 });
+      g.onmouseenter = function () { svg.classList.add('hov'); var v = tn[i], p = tp[i];
+        esTipAt(tip, svg, L + i * gw + gw / 2, y(Math.max(v || 0, p || 0)) - 8, W, H, '<b>' + cfg.tip(i) + '</b><div><span><i style="background:#f5a800"></i>ช่วงนี้</span><span>' + (v == null ? 'ยังไม่ถึง' : F.int(v) + ' เคส') + '</span></div><div><span><i style="background:#8b90a7"></i>' + cfg.ptip(i) + '</span><span>' + (p == null ? '–' : F.int(p) + ' เคส') + '</span></div>' + (v != null && p ? '<div><span>เปลี่ยน</span><span>' + chg(v, p)[1] + '</span></div>' : '')); };
+      g.onmouseleave = function () { svg.classList.remove('hov'); tip.style.opacity = 0; };
+    });
+    esGrow(items, 800);
+  }
+  function esSpark(a, b, n) {
+    var mx = Math.max.apply(null, a.concat(b).filter(function (v) { return v != null; }).concat([1]));
+    function pts(arr) { return arr.map(function (v, i) { return v == null ? null : (i / Math.max(n - 1, 1) * 100) + ',' + (44 - v / mx * 40); }).filter(Boolean).join(' '); }
+    return '<svg viewBox="0 0 100 46" preserveAspectRatio="none"><polyline class="es-spp" points="' + pts(b) + '" fill="none" stroke-width="1.6" vector-effect="non-scaling-stroke"/><polyline class="es-spn" points="' + pts(a) + '" fill="none" stroke="#f5a800" stroke-width="2.6" vector-effect="non-scaling-stroke" stroke-linecap="round"/></svg>';
+  }
+  function drawHourBars(svg, byHour, avg) {
+    if (!svg) return;
+    var W = svg.clientWidth || 900, nar = W < 600, H = nar ? 240 : 280, L = 4, R = 4, T = 24, B = 28, pw = W - L - R, ph = H - T - B, gw = pw / 24, bw = Math.min(30, gw * 0.66), base = T + ph;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.style.height = H + 'px';
+    var vals = byHour.map(function (b) { return b.ch ? b.sp / b.ch : null; }), mx = Math.max.apply(null, vals.filter(function (v) { return v != null; }).concat([avg || 0])) * 1.15 || 1;
+    var cap = Math.min(mx, (avg || 0) * 4 || mx); // ตัดแท่งที่สูงเกินไม่ให้บังแท่งอื่น
+    function y(v) { return base - Math.min(v, cap) / cap * ph; }
+    var o = '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + base + '" y2="' + base + '" stroke="var(--line)" stroke-width="2"/>';
+    vals.forEach(function (v, h) { var cx = L + h * gw + gw / 2, x = cx - bw / 2;
+      if (v == null) { if (byHour[h].sp > 0) o += '<rect x="' + x + '" y="' + (base - 6) + '" width="' + bw + '" height="6" rx="3" fill="#3b3b48"/>'; }
+      else { var good = v <= avg; o += '<rect x="' + x + '" y="' + y(v) + '" width="' + bw + '" height="' + (base - y(v)) + '" rx="5" fill="' + (good ? 'var(--good)' : 'var(--bad)') + '"><title>' + hhmm(h) + ' · ' + F.baht(v) + ' / แชท · ' + byHour[h].ch + ' แชท</title></rect>';
+        if (!nar || h % 2 === 0) o += '<text x="' + cx + '" y="' + (y(v) - 6) + '" text-anchor="middle" class="hb-v">' + (v > cap ? '↑' : '') + Math.round(v) + '</text>'; }
+      if (!nar || h % 3 === 0) o += '<text x="' + cx + '" y="' + (H - 8) + '" text-anchor="middle" class="hb-x">' + h + '</text>'; });
+    if (avg) o += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(avg) + '" y2="' + y(avg) + '" stroke="var(--text-2)" stroke-width="1.5" stroke-dasharray="6 5"/>';
+    svg.innerHTML = o;
   }
 
   /** ตั้งค่า: จับคู่แคมเปญ → หมวด */
@@ -1889,7 +2213,8 @@
         : '<div class="status-line" style="margin-top:6px"><span class="sdot on"></span><b>แชทลูกค้าจาก Inbox</b> <span class="muted">· ' + (S.data.config.page_name ? 'เพจ ' + esc(S.data.config.page_name) + ' · ' : '') +
           (fbRes.inboxNew != null ? 'คนทักใหม่รอบล่าสุด ' + fbRes.inboxNew + ' คน (จับคู่โฆษณาให้เอง ' + (fbRes.inboxAuto || 0) + ')' : 'ยังไม่เคยดึง') + (fbRes.inboxDone === false ? ' · กำลังดึงย้อนหลัง 3 เดือน (ทยอยดึงทุกชั่วโมง)' : '') + '</span></div>') : '') +
       (fbLast ? '<div class="status-line" style="margin-top:6px"><span class="sdot ' + (S.data.config.gads_error ? 'off' : 'on') + '"></span><b>Google Ads (METRICS)</b> <span class="muted">· ' + (S.data.config.gads_error ? esc(S.data.config.gads_error) : (S.data.gads || []).length + ' แถว') + '</span></div>' +
-        '<div class="status-line" style="margin-top:6px"><span class="sdot ' + (S.data.config.purchase_error ? 'off' : 'on') + '"></span><b>รับซื้อ (Orders)</b> <span class="muted">· ' + (S.data.config.purchase_error ? esc(S.data.config.purchase_error) : (S.data.purchases || []).length + ' เครื่อง · อ่านอย่างเดียว') + '</span></div>' : '') +
+        '<div class="status-line" style="margin-top:6px"><span class="sdot ' + (S.data.config.purchase_error ? 'off' : 'on') + '"></span><b>รับซื้อ (Orders)</b> <span class="muted">· ' + (S.data.config.purchase_error ? esc(S.data.config.purchase_error) : (S.data.purchases || []).length + ' เครื่อง · อ่านอย่างเดียว') + '</span></div>' +
+        '<div class="status-line" style="margin-top:6px"><span class="sdot ' + (S.data.config.estimate_error ? 'off' : 'on') + '"></span><b>เคสประเมิน (Estimations)</b> <span class="muted">· ' + (S.data.config.estimate_error ? esc(S.data.config.estimate_error) : (S.data.estimates || []).length + ' เคส · อ่านอย่างเดียว') + '</span></div>' : '') +
       '<div class="muted small" style="margin-top:8px">ตั้งดึงอัตโนมัติทุก 1 ชั่วโมงด้วยการรัน installAutoSync() ใน Apps Script ครั้งเดียว · วันที่ Facebook มีตัวเลขแล้ว ระบบจะไม่นับค่า Ads ที่กรอกมือของวันนั้นซ้ำ</div></div>';
     html += catMapCard();
     html += '<div class="card mt"><h2 class="card-title">ประเภทสินค้า</h2><div class="card-sub" style="margin-bottom:12px">ปุ่มให้กดเลือกตอนบันทึกแชท · 1 บรรทัด = 1 ประเภท · เรียงตามลำดับที่อยากให้แสดง</div>' +
