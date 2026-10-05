@@ -1386,3 +1386,31 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 .bt-v { margin-top: 14px; background: #e3f9ec; border-radius: 12px; padding: 10px 14px; font-size: 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; color: #111; }
 .bt-v.bad { background: #fde8e5; }
 @media (max-width: 760px) { .bt-grid { grid-template-columns: minmax(0, 1fr); } }
+/* v43: ผลงานตามงบ/วัน แบบ Y */
+.bt-act { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn.line { background: #06C755; color: #fff; box-shadow: none; }
+.btc .ty { border: 1px solid var(--line); border-radius: 16px; padding: 16px; min-width: 0; }
+.btc .ty.cur { border: 2px solid #f5a800; }
+.btc .ty .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.btc .ty .bd { font-size: 26px; font-weight: 700; } .btc .ty .bd small { font-size: 13px; color: var(--text-3); font-weight: 500; margin-left: 4px; }
+.btc .ty .per { font-size: 12.5px; color: var(--text-3); } .btc .ty .per b { color: var(--text); }
+.btc .ty .vs { font-size: 12px; color: var(--text-3); margin-top: 6px; }
+.btc .big3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+.btc .big3 > div { background: #f5f6f8; border-radius: 10px; padding: 9px 6px; text-align: center; min-width: 0; }
+.btc .big3 i { display: block; font-style: normal; font-size: 11.5px; color: #55566a; } .btc .big3 b { display: block; font-size: 21px; color: #111; font-variant-numeric: tabular-nums; }
+.btc .fn { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-top: 8px; }
+.btc .fn > div { border: 1px solid var(--line); border-radius: 10px; padding: 8px 4px; text-align: center; font-size: 11.5px; color: var(--text-2); min-width: 0; }
+.btc .fn b { display: block; font-size: 16px; color: var(--text); font-variant-numeric: tabular-nums; } .btc .fn small { display: block; font-size: 10.5px; color: var(--text-3); }
+.btc em.d { display: block; font-style: normal; font-size: 11.5px; font-weight: 700; margin-top: 1px; } .btc em.d.g { color: #00a344; } .btc em.d.r { color: #d81f00; } .btc em.d.n { color: var(--text-3); font-weight: 500; }
+.btc .amt { margin-top: 8px; font-size: 13.5px; color: var(--text-2); } .btc .amt b { color: var(--text); font-size: 15px; }
+.btc .tabs2 { display: flex; gap: 4px; margin-top: 10px; border-bottom: 1px solid var(--line); }
+.btc .tabs2 button { font: inherit; font-size: 13px; padding: 6px 10px; color: var(--text-3); background: none; border: 0; border-bottom: 2px solid transparent; cursor: pointer; }
+.btc .tabs2 button.on { color: var(--text); font-weight: 700; border-bottom-color: #f5a800; }
+.btc .cr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 13.5px; } .btc .cr:first-child { border-top: 0; }
+.btc .cr b { display: block; font-weight: 600; } .btc .cr small { color: var(--text-3); font-size: 12px; } .btc .cr .am { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.btc .more { font-size: 12.5px; color: var(--text-3); padding-top: 8px; }
+.btc .bt-sp svg { display: block; width: 100%; height: 80px; margin-top: 10px; }
+:root[data-theme="dark"] .btc .big3 > div { background: #24242e; } :root[data-theme="dark"] .btc .big3 b { color: #f2f2f5; }
+@media (max-width: 560px) { .btc .fn { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.btc .card-head > div { min-width: 0; } .bt-act { min-width: 0; max-width: 100%; } .bt-act select { max-width: 100%; min-width: 0; }
+@media (max-width: 560px) { .bt-act, .bt-act select, .bt-act .btn { width: 100%; } }
