@@ -541,13 +541,31 @@
       lpd: [b.leadsPerDay, a.leadsPerDay], lpdChange: lpdCh, cpl: [cb.v, ca.v], cplChange: cplCh };
   }
   /** ทุกครั้งที่เปลี่ยนรอบ (ปรับงบ / กลับมายิง) → 1 การทดลอง */
+  /** ตัดข้อความอัตโนมัติจาก Facebook (หยุด/เปิดยิงใน Facebook) และข้อความซ้ำออก */
+  function cleanNote(n) { var seen = {}; return String(n || '').split(' · ').filter(function (x) { x = x.trim(); if (!x || /^(หยุดใน Facebook|เปิดยิงใน Facebook)$/.test(x) || seen[x]) return false; seen[x] = 1; return true; }).join(' · '); }
+  /** รวมรอบที่งบ/วันเท่าเดิมติดกัน (แค่ปิดแล้วเปิดใหม่) เป็นรอบเดียว — การเทียบ "ปรับงบแล้วคุ้มไหม" จะเกิดเฉพาะตอนงบเปลี่ยนจริง */
+  function mergeSameBudget(rows) {
+    var out = [];
+    rows.forEach(function (r) {
+      var m = out[out.length - 1];
+      if (m && m.daily === r.daily) {
+        m.pauses.push(r.from); m.to = r.to; m.plannedTo = r.plannedTo; m.ongoing = r.ongoing; m.run = r.run;
+        m.days += r.days; m.leads += r.leads; m.spend += r.spend; m.closed += r.closed; m.amount += r.amount;
+        m.leadsPerDay = m.days ? m.leads / m.days : 0; m.cpl = m.leads && m.spend ? m.spend / m.leads : null; m.cpc = m.closed && m.spend ? m.spend / m.closed : null;
+        var nn = cleanNote(r.note); if (nn && cleanNote(m.note).indexOf(nn) < 0) m.note = cleanNote(m.note) ? cleanNote(m.note) + ' · ' + nn : nn;
+        return;
+      }
+      var c = {}; Object.keys(r).forEach(function (k) { c[k] = r[k]; }); c.pauses = []; c.note = cleanNote(r.note); out.push(c);
+    });
+    return out;
+  }
   function experiments(data, opts) {
     var today = opts.today || iso(new Date()), daily = spendDaily(data), out = [];
     var camps = {};
     (data.budgets || []).forEach(function (b) { if (b.campaign && (!opts.campaign || b.campaign === opts.campaign)) camps[b.campaign] = true; });
     Object.keys(camps).forEach(function (camp) {
       [''].concat(adsetsOf(data, camp)).forEach(function (lv) {
-        var rows = runResults(data, camp, lv, today, daily).filter(function (r) { return !r.future; });
+        var rows = mergeSameBudget(runResults(data, camp, lv, today, daily).filter(function (r) { return !r.future; }));
         for (var i = 1; i < rows.length; i++) {
           var b = rows[i - 1], a = rows[i];
           if (opts.from && (a.to < opts.from || a.from > opts.to)) continue;
@@ -752,7 +770,7 @@
     runsOf: runsOf, needsNormalize: needsNormalize, levelState: levelState, campState: campState, budgetMode: budgetMode, firstStart: firstStart,
     spendDaily: spendDaily, spendCoverage: spendCoverage, runResults: runResults, runningDays: runningDays, daysIncl: daysIncl,
     closeDurations: closeDurations, durationStats: durationStats,
-    experiments: experiments, KPI_CATS: KPI_CATS, purchaseCat: purchaseCat, itemCat: itemCat, prodCat: prodCat, guessCat: guessCat, catMap: catMap, adCat: adCat, costByCat: costByCat, kpiTargets: kpiTargets, weeksBack: weeksBack, fbPerf: fbPerf, median: median, campaignDaily: campaignDaily, productList: productList, splitProduct: splitProduct, MIN_DAYS: MIN_DAYS,
+    experiments: experiments, mergeSameBudget: mergeSameBudget, cleanNote: cleanNote, KPI_CATS: KPI_CATS, purchaseCat: purchaseCat, itemCat: itemCat, prodCat: prodCat, guessCat: guessCat, catMap: catMap, adCat: adCat, costByCat: costByCat, kpiTargets: kpiTargets, weeksBack: weeksBack, fbPerf: fbPerf, median: median, campaignDaily: campaignDaily, productList: productList, splitProduct: splitProduct, MIN_DAYS: MIN_DAYS,
     fmt: { baht: baht, int: int, pct: pct, thDate: thDate, thRange: thRange }
   };
 })();
