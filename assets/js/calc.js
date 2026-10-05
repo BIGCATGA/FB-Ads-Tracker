@@ -622,8 +622,25 @@
     if (/ipad|ไอแพด/.test(s)) return 'ipad';
     if (/macbook|แมคบุ๊|แม็คบุ๊/.test(s)) return 'macbook';
     if (/notebook|laptop|โน้ตบุ|โน๊ตบุ|โน้ตบุ้|^nb/.test(s)) return 'notebook';
-    if (/comset|comp?set|computer|คอมเซ|คอมเซ็|คอมพิวเตอร์|คอมประกอบ|desktop|^pc/.test(s)) return 'computer';
+    if (/comset|compset|pcset|คอมเซ|คอมประกอบ/.test(s)) return 'computer';
     return '';
+  }
+  /** อ่านชื่อรุ่นจาก "รายละเอียดสินค้า" เมื่อหมวดในชีตไม่ใช่ 5 หมวด (บอทใส่โน้ตบุ๊กเป็น อื่นๆ / Smart Phone ฯลฯ) */
+  var RX_NOT = /apple watch|airpods|\bwatch\b|nintendo|\bswitch\b|\bps[45]\b|playstation|xbox|legion go|\bclaw\b|steam deck|\bally\b|homepod|trackpad|ipad|iphone|macbook|imac|mac ?mini|mac studio/;
+  var RX_PART = /monitor|จอมอนิเตอร์|\binch\b|นิ้ว|\b\d{2,3}\s?hz\b|mainboard|เมนบอร์ด|\bram\b|ddr\d|so-?dimm|\bssd\b|m\.2|nvme|gddr|geforce|radeon|\brx ?\d{4}|power ?supply|\bpsu\b|cooler|zoomflow|keyboard|คีย์บอร์ด|mouse|เมาส์|headset|หูฟัง|joystick|dualsense|ฟิล์ม|กระเป๋า|\bbag\b|adapter|อะแดปเตอร์|charger|\b[bhz]\d{3}[a-z]{0,2}\b|^\s*(intel )?core i\d-\d{4,5}[a-z]*\s*$|^\s*(amd )?ryzen \d \d{4}x?\d?[a-z]*\s*$|ideacentre|\baio\b|all.?in.?one|\bsff\b|mini ?pc|pavilion tp0|desktop/;
+  var RX_PC = /comset|pc ?set|\bpc\d{1,2}\b|คอมเซ็ต|คอมเซต|คอมประกอบ/;
+  var RX_NB = /vivobook|zenbook|expertbook|\btuf\b|\brog\b|zephyrus|strix|legion|\bloq\b|ideapad|thinkpad|thinkbook|\byoga|\bnitro\b|predator|aspire|\bswift\b|travelmate|katana|cyborg|gf63|\bthin (\d{2}|[ab]\d|gf)|\bsword\b|\bpulse\b|crosshair|\bbravo\b|stealth|raider|\bvector\b|\btitan\b|\bmodern [a-z]?\d|prestige|victus|\bomen\b|pavilion|\benvy\b|spectre|elitebook|probook|omnibook|zbook|inspiron|vostro|latitude|\bxps\b|precision|alienware|\bdell g1\d|aorus|ga?byte g\d|matebook|galaxy book|surface (laptop|pro|book|go)|razer blade|inbook|colorful|\bv1[456]\b|\bd5\d{2}[a-z]|chromebook|dell pro (max )?1[3-6]|\bleopard\b|\balpha 1[57]|\bip ?[35] |2 ?in ?1|x360|\baero 1[4-7]|\bspin ?\d|\bsword ?\d|\bgl6[35]|notebook|laptop|โน้ตบุ|โน๊ตบุ|\bhp 1[3-7]|\b1[3-7]s?-[a-z]{2}\d{4}[a-z]{2}\b/;
+  var RX_GAME = /\brtx|\bgtx|\btuf\b|\brog\b|zephyrus|strix|legion|\bloq\b|gaming|gimang|\bnitro\b|predator|katana|cyborg|gf63|\bthin\b|\bsword|\bpulse\b|crosshair|\bbravo\b|stealth|raider|\bvector\b|\btitan\b|victus|\bomen\b|alienware|leopard|\balpha 1|\bgl6\d|aorus|razer|\bdell g1\d|colorful|\d{4}tx\b|\b(10|16|20|30|40|50)[5-9]0\b/;
+  /** หมวดสุดท้าย: { k: 'notebook'|…|'', sub: ชื่อที่แสดง, guess: true ถ้าเดาจากชื่อรุ่น } */
+  function prodCat(cat, detail) {
+    var k = itemCat(cat), raw = String(cat || '').trim();
+    if (k) return { k: k, sub: raw, guess: false };
+    var d = String(detail || '').toLowerCase();
+    if (!d || RX_NOT.test(d)) return { k: '', sub: raw, guess: false };
+    if (RX_PC.test(d)) return { k: 'computer', sub: RX_GAME.test(d) ? 'Comset Gaming' : 'Comset Office', guess: true };
+    if (RX_PART.test(d)) return { k: '', sub: raw, guess: false };
+    if (RX_NB.test(d)) return { k: 'notebook', sub: RX_GAME.test(d) ? 'Notebook Gaming' : 'Notebook Office', guess: true };
+    return { k: '', sub: raw, guess: false };
   }
   function guessCat(name) {
     var s = String(name || '').toLowerCase();
@@ -672,14 +689,14 @@
     });
     (data.purchases || []).forEach(function (p) {
       if (p.date < from || p.date > to) return;
-      var t = cats[itemCat(p.category)];
+      var t = cats[p.k != null ? p.k : prodCat(p.category, p.detail).k];
       if (!t) return;
       if (p.fb) t.ufb++; else if (p.line) t.ugg++; else return;
       t.margin += p.sell - p.bought - p.repair;
     });
     (data.estimates || []).forEach(function (e) {
       if (e.date < from || e.date > to) return;
-      var t = cats[itemCat(e.category)];
+      var t = cats[e.k != null ? e.k : prodCat(e.category, e.detail).k];
       if (!t) return;
       if (e.fb) t.efb++; else if (e.line) t.egg++;
     });
@@ -735,7 +752,7 @@
     runsOf: runsOf, needsNormalize: needsNormalize, levelState: levelState, campState: campState, budgetMode: budgetMode, firstStart: firstStart,
     spendDaily: spendDaily, spendCoverage: spendCoverage, runResults: runResults, runningDays: runningDays, daysIncl: daysIncl,
     closeDurations: closeDurations, durationStats: durationStats,
-    experiments: experiments, KPI_CATS: KPI_CATS, purchaseCat: purchaseCat, itemCat: itemCat, guessCat: guessCat, catMap: catMap, adCat: adCat, costByCat: costByCat, kpiTargets: kpiTargets, weeksBack: weeksBack, fbPerf: fbPerf, median: median, campaignDaily: campaignDaily, productList: productList, splitProduct: splitProduct, MIN_DAYS: MIN_DAYS,
+    experiments: experiments, KPI_CATS: KPI_CATS, purchaseCat: purchaseCat, itemCat: itemCat, prodCat: prodCat, guessCat: guessCat, catMap: catMap, adCat: adCat, costByCat: costByCat, kpiTargets: kpiTargets, weeksBack: weeksBack, fbPerf: fbPerf, median: median, campaignDaily: campaignDaily, productList: productList, splitProduct: splitProduct, MIN_DAYS: MIN_DAYS,
     fmt: { baht: baht, int: int, pct: pct, thDate: thDate, thRange: thRange }
   };
 })();

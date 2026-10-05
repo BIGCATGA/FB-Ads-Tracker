@@ -149,7 +149,7 @@
       estimates: (function () {
         var out = [], t = new Date(), P = [['iPhone', 9], ['iPad', 5], ['MacBook', 3], ['Notebook Gaming', 3], ['Notebook Office', 2], ['Comset Gaming', 2], ['AirPods', 4], ['Apple Watch', 2], ['Game Console', 2]];
         for (var i = 120; i >= 0; i--) { var d = new Date(t); d.setDate(d.getDate() - i); var ds = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2), wk = d.getDay() === 0 || d.getDay() === 6;
-          P.forEach(function (p) { var n = Math.floor(p[1] * (0.5 + r()) * (wk ? 0.8 : 1)); for (var k = 0; k < n; k++) { var h = Math.floor(8 + r() * 15) % 24, fb = r() < 0.35; out.push([ds, h, p[0], fb ? 1 : 0, fb ? 0 : 1, r() < 0.4 ? 1 : 0]); } }); }
+          P.forEach(function (p) { var n = Math.floor(p[1] * (0.5 + r()) * (wk ? 0.8 : 1)); for (var k = 0; k < n; k++) { var h = Math.floor(8 + r() * 15) % 24, fb = r() < 0.35; var NB = ['ASUS TUF GAMING F15 FX506HE-HN011W', 'LENOVO IDEAPAD SLIM 3 15IRH8 83EM009STA', 'ACER NITRO V15 ANV15-41-R488', 'ASUS VIVOBOOK 15 X1502VA-NJ545WA', 'HP 15S-FQ2725TU'], isNb = /^Notebook/.test(p[0]) && r() < 0.6, dt = isNb ? NB[Math.floor(r() * NB.length)] : ''; out.push([ds, h, isNb ? (r() < 0.8 ? 'อื่นๆ' : 'Smart Phone') : p[0], fb ? 1 : 0, fb ? 0 : 1, r() < 0.4 ? 1 : 0, dt]); } }); }
         return out;
       })(),
       fbhourly: (function () {

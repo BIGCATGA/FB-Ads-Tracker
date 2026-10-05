@@ -79,8 +79,8 @@
     d.campaigns.forEach(function (c) { c.start_date = nd(c.start_date); c.end_date = nd(c.end_date); });
     d.fbads = (d.fbads || []).map(function (r) { r.date = nd(r.date); return r; });
     d.gads = (d.gads || []).map(function (r) { r.date = nd(r.date); r.cost = Number(r.cost) || 0; r.conversions = Number(r.conversions) || 0; return r; });
-    d.purchases = (d.purchases || []).map(function (a) { return Array.isArray(a) ? { date: nd(a[0]), category: a[1], fb: !!a[2], line: !!a[3], bought: a[4], repair: a[5], sell: a[6], fbName: a[7] || '' } : a; });
-    d.estimates = (d.estimates || []).map(function (a) { return Array.isArray(a) ? { date: nd(a[0]), hour: Number(a[1]), category: a[2], fb: !!a[3], line: !!a[4], closed: !!a[5] } : a; }).filter(function (e) { return e.date; });
+    d.purchases = (d.purchases || []).map(function (a) { var o = Array.isArray(a) ? { date: nd(a[0]), category: a[1], fb: !!a[2], line: !!a[3], bought: a[4], repair: a[5], sell: a[6], fbName: a[7] || '', detail: a[8] || '' } : a, pc = C.prodCat(o.category, o.detail); o.k = pc.k; o.cat = pc.sub; o.guess = pc.guess; return o; });
+    d.estimates = (d.estimates || []).map(function (a) { var o = Array.isArray(a) ? { date: nd(a[0]), hour: Number(a[1]), category: a[2], fb: !!a[3], line: !!a[4], closed: !!a[5], detail: a[6] || '' } : a, pc = C.prodCat(o.category, o.detail); o.k = pc.k; o.cat = pc.sub; o.guess = pc.guess; return o; }).filter(function (e) { return e.date; });
     d.fbhourly = (d.fbhourly || []).map(function (a) { return Array.isArray(a) ? { date: nd(a[0]), hour: Number(a[1]) || 0, campaign: a[2], adset: a[3], spend: Number(a[4]) || 0, chats: Number(a[5]) || 0 } : a; }).filter(function (e) { return e.date; });
     d.inbox = (d.inbox || []).map(function (r) { r.psid = String(r.psid); r.first_date = nd(r.first_date); r.last_date = nd(r.last_date); return r; });
     d.spend = d.spend.filter(function (s) { return s.date; });
@@ -2012,7 +2012,7 @@
     var map = {};
     all.forEach(function (e) {
       var s = side(e); if (!s) return;
-      var k = String(e.category || '').trim() || 'ไม่ระบุ', o = map[k] || (map[k] = { n: k, now: [], prev: [], N: 0, P: 0 });
+      var k = String(e.cat || e.category || '').trim() || 'ไม่ระบุ', o = map[k] || (map[k] = { n: k, now: [], prev: [], N: 0, P: 0 });
       var j = ef.c === 'd' ? (e.hour >= 0 ? e.hour : -1) : s[1];
       if (s[0] === 'n') { if (j >= lim) return; o.N++; if (j >= 0) o.now[j] = (o.now[j] || 0) + 1; }
       else { if (j < lim) o.P++; if (j >= 0) o.prev[j] = (o.prev[j] || 0) + 1; }
@@ -2156,14 +2156,16 @@
   }
   /** ตั้งค่า: ชื่อหมวดในชีตเคสประเมิน → นับเข้าหมวดไหน (ไว้เช็คว่าไม่มีเคสหลุด) */
   function estCatCard() {
-    var from = C.addDays(today(), -89), m = {};
-    (S.data.estimates || []).forEach(function (e) { if (e.date < from) return; var k = String(e.category || '').trim() || '(ว่าง)', o = m[k] || (m[k] = { n: k, c: 0, nc: 0 }); o.c++; if (!e.fb && !e.line) o.nc++; });
+    var from = C.addDays(today(), -89), m = {}, names = {}; C.KPI_CATS.forEach(function (c) { names[c.k] = c.n; });
+    (S.data.estimates || []).forEach(function (e) { if (e.date < from) return; var k = String(e.category || '').trim() || '(ว่าง)', o = m[k] || (m[k] = { n: k, c: 0, nc: 0, to: {} });
+      o.c++; if (!e.fb && !e.line) o.nc++; var t = e.k ? names[e.k] + (e.guess ? '*' : '') : '-'; o.to[t] = (o.to[t] || 0) + 1; });
     var list = Object.keys(m).map(function (k) { return m[k]; }).sort(function (a, b) { return b.c - a.c; });
     if (!list.length) return '';
-    var names = {}; C.KPI_CATS.forEach(function (c) { names[c.k] = c.n; });
-    return '<div class="card mt"><div class="card-head"><div><h2 class="card-title">หมวดในชีตเคสประเมิน → นับเข้าหมวดไหน</h2><div class="card-sub">90 วันล่าสุด · ชื่อที่ "ไม่นับ" จะไม่เข้า 5 หมวดในหน้าต้นทุนต่อหมวด · เคสที่ไม่มีทั้ง FB และ LINE จะไม่ถูกนับ</div></div></div>' +
-      '<div class="table-wrap"><table class="t"><thead><tr><th>ชื่อหมวดในชีต</th><th class="r">เคส</th><th class="r">ไม่มี FB/LINE</th><th>นับเข้า</th></tr></thead><tbody>' +
-      list.map(function (o) { var k = C.itemCat(o.n === '(ว่าง)' ? '' : o.n); return '<tr><td><b>' + esc(o.n) + '</b></td><td class="r">' + F.int(o.c) + '</td><td class="r' + (o.nc ? '' : ' muted') + '">' + F.int(o.nc) + '</td><td>' + (k ? '<span class="pl g">' + names[k] + '</span>' : '<span class="muted">ไม่นับ</span>') + '</td></tr>'; }).join('') +
+    var g = 0; (S.data.estimates || []).forEach(function (e) { if (e.date >= from && e.guess) g++; });
+    return '<div class="card mt"><div class="card-head"><div><h2 class="card-title">หมวดในชีตเคสประเมิน → นับเข้าหมวดไหน</h2><div class="card-sub">90 วันล่าสุด · ถ้าหมวดในชีตไม่ใช่ 5 หมวด (เช่น อื่นๆ / Smart Phone) ระบบอ่านชื่อรุ่นจากรายละเอียดสินค้าเอง · <b>*</b> = อ่านจากชื่อรุ่น (' + F.int(g) + ' เคส) · เคสที่ไม่มีทั้ง FB และ LINE จะไม่ถูกนับ</div></div></div>' +
+      '<div class="table-wrap"><table class="t"><thead><tr><th>หมวดในชีต</th><th class="r">เคส</th><th class="r">ไม่มี FB/LINE</th><th>นับเข้า</th></tr></thead><tbody>' +
+      list.map(function (o) { return '<tr><td><b>' + esc(o.n) + '</b></td><td class="r">' + F.int(o.c) + '</td><td class="r' + (o.nc ? '' : ' muted') + '">' + F.int(o.nc) + '</td><td>' +
+        Object.keys(o.to).sort(function (a, b) { return o.to[b] - o.to[a]; }).map(function (t) { return t === '-' ? '<span class="muted">ไม่นับ ' + F.int(o.to[t]) + '</span>' : '<span class="pl g">' + esc(t) + ' ' + F.int(o.to[t]) + '</span>'; }).join(' ') + '</td></tr>'; }).join('') +
       '</tbody></table></div></div>';
   }
   /** ตั้งค่า: จับคู่แคมเปญ → หมวด */
