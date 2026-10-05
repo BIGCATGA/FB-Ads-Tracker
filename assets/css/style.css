@@ -1369,3 +1369,4 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 :root[data-theme="dark"] .dw:not(.hg):not(.hr) { background: #24242e; color: #f2f2f5; }
 .kq3 .q i { white-space: nowrap; font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
 .eblk.wide .ebk .hr { grid-template-columns: 84px minmax(0, 1fr) 34px 54px; }
+.rh-pz { color: #b06d00; }
