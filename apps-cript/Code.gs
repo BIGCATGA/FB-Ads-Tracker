@@ -31,7 +31,7 @@ var FB_INBOX_SINCE = '2026-09-01';
 var PURCHASE_SHEET_ID = '1hsrvfwvkpZJE5Q6-75Fj5xg0FtePA-TceF8mJ8KF6iU'; // BIGCAT-TEST · แท็บ Orders_MM_YYYY
 var METRICS_SHEET_ID  = '1AEwjnQ0komRSwLi2-8TUj-SxAM0jvUgKYG1THfA-80Y'; // Google Ads · แท็บ METRICS // ดึงรายชื่อคนทักเพจตั้งแต่วันนี้เป็นต้นไป
 var FB_PAGE_ID = '';      // ว่าง = หาเพจให้เองจากโทเคน (ถ้ามีหลายเพจให้ใส่ ID เพจ Bigcat ตรงนี้)
-var BACKEND_VERSION = 11; // หน้าเว็บจะเช็คเลขนี้ — ถ้าต่ำกว่าที่ต้องการจะไม่ยอมบันทึก (กันข้อมูลหาย)
+var BACKEND_VERSION = 12; // หน้าเว็บจะเช็คเลขนี้ — ถ้าต่ำกว่าที่ต้องการจะไม่ยอมบันทึก (กันข้อมูลหาย)
 
 // ====== โครงสร้างตาราง ======
 var SCHEMA = {
@@ -914,10 +914,10 @@ function syncFacebook_(user) {
           created_by: 'facebook', created_at: now });
         sum.budgetChanges++;
       } else if (!active && open) {
-        var end = lastSpend[fbId] && lastSpend[fbId] >= open.start_date ? lastSpend[fbId] : yest;
+        var end = lastSpend[fbId] && lastSpend[fbId] >= open.start_date ? lastSpend[fbId] : yest, was = open.end_date;
         open.end_date = end < open.start_date ? open.start_date : end;
-        open.note = (open.note ? open.note + ' · ' : '') + 'หยุดใน Facebook';
-        sum.budgetChanges++;
+        if (!/หยุดใน Facebook$/.test(String(open.note || ''))) open.note = (open.note ? open.note + ' · ' : '') + 'หยุดใน Facebook'; // ไม่ต่อท้ายซ้ำทุกชั่วโมง
+        if (was !== open.end_date) sum.budgetChanges++;
       }
     }
     fbCamps.forEach(function (fc) {
