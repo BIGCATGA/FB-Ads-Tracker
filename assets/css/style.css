@@ -1197,6 +1197,7 @@ svg.hbar { width: 100%; display: block; overflow: visible; }
 :root[data-theme="dark"] { --es-prev: #4a4a5a; --es-p1: #5a5a6c; --es-p2: #43434f; --es-tip: #2b2b38; }
 .es-top { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; }
 .es-top > * { min-width: 0; }
+.es-top-r { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .es-rng { display: flex; gap: 8px 20px; flex-wrap: wrap; font-size: 14px; color: var(--text-2); margin: 14px 0 18px; }
 .es-rng > span { display: inline-flex; align-items: center; gap: 7px; }
 .es-rng i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; background: var(--es-prev); }
@@ -1286,6 +1287,7 @@ svg.hbar .ect { fill: #3d2a00; font-size: 11px; font-weight: 700; font-family: i
 svg.hbar .eband-l { fill: #b06d00; font-weight: 600; }
 svg.hbar g.grp { transition: opacity .2s; cursor: pointer; }
 svg.hbar.hov g.grp:not(:hover) { opacity: .45; }
+.nudge.info { background: var(--bg-soft); border-color: var(--line); color: var(--text-2); }
 .nudge.soft { background: var(--bg-soft); border-color: var(--line); color: var(--text-2); margin-bottom: 16px; }
 :root[data-theme="dark"] .hmt td .eb, :root[data-theme="dark"] .ebx { background: #2b2b38; color: #ffc44d; }
 :root[data-theme="dark"] .htip .ebt, :root[data-theme="dark"] svg.hbar .eband-l { color: #ffc44d; fill: #ffc44d; }
@@ -1424,3 +1426,30 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 .btc .pr span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .btc .pr u { display: block; height: 8px; border-radius: 4px; background: #f5a800; text-decoration: none; min-width: 3px; }
 .btc .pr b { text-align: right; font-variant-numeric: tabular-nums; } .btc .pr small { color: var(--text-3); text-align: right; }
+
+/* ---- ฟอร์มจิ๋ว (บันทึกแชทใหม่) ---- */
+.mini { display: grid; gap: 14px; max-width: 640px; }
+.mini-name { display: flex; align-items: center; gap: 10px; }
+.mini-name > span:empty { display: none; }
+.mini-big { flex: 1; min-width: 0; font: inherit; font-size: 18px; border: 0; border-bottom: 2px solid var(--line-strong); border-radius: 0; padding: 10px 2px; background: transparent; color: var(--text); outline: 0; }
+.mini-big:focus { border-color: var(--primary); box-shadow: none; }
+.mini-sug { display: flex; flex-wrap: wrap; gap: 6px; }
+.mini-sug:empty, .mini .hint:empty { display: none; }
+.mini-sug button { font: inherit; font-size: 13px; background: var(--bg-soft); border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px; cursor: pointer; color: var(--text); }
+.mini-sug button small { color: var(--text-3); }
+.mini-sug button:hover { border-color: var(--primary); background: var(--primary-soft); }
+.mini-st { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
+.mini-st button { font: inherit; border: 1.5px solid var(--line-strong); border-radius: 12px; padding: 9px 4px 8px; background: var(--card); cursor: pointer; text-align: center; color: var(--text-2); font-size: 12.5px; line-height: 1.25; min-width: 0; }
+.mini-st button b { display: block; font-size: 19px; color: var(--c); margin-bottom: 1px; }
+.mini-st button span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mini-st button:hover { border-color: var(--c); }
+.mini-st button.on { border-color: var(--c); background: color-mix(in srgb, var(--c) 12%, var(--card)); color: var(--text); font-weight: 500; box-shadow: 0 6px 16px color-mix(in srgb, var(--c) 22%, transparent); }
+.mini-auto { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; font-size: 12.5px; color: var(--text-3); }
+.mini-auto #nAuto { display: contents; }
+.mini-auto b { color: var(--text-2); font-weight: 500; }
+.mini-auto .warn-txt { color: var(--danger-text, #c0392b); }
+.mini-auto #nMore { margin-left: auto; font-size: 13px; }
+.mini-more { padding: 14px; border: 1px dashed var(--line-strong); border-radius: 14px; background: var(--bg-soft); }
+.mini-save { width: 100%; padding: 12px; font-size: 15px; }
+.mini-kbd { text-align: center; }
+@media (max-width: 560px) { .mini-st { grid-template-columns: repeat(2, 1fr); } .mini-st button span { white-space: normal; } }
