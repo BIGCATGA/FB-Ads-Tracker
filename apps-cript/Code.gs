@@ -27,11 +27,12 @@ var FB_API = 'https://graph.facebook.com/v23.0/';
 var FB_FIRST_DAYS = 90;   // ครั้งแรกดึงย้อนหลังกี่วัน
 var FB_REFETCH_DAYS = 3;  // ดึงซ้ำย้อนหลังกี่วันทุกรอบ (Facebook ยังปรับตัวเลขช่วงล่าสุด)
 var FB_INBOX_SINCE = '2026-09-01';
+var INBOX_KEEP_DAYS = 7;  // รายชื่อที่ยังไม่ได้บันทึก เก็บไว้กี่วันนับจากวันที่ทักล่าสุด — เกินนี้ลบออกจากชีตตอน sync (ที่บันทึกเป็นแชทแล้วไม่ลบ)
 // ชีตภายนอก (อ่านอย่างเดียว — ระบบไม่เขียนอะไรกลับไป)
 var PURCHASE_SHEET_ID = '1hsrvfwvkpZJE5Q6-75Fj5xg0FtePA-TceF8mJ8KF6iU'; // BIGCAT-TEST · แท็บ Orders_MM_YYYY
 var METRICS_SHEET_ID  = '1AEwjnQ0komRSwLi2-8TUj-SxAM0jvUgKYG1THfA-80Y'; // Google Ads · แท็บ METRICS // ดึงรายชื่อคนทักเพจตั้งแต่วันนี้เป็นต้นไป
 var FB_PAGE_ID = '';      // ว่าง = หาเพจให้เองจากโทเคน (ถ้ามีหลายเพจให้ใส่ ID เพจ Bigcat ตรงนี้)
-var BACKEND_VERSION = 13; // หน้าเว็บจะเช็คเลขนี้ — ถ้าต่ำกว่าที่ต้องการจะไม่ยอมบันทึก (กันข้อมูลหาย)
+var BACKEND_VERSION = 14; // หน้าเว็บจะเช็คเลขนี้ — ถ้าต่ำกว่าที่ต้องการจะไม่ยอมบันทึก (กันข้อมูลหาย)
 
 // ====== โครงสร้างตาราง ======
 var SCHEMA = {
@@ -1045,10 +1046,10 @@ function syncInbox_(t0, user) {
 
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
-  var added = 0, auto = 0;
+  var added = 0, auto = 0, purged = 0;
   try {
     var inbox = readTable_('Inbox'), chats = readTable_('Chats');
-    var byPsid = {}, chatByPsid = {}, chatsChanged = false;
+    var byPsid = {}, chatByPsid = {}, chatsChanged = false, cutoff = addDays_(today, -INBOX_KEEP_DAYS);
     inbox.forEach(function (r) { byPsid[String(r.psid)] = r; });
     chats.forEach(function (c) { if (c.psid) chatByPsid[String(c.psid)] = c; });
     var fresh = [];
@@ -1069,6 +1070,7 @@ function syncInbox_(t0, user) {
         return;
       }
       if (chatByPsid[cust.id]) return;
+      if (ld < cutoff) return; // ทักล่าสุดเกิน INBOX_KEEP_DAYS วันแล้ว ไม่ต้องเก็บ
       // แชทที่แอดมินเคยกรอกเองชื่อเดียวกัน (±7 วัน) → ผูกกัน ไม่สร้างซ้ำ
       var nm = normName_(cust.name);
       var hit = chats.filter(function (ch) { return !ch.psid && normName_(ch.customer) === nm && Math.abs(daysBetween_(ch.date, fd)) <= 7; })[0];
@@ -1089,6 +1091,10 @@ function syncInbox_(t0, user) {
     inbox.forEach(function (r) { if (autoIds[r.chat_id]) { r.status = 'pending'; r.chat_id = ''; } });
     // คนที่ทักก่อนวันเริ่มเก็บ ไม่ต้องเก็บ
     inbox = inbox.filter(function (r) { return !r.first_date || r.first_date >= FB_INBOX_SINCE || r.status === 'ad'; });
+    // รายชื่อที่ยังไม่ได้บันทึก (หรือซ่อนไว้) ทักล่าสุดเกิน INBOX_KEEP_DAYS วัน → ลบออกจากชีต (ถ้าลูกค้าทักมาใหม่จะกลับมาเอง)
+    var before = inbox.length;
+    inbox = inbox.filter(function (r) { return r.status === 'ad' || (r.last_date || r.first_date || today) >= cutoff; });
+    purged = before - inbox.length;
 
     // ---- รูปโปรไฟล์ (ถ้า Facebook อนุญาต) — ทีละน้อย เว้นจังหวะ กัน Google จำกัดความถี่ ----
     if (cfg.fb_pic_off !== today) {
@@ -1133,7 +1139,8 @@ function syncInbox_(t0, user) {
   } else {
     setConfig_('fb_inbox_after', cursor || '');
   }
-  return { added: added, auto: auto, finished: reachedEnd };
+  if (purged) log_(user, 'inboxPurge', 'ALL', '', { removed: purged, keepDays: INBOX_KEEP_DAYS });
+  return { added: added, auto: auto, purged: purged, finished: reachedEnd };
 }
 
 /** แอดมินคัดแยกคนที่ทักมา: เลือกโฆษณา → เป็นแชท · ไม่ใช่โฆษณา → other · ย้อนกลับ → pending */
