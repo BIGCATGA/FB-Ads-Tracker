@@ -2241,7 +2241,10 @@
     var D = Object.keys(map).map(function (k) { var o = map[k]; for (var j = 0; j < n; j++) { o.now[j] = j < lim ? (o.now[j] || 0) : null; o.prev[j] = j < pN ? (o.prev[j] || 0) : null; } return o; })
       .filter(function (o) { return o.N || o.P; }).sort(function (a, b) { return b.N - a.N || b.P - a.P; });
     D.forEach(function (d, i) { d.col = EST_COL[i % EST_COL.length]; });
-    var N = 0, P = 0; D.forEach(function (d) { N += d.N; P += d.P; });
+    var NA = 0; D.forEach(function (d) { NA += d.N; });
+    if (ef.p && !D.some(function (d) { return d.n === ef.p; })) ef.p = '';
+    var PROD = ef.p || '', Sel = PROD ? D.filter(function (d) { return d.n === PROD; }) : D;
+    var N = 0, P = 0; Sel.forEach(function (d) { N += d.N; P += d.P; });
     function chg(a, b) { if (!b) return a ? ['n', 'ใหม่'] : ['n', 'เท่าเดิม']; var p = (a - b) / b * 100; if (Math.abs(p) < 1) return ['n', 'เท่าเดิม']; return [p > 0 ? 'g' : 'b', (p > 0 ? 'เพิ่มขึ้น ' : 'ลดลง ') + F.int(Math.round(Math.abs(p))) + '%']; }
     function pick(dir) { var c = D.filter(function (d) { return dir > 0 ? d.N > d.P : d.N < d.P; });
       return c.sort(function (a, b) { return dir * ((b.N - b.P) - (a.N - a.P)) || (b.N + b.P) - (a.N + a.P); })[0]; }
@@ -2261,28 +2264,35 @@
       $('#page').innerHTML = html + '<div class="nudge">ยังไม่มีข้อมูลเคสประเมิน — วาง Code.gs ใหม่ แล้วกด ดึงข้อมูลตอนนี้ ในหน้าตั้งค่า</div>';
       bindEst(); S.drawCharts = null; return;
     }
-    function kc(l, v, big, c, s) { return '<div class="card es-k"><div class="l">' + l + '</div><div class="v' + (big ? ' es-num' : ' es-name') + '"' + (big ? ' data-n' : '') + '>' + v + '</div><div class="row"><span class="es-chg ' + c[0] + '">' + c[1] + '</span>' + (s || '') + '</div></div>'; }
-    if (CMP) html += '<section class="es-k4">' +
-      kc('เคสประเมินทั้งหมด', F.int(N) + '<small>เคส</small>', true, chg(N, P), cfg.prev + ' ' + F.int(P)) +
-      kc('ประเภทที่มากสุด', top ? esc(top.n) : '–', false, ['n', top ? F.int(top.N) + ' เคส · ' + (N ? Math.round(top.N / N * 100) : 0) + '%' : '–']) +
-      kc('เพิ่มขึ้นมากสุด (จำนวนเคส)', gr ? esc(gr.n) : '–', false, gr ? ['g', dlt(gr)] : ['n', 'ไม่มี'], gr ? F.int(gr.P) + ' → ' + F.int(gr.N) + ' เคส · ' + chg(gr.N, gr.P)[1] : '') +
-      kc('ลดลงมากสุด (จำนวนเคส)', dr ? esc(dr.n) : '–', false, dr ? ['b', dlt(dr)] : ['n', 'ไม่มี'], dr ? F.int(dr.P) + ' → ' + F.int(dr.N) + ' เคส · ' + chg(dr.N, dr.P)[1] : '') + '</section>';
-    else {
-      var tot = [], bi = -1, bv = -1; for (var q = 0; q < n; q++) { var tv = 0; D.forEach(function (d) { tv += d.now[q] || 0; }); tot.push(q < lim ? tv : null); if (q < lim && tv > bv) { bv = tv; bi = q; } }
-      var slots = tot.filter(function (v) { return v != null; }).length, hourly = cfg.unit === 'รายชั่วโมง';
-      html += '<section class="es-k4">' +
-        kc('เคสประเมินทั้งหมด', F.int(N) + '<small>เคส</small>', true, ['n', cfg.r1]) +
-        kc('ประเภทที่มากสุด', top ? esc(top.n) : '–', false, ['n', top ? F.int(top.N) + ' เคส · ' + (N ? Math.round(top.N / N * 100) : 0) + '%' : '–']) +
-        kc(hourly ? 'เฉลี่ยต่อชั่วโมง' : 'เฉลี่ยต่อวัน', (slots ? (N / slots).toFixed(1) : '0') + '<small>เคส</small>', true, ['n', 'จาก ' + slots + (hourly ? ' ชั่วโมง' : ' วัน')]) +
-        kc(hourly ? 'ชั่วโมงที่มากสุด' : 'วันที่มากสุด', bi >= 0 && bv > 0 ? esc(hourly ? cfg.lab(bi) + ' น.' : cfg.tip(bi).replace(/^วัน/, '')) : '–', false, ['n', bi >= 0 && bv > 0 ? F.int(bv) + ' เคส' : 'ยังไม่มี']) + '</section>';
+    // ---- การ์ดหลัก: ตัวเลขใหญ่ + ชิปสินค้า + กราฟแท่ง/เส้น ----
+    var hourly = cfg.unit === 'รายชั่วโมง', dl = chg(N, P);
+    var nChips = ef.chipAll ? D.length : Math.min(D.length, 8);
+    var chips = '<button data-ep="" class="es-pc' + (!PROD ? ' on' : '') + '"><span class="ic" style="background:var(--text)">ทั้ง</span>ทุกสินค้า <small>' + F.int(NA) + '</small></button>' +
+      D.slice(0, nChips).map(function (d) { return '<button data-ep="' + esc(d.n) + '" class="es-pc' + (PROD === d.n ? ' on' : '') + '"><span class="ic" style="background:' + d.col + '">' + esc(d.n.slice(0, 2)) + '</span>' + esc(d.n) + ' <small>' + F.int(d.N) + '</small></button>'; }).join('') +
+      (D.length > 8 ? '<button class="es-pc more" id="esChipAll">' + (ef.chipAll ? 'ย่อ ▴' : '+ อีก ' + (D.length - 8) + ' ประเภท ▾') + '</button>' : '');
+    html += '<section class="card es-hero"><div class="es-hh"><div><div class="es-ey">เคสประเมิน · ' + esc(PROD || 'ทุกสินค้า') + '</div>' +
+      '<div class="es-big"><span data-n>' + F.int(N) + '</span><small>เคส</small></div>' +
+      (CMP ? '<div class="es-dl2"><span class="es-chg ' + dl[0] + '">' + (dl[0] === 'g' ? '▲ ' : dl[0] === 'b' ? '▼ ' : '') + dl[1].replace(/^(เพิ่มขึ้น|ลดลง) /, '') + '</span><span>จาก ' + F.int(P) + ' เคส · ' + cfg.prev + '</span></div>' : '<div class="es-dl2"><span>' + cfg.r1 + '</span></div>') + '</div></div>' +
+      '<div class="es-pchips">' + chips + '</div>' +
+      '<div class="es-cw"><svg class="es-svg" id="esHero"></svg><div class="es-tip" id="esTipH"></div></div>' +
+      '<div class="es-lg es-lg2"><span><i class="a"></i>' + (CMP ? 'ช่วงนี้' : 'เคส') + '</span>' + (CMP ? '<span><i class="ln"></i>' + cfg.prev + '</span>' : '') + '<span><i class="avg"></i>ค่าเฉลี่ย/' + (hourly ? 'ชั่วโมง' : 'วัน') + '</span></div>' +
+      '<div class="es-stats" id="esStats"></div></section>';
+    if (!PROD) {
+      html += '<section class="card mt"><div class="card-head"><div><h2 class="card-title">เคสประเมินแยกประเภทสินค้า</h2><div class="card-sub">' + (CMP ? 'แท่งเหลือง = ช่วงนี้ · แท่งเทา = ' + cfg.prev + ' · ตัวเลขสีใต้ชื่อ = เปลี่ยนจากช่วงก่อน · ' : 'ตัวเลขใต้ชื่อ = % ของเคสทั้งหมด · ') + 'กดแท่ง = ดูสินค้านั้น</div></div>' + (D.length > 11 ? '<button class="btn ghost sm" id="esAll">' + (ef.all ? 'ย่อเหลือ 10 อันดับ' : 'ดูทั้งหมด ' + D.length + ' ประเภท') + '</button>' : '') + '</div>' +
+        (CMP ? '<div class="es-lg"><span><i class="a"></i>ช่วงนี้</span><span><i class="p"></i>' + cfg.prev + '</span></div>' : '') + '<div class="es-cw"><div class="es-scroll"><svg class="es-svg" id="esCat" role="img" aria-label="เคสประเมินแยกประเภทสินค้า"></svg></div><div class="es-tip" id="esTip1"></div></div></section>';
+      var mv = '';
+      if (CMP) {
+        var ups = D.filter(function (d) { return d.N > d.P; }).sort(function (a, b) { return (b.N - b.P) - (a.N - a.P); }).slice(0, 3),
+          dns = D.filter(function (d) { return d.N < d.P; }).sort(function (a, b) { return (a.N - a.P) - (b.N - b.P); }).slice(0, 3);
+        var mrow = function (d) { var w = chg(d.N, d.P); return '<button class="es-mv" data-ep="' + esc(d.n) + '"><i style="background:' + d.col + '"></i><span>' + esc(d.n) + '</span><small>' + F.int(d.P) + ' → ' + F.int(d.N) + '</small><b class="' + w[0] + '">' + (d.N > d.P ? '+' : '−') + F.int(Math.abs(d.N - d.P)) + '</b></button>'; };
+        mv = '<div class="card"><div class="card-head"><div><h2 class="card-title">เปลี่ยนมากสุด</h2><div class="card-sub">จำนวนเคส เทียบ' + cfg.prev + ' · กด = ดูสินค้านั้น</div></div></div>' +
+          '<div class="es-mvh g">เพิ่มขึ้น</div>' + (ups.length ? ups.map(mrow).join('') : '<div class="muted small">ไม่มี</div>') +
+          '<div class="es-mvh b">ลดลง</div>' + (dns.length ? dns.map(mrow).join('') : '<div class="muted small">ไม่มี</div>') + '</div>';
+      }
+      html += '<section class="es-g2 mt"><div class="card"><div class="card-head"><div><h2 class="card-title">สัดส่วนประเภทสินค้า</h2><div class="card-sub">ช่วงนี้ · % ของเคสทั้งหมด</div></div></div><div class="es-dnw" id="esDn"></div></div>' + mv + '</section>';
+      html += '<section class="card mt"><div class="card-head"><div><h2 class="card-title">แนวโน้มรายประเภท</h2><div class="card-sub">' + cfg.unit + ' · เส้นเหลือง = ช่วงนี้' + (CMP ? ' · เส้นเทา = ' + cfg.prev : '') + ' · กด = ดูสินค้านั้น</div></div></div><div class="es-sm">' +
+        D.slice(0, 8).map(function (d) { var w = chg(d.N, d.P); return '<div class="es-smc" data-ep="' + esc(d.n) + '"><div class="h"><b>' + esc(d.n) + '</b>' + (CMP ? '<span class="' + w[0] + '">' + w[1] + '</span>' : '<span class="n">' + (N ? Math.round(d.N / N * 100) : 0) + '%</span>') + '</div><div class="v"><span data-n>' + F.int(d.N) + '</span><small>เคส' + (CMP ? ' · ก่อน ' + F.int(d.P) : '') + '</small></div>' + esSpark(d.now, CMP ? d.prev : [], n) + '</div>'; }).join('') + '</div></section>';
     }
-    html += '<section class="card mt"><div class="card-head"><div><h2 class="card-title">เคสประเมินแยกประเภทสินค้า</h2><div class="card-sub">' + (CMP ? 'แท่งเหลือง = ช่วงนี้ · แท่งเทา = ' + cfg.prev + ' · ตัวเลขสีใต้ชื่อ = เปลี่ยนจากช่วงก่อน · ' : 'ตัวเลขใต้ชื่อ = % ของเคสทั้งหมด · ') + 'เรียงจากมากไปน้อย</div></div>' + (D.length > 11 ? '<button class="btn ghost sm" id="esAll">' + (ef.all ? 'ย่อเหลือ 10 อันดับ' : 'ดูทั้งหมด ' + D.length + ' ประเภท') + '</button>' : '') + '</div>' +
-      (CMP ? '<div class="es-lg"><span><i class="a"></i>ช่วงนี้</span><span><i class="p"></i>' + cfg.prev + '</span></div>' : '') + '<div class="es-cw"><div class="es-scroll"><svg class="es-svg" id="esCat" role="img" aria-label="เคสประเมินแยกประเภทสินค้า"></svg></div><div class="es-tip" id="esTip1"></div></div></section>';
-    html += '<section class="es-g2 mt"><div class="card"><div class="card-head"><div><h2 class="card-title">' + cfg.tt + '</h2><div class="card-sub">ทุกประเภทสินค้ารวมกัน · ตัวเลขบนแท่ง = เคส' + (CMP ? ' · เส้นเทา = ' + cfg.prev : '') + '</div></div></div>' +
-      (CMP ? '<div class="es-lg"><span><i class="a"></i>ช่วงนี้</span><span><i class="ln"></i>' + cfg.prev + '</span></div>' : '') + '<div class="es-cw"><svg class="es-svg" id="esTr"></svg><div class="es-tip" id="esTip2"></div></div></div>' +
-      '<div class="card"><div class="card-head"><div><h2 class="card-title">สัดส่วนประเภทสินค้า</h2><div class="card-sub">ช่วงนี้ · % ของเคสทั้งหมด</div></div></div><div class="es-dnw" id="esDn"></div></div></section>';
-    html += '<section class="card mt"><div class="card-head"><div><h2 class="card-title">แนวโน้มรายประเภท</h2><div class="card-sub">' + cfg.unit + ' · เส้นเหลือง = ช่วงนี้' + (CMP ? ' · เส้นเทา = ' + cfg.prev : '') + '</div></div></div><div class="es-sm">' +
-      D.slice(0, 8).map(function (d) { var w = chg(d.N, d.P); return '<div class="es-smc"><div class="h"><b>' + esc(d.n) + '</b>' + (CMP ? '<span class="' + w[0] + '">' + w[1] + '</span>' : '<span class="n">' + (N ? Math.round(d.N / N * 100) : 0) + '%</span>') + '</div><div class="v"><span data-n>' + F.int(d.N) + '</span><small>เคส' + (CMP ? ' · ก่อน ' + F.int(d.P) : '') + '</small></div>' + esSpark(d.now, CMP ? d.prev : [], n) + '</div>'; }).join('') + '</div></section>';
 
     // donut
     var r = 70, CI = 2 * Math.PI * r, o2 = 0, top6 = D.slice(0, 6), rest = N, parts = top6.filter(function (d) { return d.N; }).map(function (d) { rest -= d.N; return [d.n, d.N, d.col]; });
@@ -2293,15 +2303,25 @@
       (parts.length ? parts.map(function (p) { return '<div><i style="background:' + p[2] + '"></i><span>' + esc(p[0]) + '</span><b>' + F.int(p[1]) + '</b><small>' + (N ? Math.round(p[1] / N * 100) : 0) + '%</small></div>'; }).join('') : '<div class="muted">ยังไม่มีเคสในช่วงนี้</div>') + '</div>';
 
     $('#page').innerHTML = html;
-    $('#esDn').innerHTML = dnHtml;
+    if ($('#esDn')) $('#esDn').innerHTML = dnHtml;
     var tn = [], tp = [];
-    for (var j = 0; j < n; j++) { var a = j < lim ? 0 : null, b = j < pN ? 0 : null; D.forEach(function (d) { if (a != null) a += d.now[j] || 0; if (b != null) b += d.prev[j]; }); tn.push(a); tp.push(b); }
+    for (var j = 0; j < n; j++) { var a = j < lim ? 0 : null, b = j < pN ? 0 : null; Sel.forEach(function (d) { if (a != null) a += d.now[j] || 0; if (b != null) b += d.prev[j]; }); tn.push(a); tp.push(b); }
+    // สถิติใต้กราฟ
+    var slots = tn.filter(function (v) { return v != null; }).length, bi = -1, bv = -1;
+    tn.forEach(function (v, k) { if (v != null && v > bv) { bv = v; bi = k; } });
+    $('#esStats').innerHTML =
+      '<div><span>เฉลี่ยต่อ' + (hourly ? 'ชั่วโมง' : 'วัน') + '</span><b>' + (slots ? (N / slots).toFixed(1) : '0') + '<small>เคส</small></b></div>' +
+      '<div><span>' + (hourly ? 'ชั่วโมง' : 'วัน') + 'ที่มากสุด</span><b>' + (bv > 0 ? esc(hourly ? cfg.lab(bi) + ' น.' : cfg.lab(bi)) + '<small>' + F.int(bv) + ' เคส</small>' : '–') + '</b></div>' +
+      (PROD ? '<div><span>สัดส่วนของทั้งหมด</span><b>' + (NA ? Math.round(N / NA * 100) : 0) + '%<small>อันดับ ' + (D.map(function (d) { return d.n; }).indexOf(PROD) + 1) + ' จาก ' + D.length + '</small></b></div>'
+            : '<div><span>ประเภทที่มากสุด</span><b>' + (top ? esc(top.n) + '<small>' + (N ? Math.round(top.N / N * 100) : 0) + '%</small>' : '–') + '</b></div>');
+    var heroSel = bi;
     var Dc = D;
     if (!ef.all && D.length > 11) { var rest = D.slice(10), o3 = { n: 'อื่น ๆ (' + rest.length + ' ประเภท)', N: 0, P: 0, now: [], prev: [] }; rest.forEach(function (d) { o3.N += d.N; o3.P += d.P; }); Dc = D.slice(0, 10).concat([o3]); }
     var lastW = -1;
     S.drawCharts = function (force) {
-      var w = ($('#esTr') || {}).clientWidth; if (!force && w === lastW) return; lastW = w;
-      esCat($('#esCat'), $('#esTip1'), Dc, cfg, chg); esTrend($('#esTr'), $('#esTip2'), tn, tp, cfg, chg);
+      var w = ($('#esHero') || {}).clientWidth; if (!force && w === lastW) return; lastW = w;
+      esCat($('#esCat'), $('#esTip1'), Dc, cfg, chg);
+      esHero($('#esHero'), $('#esTipH'), tn, tp, cfg, chg, heroSel, (Sel[0] && PROD) ? Sel[0].col : '', function (k) { heroSel = k; });
     };
     S.drawCharts(true);
     Charts.countUp($('#page'));
@@ -2319,6 +2339,9 @@
       if ($('#epAuto')) $('#epAuto').onclick = function () { S.ef.pman = false; pageEst(); };
     }
     if ($('#esAll')) $('#esAll').onclick = function () { S.ef.all = !S.ef.all; pageEst(); };
+    $$('[data-ep]').forEach(function (b) { b.onclick = function () { S.ef.p = b.dataset.ep; var y = window.scrollY; pageEst(); if (b.classList.contains('es-pc')) window.scrollTo(0, y); else window.scrollTo({ top: 0, behavior: 'smooth' }); }; });
+    if ($('#esChipAll')) $('#esChipAll').onclick = function () { S.ef.chipAll = !S.ef.chipAll; var y = window.scrollY; pageEst(); window.scrollTo(0, y); };
+    $$('#esCat g.grp').forEach(function (g, i) { g.style.cursor = 'pointer'; g.addEventListener('click', function () { var nm = g.getAttribute('data-n'); if (nm && nm.indexOf('อื่น ๆ (') !== 0) { S.ef.p = nm; pageEst(); window.scrollTo({ top: 0, behavior: 'smooth' }); } }); });
   }
   var ES_DEFS = '<defs><linearGradient id="esNow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd23f"/><stop offset="1" stop-color="#f29a00"/></linearGradient><linearGradient id="esPrev" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="es-p1"/><stop offset="1" class="es-p2"/></linearGradient></defs>';
   function esReduced() { return window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches; }
@@ -2350,7 +2373,7 @@
     o += '<line class="es-base" x1="' + L + '" x2="' + (W - R) + '" y1="' + base + '" y2="' + base + '" stroke-width="2"/>';
     D.forEach(function (d, i) {
       var cx = L + i * gw + gw / 2, xa = cx - bw - 2, xp = cx + 2, w = chg(d.N, d.P), pc = d.P ? Math.round((d.N - d.P) / d.P * 100) : null;
-      o += '<g class="grp"><rect x="' + (cx - gw / 2) + '" y="' + T + '" width="' + gw + '" height="' + ph + '" fill="transparent"/>';
+      o += '<g class="grp" data-n="' + esc(d.n) + '"><rect x="' + (cx - gw / 2) + '" y="' + T + '" width="' + gw + '" height="' + ph + '" fill="transparent"/>';
       if (!cmp) { xa = cx - bw / 2; }
       o += '<rect class="col a" x="' + xa + '" y="' + base + '" width="' + bw + '" height="0" rx="6" fill="url(#esNow)"/>' + (cmp ? '<rect class="col p" x="' + xp + '" y="' + base + '" width="' + bw + '" height="0" rx="6" fill="url(#esPrev)"/>' : '');
       o += '<text class="es-va" x="' + (xa + bw / 2) + '" y="' + base + '" text-anchor="middle" font-size="' + (nar ? 10.5 : 13) + '" style="opacity:0">0</text>';
@@ -2399,6 +2422,61 @@
       g.onmouseleave = function () { svg.classList.remove('hov'); tip.style.opacity = 0; };
     });
     esGrow(items, 800);
+  }
+  /** เส้นโค้งไม่พุ่งเกินจุด (monotone-ish) */
+  function esSmooth(pts) {
+    if (pts.length < 2) return '';
+    var d = 'M' + pts[0][0] + ',' + pts[0][1];
+    for (var i = 0; i < pts.length - 1; i++) {
+      var p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2, t = 0.18, lo = Math.min(p1[1], p2[1]), hi = Math.max(p1[1], p2[1]);
+      var c1 = Math.max(lo, Math.min(hi, p1[1] + (p2[1] - p0[1]) * t)), c2 = Math.max(lo, Math.min(hi, p2[1] - (p3[1] - p1[1]) * t));
+      d += ' C' + (p1[0] + (p2[0] - p0[0]) * t) + ',' + c1 + ' ' + (p2[0] - (p3[0] - p1[0]) * t) + ',' + c2 + ' ' + p2[0] + ',' + p2[1];
+    }
+    return d;
+  }
+  /** กราฟหลัก: แท่ง = ช่วงนี้ · เส้นโค้ง = ช่วงก่อน · เส้นประ = ค่าเฉลี่ย · แตะแท่ง = ป้ายลอย */
+  function esHero(svg, tip, tn, tp, cfg, chg, sel, col, onSel) {
+    if (!svg) return;
+    var cmp = cfg.cmp !== false, W = svg.clientWidth || 900, nar = W < 600, H = nar ? 250 : 300, L = 34, R = 8, T = 34, B = 30, pw = W - L - R, ph = H - T - B, n = tn.length, gw = pw / n, bw = Math.min(54, gw * 0.58), base = T + ph;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.style.height = H + 'px';
+    var vals = tn.concat(cmp ? tp : []).filter(function (v) { return v != null; }), mx = Math.max.apply(null, vals.concat([1]));
+    var steps = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000], st = steps.filter(function (s) { return mx / s <= 4; })[0] || 2000, top = Math.ceil(mx * 1.15 / st) * st || st;
+    function y(v) { return base - v / top * ph; } function cx(i) { return L + i * gw + gw / 2; }
+    var g1 = col || '#ffd23f', g2 = col || '#f5a800';
+    var o = '<defs><linearGradient id="ehOn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + g1 + '"/><stop offset="1" stop-color="' + g2 + '"/></linearGradient>' +
+      '<linearGradient id="ehOff" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + g1 + '" stop-opacity=".32"/><stop offset="1" stop-color="' + g2 + '" stop-opacity=".45"/></linearGradient>' +
+      '<filter id="ehSh" x="-30%" y="-20%" width="160%" height="160%"><feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="' + g2 + '" flood-opacity=".35"/></filter></defs>';
+    for (var v = 0; v <= top; v += st) o += '<line class="es-grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '"' + (v ? ' stroke-dasharray="2 6" stroke-linecap="round"' : '') + '/><text class="es-x" x="' + (L - 10) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + v + '</text>';
+    var cnt = tn.filter(function (v) { return v != null; }), avg = cnt.length ? cnt.reduce(function (a, b) { return a + b; }, 0) / cnt.length : 0;
+    var lstep = n > 20 ? (nar ? 6 : 3) : n > 12 ? (nar ? 4 : 2) : 1, rx = Math.min(14, bw / 2.6);
+    tn.forEach(function (v, i) {
+      var on = i === sel;
+      o += '<g class="eh" data-i="' + i + '"><rect x="' + (cx(i) - gw / 2) + '" y="' + T + '" width="' + gw + '" height="' + ph + '" fill="transparent"/>';
+      if (on && v != null) o += '<rect x="' + (cx(i) - bw / 2 - 7) + '" y="' + T + '" width="' + (bw + 14) + '" height="' + (ph + 4) + '" rx="' + (rx + 6) + '" class="es-selbg"/>';
+      if (v != null) { var h = Math.max(base - y(v), v ? 4 : 0); o += '<rect class="ehb" x="' + (cx(i) - bw / 2) + '" y="' + base + '" data-y="' + (base - h) + '" width="' + bw + '" height="0" data-h="' + h + '" rx="' + rx + '" fill="url(#' + (on ? 'ehOn' : 'ehOff') + ')"' + (on ? ' filter="url(#ehSh)"' : '') + '/>'; }
+      else o += '<rect class="es-fut" x="' + (cx(i) - bw / 2) + '" y="' + (base - 4) + '" width="' + bw + '" height="4" rx="2"/>';
+      if (i % lstep === 0 || on) o += '<text class="es-x" x="' + cx(i) + '" y="' + (H - 8) + '" text-anchor="middle"' + (on ? ' style="fill:var(--text);font-weight:600"' : '') + '>' + cfg.lab(i) + '</text>';
+      o += '</g>';
+    });
+    if (avg) o += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(avg) + '" y2="' + y(avg) + '" class="es-avg"/><text x="' + (W - R) + '" y="' + (y(avg) - 7) + '" text-anchor="end" class="es-avgt">เฉลี่ย ' + avg.toFixed(1) + '</text>';
+    if (cmp) {
+      var pp = []; tp.forEach(function (v, i) { if (v != null) pp.push([cx(i), y(v), i]); });
+      o += '<path class="es-pl2" d="' + esSmooth(pp) + '" fill="none" stroke-width="3" stroke-linecap="round"/>';
+      pp.forEach(function (q) { o += '<circle class="es-pd" cx="' + q[0] + '" cy="' + q[1] + '" r="' + (q[2] === sel ? 5 : (n > 12 ? 0 : 3.5)) + '" stroke-width="2.5"/>'; });
+    }
+    svg.innerHTML = o;
+    // แท่งงอกขึ้น
+    var bars = $$('.ehb', svg), t0 = performance.now(), still = esReduced();
+    (function f(ts) { var done = true; bars.forEach(function (r, k) { var p = still ? 1 : Math.max(0, Math.min(1, (ts - t0 - k * 30) / 650)); if (p < 1) done = false; var e = 1 - Math.pow(1 - p, 3), h = Number(r.dataset.h) * e; r.setAttribute('y', base - h); r.setAttribute('height', h); }); if (!done) requestAnimationFrame(f); })(t0);
+    function showTip(i) {
+      var v = tn[i], p = tp[i];
+      if (v == null) { tip.style.opacity = 0; return; }
+      var w = cmp && p != null ? chg(v, p) : null;
+      esTipAt(tip, svg, cx(i), Math.min(y(v), cmp && p != null ? y(p) : y(v)) - 6, W, H, '<b>' + cfg.tip(i) + '</b><div><span>' + (cmp ? 'ช่วงนี้' : 'เคส') + '</span><span><b style="display:inline;font-size:15px">' + F.int(v) + '</b> เคส</span></div>' +
+        (w ? '<div><span>' + cfg.ptip(i) + '</span><span>' + F.int(p) + ' เคส</span></div><div><span>เปลี่ยน</span><span class="es-tchg ' + w[0] + '">' + w[1] + '</span></div>' : ''));
+    }
+    $$('g.eh', svg).forEach(function (g) { var i = Number(g.dataset.i); g.onclick = g.onmouseenter = function () { if (i === sel || tn[i] == null) return; onSel(i); esHero(svg, tip, tn, tp, cfg, chg, i, col, onSel); }; });
+    if (sel >= 0) setTimeout(function () { showTip(sel); }, still ? 0 : 350);
   }
   function esSpark(a, b, n) {
     var mx = Math.max.apply(null, a.concat(b).filter(function (v) { return v != null; }).concat([1]));
