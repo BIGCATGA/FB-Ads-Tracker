@@ -366,11 +366,13 @@
       var d = s.date, guard = 0;
       while (d <= to && guard++ < 1000) { covered[d] = true; d = addDays(d, 1); }
     });
-    var missing = runningDays(data, camp, yesterday).filter(function (d) { return !covered[d]; });
+    var gaps = runningDays(data, camp, yesterday).filter(function (d) { return !covered[d]; });
     var fbChats = 0;
     total = 0;
     spendDaily(data).forEach(function (x) { if (x.campaign === camp) { total += x.amount; fbChats += x.results || 0; } });
-    return { total: total, lastTo: lastTo, missing: missing, entries: entries, fbChats: fbChats, hasFb: entries.some(function (e) { return e.source === 'fb'; }) };
+    var hasFb = entries.some(function (e) { return e.source === 'fb'; });
+    // แคมเปญที่ดึงค่า Ads จาก Facebook: วันที่ไม่มีค่าใช้จ่าย = วันที่ไม่ได้ยิง (idle) ไม่ใช่ "ยังไม่กรอก" — เตือนให้กรอกเฉพาะแคมเปญที่กรอกเอง
+    return { total: total, lastTo: lastTo, missing: hasFb ? [] : gaps, idle: hasFb ? gaps : [], entries: entries, fbChats: fbChats, hasFb: hasFb };
   }
 
   /** ผลของแต่ละรอบ (เทียบกับรอบก่อนหน้าของระดับเดียวกัน) */

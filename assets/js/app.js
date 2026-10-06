@@ -649,6 +649,32 @@
       '<div class="f c12"><label for="' + prefix + 'Note">หมายเหตุ</label><input id="' + prefix + 'Note" value="' + esc(c.note || '') + '"></div>' +
       '</div>';
   }
+  /** ฟอร์มจิ๋ว (หน้าบันทึกแชท): ชื่อ + สถานะ เท่านั้น · ที่เหลืออยู่ใต้ "เพิ่มเติม" · ใช้ id เดียวกับฟอร์มเต็ม จึงใช้ wireChatForm/readChatForm ร่วมกันได้ */
+  function miniChatFormHtml(c, prefix) {
+    c = c || {};
+    var ORDER = ['1', '2', '3', 'X', '5', '6', '4', '7'];
+    var sts = C.STATUSES.slice().sort(function (a, b) { return ORDER.indexOf(a.key.split('-')[0]) - ORDER.indexOf(b.key.split('-')[0]); });
+    return '<div class="mini">' +
+      '<div class="mini-name"><span id="' + prefix + 'Face">' + (c.psid ? face(c.customer, c.pic, 40) : '') + '</span>' +
+        '<input id="' + prefix + 'Name" class="mini-big" value="' + esc(c.customer || '') + '" autocomplete="off" placeholder="พิมพ์ชื่อลูกค้า หรือกดชื่อจากรายการด้านบน" required></div>' +
+      '<div class="hint" id="' + prefix + 'Dup"></div><div class="mini-sug" id="' + prefix + 'Sug"></div>' +
+      '<div class="mini-st" id="' + prefix + 'Status">' + sts.map(function (st) { var k = st.key.split('-')[0], nm = st.key.slice(k.length + 1);
+        return '<button type="button" data-st="' + esc(st.key) + '" class="' + (c.status === st.key ? 'on' : '') + '" style="--c:' + st.color + '"><b>' + esc(k) + '</b><span>' + esc(nm) + '</span></button>'; }).join('') + '</div>' +
+      '<div class="mini-auto"><span id="' + prefix + 'Auto"></span><button type="button" class="linkish" id="' + prefix + 'More">เพิ่มเติม ▾</button></div>' +
+      '<div class="mini-more form-grid" id="' + prefix + 'MoreBox" hidden>' +
+        '<div class="f c4"><label for="' + prefix + 'Date">วันที่ทัก</label><input type="date" id="' + prefix + 'Date" value="' + esc(c.date || today()) + '" required></div>' +
+        '<div class="f c8"></div>' +
+        adPickerHtml(prefix, c) +
+        productPickerHtml(prefix, c.product) +
+        '<div class="f c4 closeOnly"><label for="' + prefix + 'Amount">ยอดรับซื้อ (บาท)</label><input id="' + prefix + 'Amount" type="number" min="0" step="1" inputmode="numeric" value="' + esc(c.amount || '') + '"></div>' +
+        '<div class="f c4 closedOnly"><label for="' + prefix + 'Closed">วันที่ปิดได้</label><input type="date" id="' + prefix + 'Closed" value="' + esc(c.closed_date || today()) + '"><div class="hint" id="' + prefix + 'Dur"></div></div>' +
+        '<div class="f c4 closedOnly"><label for="' + prefix + 'By">ปิดโดย</label><select id="' + prefix + 'By">' + S.data.users.map(function (u) { return opt(u.name, u.name, c.closed_by || S.data.me); }).join('') + '</select></div>' +
+        '<div class="f c12"><label for="' + prefix + 'Note">หมายเหตุ</label><input id="' + prefix + 'Note" value="' + esc(c.note || '') + '"></div>' +
+      '</div>' +
+      '<button class="btn mini-save" type="submit" id="saveNew">บันทึก</button>' +
+      '<div class="hint mini-kbd">พิมพ์ชื่อ → กดเลขสถานะ (1–7 หรือ X) → Enter</div>' +
+      '</div>';
+  }
   var OTHER = 'อื่น ๆ';
   function productPickerHtml(prefix, product) {
     var sp = C.splitProduct(S.data, product), list = C.productList(S.data).concat([OTHER]);
@@ -668,9 +694,18 @@
     function adMeta() {
       var ad = adOf(el, prefix);
       $('#' + prefix + 'AdMeta', el).textContent = ad ? '✓ ' + ad.ad_name + ' · Ad set: ' + ad.adset + ' · ' + ad.campaign : '';
+      var au = $('#' + prefix + 'Auto', el);
+      if (au) {
+        var d = $('#' + prefix + 'Date', el).value;
+        au.innerHTML = (ad ? '<span>แอด: <b>' + esc(ad.ad_name) + '</b> <span class="muted">· ' + esc(ad.campaign) + (state.adKept ? ' (ล่าสุด)' : '') + '</span></span>' : '<span class="warn-txt">ยังไม่ได้เลือกโฆษณา — กด "เพิ่มเติม" เลือกก่อน</span>') +
+          '<span>วันที่ทัก: <b>' + (d ? F.thDate(d, true) : '–') + '</b></span>';
+        if (!ad) openMore();
+      }
     }
+    function openMore() { var mb = $('#' + prefix + 'MoreBox', el); if (mb && mb.hidden) { mb.hidden = false; var mt = $('#' + prefix + 'More', el); if (mt) mt.textContent = 'ซ่อน ▴'; } }
     function closeFields() {
       var show = state.status === '5-ปิดการขาย' || state.status === '4-นัดรับของ';
+      if (show) openMore();
       $$('.closeOnly', el).forEach(function (x) { x.style.display = show ? '' : 'none'; });
       $$('.closedOnly', el).forEach(function (x) { x.style.display = state.status === '5-ปิดการขาย' ? '' : 'none'; });
       dur();
@@ -696,7 +731,8 @@
     }
     renderAdPicker(el, prefix, function () { adMeta(); dup(); });
     $('#' + prefix + 'Name', el).oninput = function () { dup(); dur(); };
-    $('#' + prefix + 'Date', el).onchange = dur;
+    $('#' + prefix + 'Date', el).onchange = function () { dur(); adMeta(); };
+    if ($('#' + prefix + 'More', el)) $('#' + prefix + 'More', el).onclick = function () { var mb = $('#' + prefix + 'MoreBox', el); mb.hidden = !mb.hidden; this.textContent = mb.hidden ? 'เพิ่มเติม ▾' : 'ซ่อน ▴'; };
     $('#' + prefix + 'Closed', el).onchange = dur;
     $$('#' + prefix + 'Status button', el).forEach(function (b) {
       b.onclick = function () {
@@ -748,9 +784,8 @@
   var newChatState = { status: '' };
   function pageChats() {
     var cf = S.chatFilter;
-    var html = '<div id="inboxBox"></div><div class="card"><div class="card-head"><div><h2 class="card-title">บันทึกแชทใหม่ <span class="muted" style="font-weight:400;font-size:15px">(กรอกเอง)</span></h2><div class="card-sub">เลือกโฆษณาแล้ว Ad set กับแคมเปญเติมให้เอง · กด Enter เพื่อบันทึก</div></div></div>' +
-      '<form id="newChat">' + chatFormHtml({ date: newChatState.date, ad: newChatState.ad, campaign: newChatState.campaign, status: newChatState.status }, 'n') +
-      '<div class="actions" style="margin-top:16px"><button class="btn" type="submit" id="saveNew">บันทึก</button></div></form></div>';
+    var html = '<div id="inboxBox"></div><div class="card"><div class="card-head"><div><h2 class="card-title">บันทึกแชทใหม่</h2><div class="card-sub">ชื่อ + สถานะ ก็บันทึกได้ · โฆษณาใช้ตัวล่าสุดให้เอง · สินค้า/หมายเหตุอยู่ใน "เพิ่มเติม"</div></div></div>' +
+      '<form id="newChat">' + miniChatFormHtml({ date: newChatState.date, ad: newChatState.ad, campaign: newChatState.campaign, status: newChatState.status }, 'n') + '</form></div>';
 
     html += '<div class="card mt"><div class="card-head"><div><h2 class="card-title">รายการแชท</h2><div class="card-sub" id="chatCount"></div></div>' +
       '<button class="btn ghost sm" id="csv">ดาวน์โหลด CSV</button></div>' +
@@ -763,6 +798,27 @@
 
     var form = $('#newChat');
     wireChatForm(form, 'n', newChatState);
+    // ชื่อที่พิมพ์ → แนะนำจากรายชื่อที่ทักเพจ (ยังไม่ได้บันทึก)
+    var nameIn = $('#nName', form), sug = $('#nSug', form), oldInput = nameIn.oninput;
+    nameIn.oninput = function () {
+      if (oldInput) oldInput.call(this);
+      var q = this.value.trim().toLowerCase();
+      if (newChatState.psid && q !== String(newChatState.name || '').toLowerCase()) { newChatState.psid = ''; newChatState.pic = ''; $('#nFace', form).innerHTML = ''; }
+      var hits = q && !newChatState.psid ? (S.data.inbox || []).filter(function (r) { return r.status === 'pending' && String(r.name).toLowerCase().indexOf(q) >= 0; }).slice(0, 5) : [];
+      sug.innerHTML = hits.map(function (r) { return '<button type="button" data-psid="' + esc(r.psid) + '">' + esc(r.name) + ' <small>· ทัก ' + F.thDate(r.first_date, true) + '</small></button>'; }).join('');
+      $$('button', sug).forEach(function (b) { b.onclick = function () { var r = hits.filter(function (x) { return x.psid === b.dataset.psid; })[0]; fillFromInbox(r); sug.innerHTML = ''; }; });
+    };
+    // คีย์ลัด: เลข/X = สถานะ (เมื่อไม่ได้พิมพ์ในช่องข้อความอื่น) · Enter ในช่องชื่อ = บันทึก
+    form.onkeydown = function (e) {
+      var tag = (e.target.tagName || '').toLowerCase(), inName = e.target === nameIn;
+      if (e.key === 'Enter' && tag !== 'textarea' && tag !== 'button') { e.preventDefault(); form.requestSubmit ? form.requestSubmit() : $('#saveNew').click(); return; }
+      if (!inName && (tag === 'input' || tag === 'select' || tag === 'textarea')) return;
+      var k = e.key.toUpperCase(), b = $$('#nStatus button', form).filter(function (x) { return x.dataset.st.split('-')[0] === k; })[0];
+      if (!b) return;
+      // ในช่องชื่อ: ถ้ามีชื่อแล้ว เคอร์เซอร์อยู่ท้าย และชื่อยังไม่มีตัวเลข → ตัวเลข/X = เลือกสถานะ (ชื่อที่มีเลขพิมพ์ต่อได้ตามปกติ)
+      if (inName) { var v = nameIn.value; if (!v.trim() || nameIn.selectionStart !== v.length || /[0-9]/.test(v) || (k === 'X' && !/\s$/.test(v) && !newChatState.psid)) return; }
+      e.preventDefault(); b.click();
+    };
     form.onsubmit = function (e) {
       e.preventDefault();
       var c = readChatForm(form, 'n', newChatState);
@@ -772,7 +828,7 @@
       API.call('saveChat', { chat: c }).then(function (saved) {
         S.data.chats.push(saved);
         if (c.psid) (S.data.inbox || []).forEach(function (r) { if (r.psid === c.psid) r.status = 'ad'; });
-        newChatState = { status: '', date: c.date, ad: c.ad, campaign: c.campaign }; // เก็บวันที่และโฆษณาไว้ กรอกคนต่อไปเร็วขึ้น
+        newChatState = { status: '', date: c.date, ad: c.ad, campaign: c.campaign, adKept: true }; // เก็บวันที่และโฆษณาไว้ กรอกคนต่อไปเร็วขึ้น
         toast('บันทึกแล้ว: ' + saved.customer);
         pageChats();
         $('#nName').focus();
@@ -796,7 +852,7 @@
     var q = (S.ibQ || '').toLowerCase(), list = q ? pend.filter(function (r) { return String(r.name).toLowerCase().indexOf(q) >= 0; }) : pend;
     var lim = S.inboxLimit || 12;
     box.innerHTML = '<div class="card inbox" style="margin-bottom:18px"><div class="card-head"><div><h2 class="card-title">ลูกค้าที่ทักเพจ ยังไม่ได้บันทึก (' + pend.length + ')</h2>' +
-      '<div class="card-sub">ดึงชื่อจาก Inbox เพจอัตโนมัติ ตั้งแต่ 1 ก.ย. · กดชื่อ → ระบบใส่ชื่อ/วันที่ทักให้ในฟอร์มด้านล่าง → เลือกโฆษณา + สถานะ → บันทึก</div></div>' +
+      '<div class="card-sub">ดึงชื่อจาก Inbox เพจอัตโนมัติ · เก็บเฉพาะคนที่ทัก 7 วันล่าสุด (เก่ากว่านั้นลบออกจากชีตให้เอง) · กดชื่อ → ระบบใส่ชื่อ/วันที่ทักให้ในฟอร์มด้านล่าง → เลือกโฆษณา + สถานะ → บันทึก</div></div>' +
       '<input class="field-inline ib-q" id="ibQ" placeholder="ค้นหาชื่อ…" value="' + esc(S.ibQ || '') + '"></div>' +
       '<div class="ib-grid">' + list.slice(0, lim).map(function (r) {
         return '<div class="ib-card" data-psid="' + esc(r.psid) + '">' + face(r.name, r.pic, 40) +
@@ -820,13 +876,14 @@
   function fillFromInbox(r) {
     var form = $('#newChat');
     if (!form) return;
-    newChatState.psid = r.psid; newChatState.pic = r.pic;
+    newChatState.psid = r.psid; newChatState.pic = r.pic; newChatState.name = r.name;
     $('#nName', form).value = r.name;
     $('#nDate', form).value = r.first_date || today();
     $('#nFace', form).innerHTML = face(r.name, r.pic, 38);
     $('#nName', form).dispatchEvent(new Event('input'));
     $$('.ib-card').forEach(function (c) { c.classList.toggle('on', c.dataset.psid === r.psid); });
     form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    try { var ni = $('#nName', form); ni.focus({ preventScroll: true }); ni.setSelectionRange(ni.value.length, ni.value.length); } catch (e) {}
   }
 
   function filteredChats() {
@@ -941,7 +998,7 @@
   }
   function missingHtml(camp, cov) {
     cov = cov || C.spendCoverage(S.data, camp, today());
-    if (!cov.missing.length) return '';
+    if (!cov.missing.length) return cov.idle && cov.idle.length ? '<div class="nudge info"><span>ไม่ได้ยิง ' + cov.idle.length + ' วัน (' + F.thRange(cov.idle[0], cov.idle[cov.idle.length - 1] ) + ') — Facebook ไม่มีค่าใช้จ่ายในวันเหล่านี้ ระบบไม่นับเป็นวันยิง</span></div>' : '';
     var a = cov.missing[0], b = cov.missing[cov.missing.length - 1];
     return '<div class="nudge"><span>ยังไม่กรอกค่า Ads ' + cov.missing.length + ' วัน (' + F.thRange(a, b) + ')</span>' +
       '<button class="btn sm" data-spend="' + esc(camp) + '" data-from="' + a + '" data-to="' + b + '">กรอกเลย</button></div>';
@@ -1013,9 +1070,9 @@
         '<div class="cc2-cap"><span><i class="lg-bar"></i>Lead</span><span><i class="lg-line"></i>งบ/วัน</span><span>14 วันล่าสุด</span></div></div>' +
         '<div class="cc2-stats"><div><span>Lead</span><b>' + st.leads + '</b></div><div><span>ต้นทุน/Lead</span><b>' + F.baht(st.cpl) + '</b></div><div><span>ปิดได้</span><b>' + st.closed + '</b></div></div>' +
         '<div class="cc2-act">' + actionButtons(c.name, true) + '</div>' +
-        (xp || st.cov.missing.length ? '<div class="cc2-foot">' +
+        (xp || st.cov.missing.length || st.cov.idle.length ? '<div class="cc2-foot">' +
           (xp ? '<span>ปรับงบล่าสุด ' + F.thDate(xp.after.from) + ': ' + F.baht(xp.before.daily) + ' → ' + F.baht(xp.after.daily) + ' ' + verdictPill(xp.v, true) + '</span>' : '<span></span>') +
-          (st.cov.missing.length ? '<button class="linkish warn-link" data-spend="' + esc(c.name) + '" data-from="' + st.cov.missing[0] + '" data-to="' + st.cov.missing[st.cov.missing.length - 1] + '">ยังไม่กรอกค่า Ads ' + st.cov.missing.length + ' วัน · กรอก ›</button>' : '') + '</div>' : '') +
+          (st.cov.missing.length ? '<button class="linkish warn-link" data-spend="' + esc(c.name) + '" data-from="' + st.cov.missing[0] + '" data-to="' + st.cov.missing[st.cov.missing.length - 1] + '">ยังไม่กรอกค่า Ads ' + st.cov.missing.length + ' วัน · กรอก ›</button>' : st.cov.idle.length ? '<span class="muted small">ไม่ได้ยิง ' + st.cov.idle.length + ' วัน (' + F.thRange(st.cov.idle[0], st.cov.idle[st.cov.idle.length - 1]) + ') — Facebook ไม่มีค่าใช้จ่าย</span>' : '') + '</div>' : '') +
         '</div>';
     }).join('') + '</div>' : '<div class="card empty">ไม่มีแคมเปญในกลุ่มนี้</div>';
     $('#page').innerHTML = html;
@@ -2128,14 +2185,22 @@
   // ============================================================
   var EST_COL = ['#f5a800', '#2a78d6', '#16a172', '#e8590c', '#7c5cff', '#d6336c', '#0f9da8', '#8f6a00', '#5f6b7a', '#b45fd1', '#2f9e44', '#9aa0ae'];
   function pageEst() {
-    var ef = S.ef || (S.ef = { c: 'w', h: 'all', all: false });
+    var ef = S.ef || (S.ef = { c: 'w', h: 'all', all: false, cmp: true });
+    if (ef.cmp == null) ef.cmp = true;
+    var CMP = !!ef.cmp;
     var t = today(), now = new Date(), curH = now.getHours();
     var all = (S.data.estimates || []).filter(function (e) { return ef.h === 'all' || (ef.h === 'fb' ? e.fb : e.line); });
     var cfg, n, lim, side, pN = 99;
-    if (['d', 'w', 'm', 'c'].indexOf(ef.c) < 0) ef.c = 'w';
+    if (['t', 'd', 'w', 'm', 'c'].indexOf(ef.c) < 0) ef.c = 'w';
+    if (ef.c === 't' && CMP) ef.c = 'd'; // "วันนี้" มีเฉพาะโหมดไม่เทียบ (วันยังไม่จบ เทียบไม่ยุติธรรม)
     var yd = C.addDays(t, -1); // นับเฉพาะวันที่จบแล้ว (ไม่รวมวันนี้)
     function diff(a, b) { return Math.round((new Date(a + 'T00:00:00') - new Date(b + 'T00:00:00')) / 864e5); }
-    if (ef.c === 'd') {
+    if (ef.c === 't') {
+      n = 24; lim = curH + 1;
+      cfg = { r1: 'วันนี้ · วัน' + DOW[dowOf(t)] + ' ' + F.thDate(t) + ' (ถึง ' + hhmm(curH) + ')', r2: '', prev: '', unit: 'รายชั่วโมง', tt: 'เคสประเมินรายชั่วโมง · วันนี้',
+        lab: function (i) { return hhmm(i); }, tip: function (i) { return F.thDate(t) + ' ' + hhmm(i) + '–' + ('0' + i).slice(-2) + ':59'; }, ptip: function () { return ''; } };
+      side = function (e) { return e.date === t ? ['n', e.hour] : null; };
+    } else if (ef.c === 'd') {
       var pd1 = C.addDays(yd, -7);
       n = 24; lim = 24;
       cfg = { r1: 'เมื่อวาน · วัน' + DOW[dowOf(yd)] + ' ' + F.thDate(yd), r2: 'เทียบ วัน' + DOW[dowOf(pd1)] + 'ก่อน ' + F.thDate(pd1) + ' (วันเดียวกันของสัปดาห์ก่อน)', prev: 'สัปดาห์ก่อน', unit: 'รายชั่วโมง', tt: 'เคสประเมินรายชั่วโมง · ' + F.thDate(yd),
@@ -2162,6 +2227,8 @@
         tip: function (i) { var d = C.addDays(s1, i); return 'วัน' + DOW[dowOf(d)] + ' ' + F.thDate(d, true); }, ptip: function (i) { var d = C.addDays(ps, i); return 'วัน' + DOW[dowOf(d)] + ' ' + F.thDate(d); } };
       side = function (e) { if (e.date >= s1 && e.date <= yd) return ['n', diff(e.date, s1)]; if (e.date >= ps && e.date <= pe) return ['p', diff(e.date, ps)]; return null; };
     }
+    if (!CMP) { var side0 = side; side = function (e) { var r = side0(e); return r && r[0] === 'n' ? r : null; }; cfg.r2 = ''; cfg.prev = ''; }
+    cfg.cmp = CMP;
     // ---- รวมตามประเภทสินค้า ----
     var map = {};
     all.forEach(function (e) {
@@ -2181,29 +2248,41 @@
     function dlt(d) { var x = d.N - d.P; return (x > 0 ? '+' : '−') + F.int(Math.abs(x)) + ' เคส'; }
     var top = D[0], gr = pick(1), dr = pick(-1);
 
-    var html = '<div class="es-top"><div class="chip-group" role="group" aria-label="ช่วงที่เทียบ">' + [['d', 'เมื่อวาน vs สัปดาห์ก่อน'], ['w', '7 วัน vs 7 วันก่อนหน้า'], ['m', '30 วัน vs 30 วันก่อนหน้า'], ['c', 'กำหนดวันเอง']].map(function (p) { return '<button data-ec="' + p[0] + '" class="' + (ef.c === p[0] ? 'on' : '') + '">' + p[1] + '</button>'; }).join('') + '</div>' +
-      '<div class="chip-group" role="group" aria-label="ช่องทาง">' + [['all', 'ทุกช่องทาง'], ['fb', 'Facebook'], ['line', 'LINE']].map(function (p) { return '<button data-eh="' + p[0] + '" class="' + (ef.h === p[0] ? 'on' : '') + '">' + p[1] + '</button>'; }).join('') + '</div></div>' +
+    var chips = CMP ? [['d', 'เมื่อวาน vs สัปดาห์ก่อน'], ['w', '7 วัน vs 7 วันก่อนหน้า'], ['m', '30 วัน vs 30 วันก่อนหน้า'], ['c', 'กำหนดวันเอง']]
+                    : [['t', 'วันนี้'], ['d', 'เมื่อวาน'], ['w', '7 วันล่าสุด'], ['m', '30 วันล่าสุด'], ['c', 'กำหนดวันเอง']];
+    var html = '<div class="es-top"><div class="chip-group" role="group" aria-label="ช่วงที่ดู">' + chips.map(function (p) { return '<button data-ec="' + p[0] + '" class="' + (ef.c === p[0] ? 'on' : '') + '">' + p[1] + '</button>'; }).join('') + '</div>' +
+      '<div class="es-top-r"><div class="chip-group" role="group" aria-label="เทียบช่วงก่อน"><button data-ecmp="1" class="' + (CMP ? 'on' : '') + '">เทียบช่วงก่อน</button><button data-ecmp="0" class="' + (!CMP ? 'on' : '') + '">ดูอย่างเดียว</button></div>' +
+      '<div class="chip-group" role="group" aria-label="ช่องทาง">' + [['all', 'ทุกช่องทาง'], ['fb', 'Facebook'], ['line', 'LINE']].map(function (p) { return '<button data-eh="' + p[0] + '" class="' + (ef.h === p[0] ? 'on' : '') + '">' + p[1] + '</button>'; }).join('') + '</div></div></div>' +
       (ef.c === 'c' ? '<div class="es-cus"><label><b>ช่วงที่ดู</b><input type="date" id="ecF" value="' + ef.cf + '"> – <input type="date" id="ecT" value="' + ef.ct + '"></label>' +
-        '<label><b>เทียบกับ</b><input type="date" id="epF" value="' + ef.pf + '"> – <input type="date" id="epT" value="' + ef.pt + '"></label>' +
-        (ef.pman ? '<button type="button" class="linkish" id="epAuto">ใช้ช่วงก่อนหน้าอัตโนมัติ</button>' : '<span class="muted small">ช่วงเทียบตั้งให้อัตโนมัติ = ช่วงก่อนหน้าที่ยาวเท่ากัน</span>') + '</div>' : '') +
-      '<div class="es-rng"><span><span class="es-ring"></span><b>' + cfg.r1 + '</b></span><span><i></i>' + cfg.r2 + '</span></div>';
+        (CMP ? '<label><b>เทียบกับ</b><input type="date" id="epF" value="' + ef.pf + '"> – <input type="date" id="epT" value="' + ef.pt + '"></label>' +
+        (ef.pman ? '<button type="button" class="linkish" id="epAuto">ใช้ช่วงก่อนหน้าอัตโนมัติ</button>' : '<span class="muted small">ช่วงเทียบตั้งให้อัตโนมัติ = ช่วงก่อนหน้าที่ยาวเท่ากัน</span>') : '') + '</div>' : '') +
+      '<div class="es-rng"><span><span class="es-ring"></span><b>' + cfg.r1 + '</b></span>' + (CMP ? '<span><i></i>' + cfg.r2 + '</span>' : '') + '</div>';
     if (!(S.data.estimates || []).length) {
       $('#page').innerHTML = html + '<div class="nudge">ยังไม่มีข้อมูลเคสประเมิน — วาง Code.gs ใหม่ แล้วกด ดึงข้อมูลตอนนี้ ในหน้าตั้งค่า</div>';
       bindEst(); S.drawCharts = null; return;
     }
     function kc(l, v, big, c, s) { return '<div class="card es-k"><div class="l">' + l + '</div><div class="v' + (big ? ' es-num' : ' es-name') + '"' + (big ? ' data-n' : '') + '>' + v + '</div><div class="row"><span class="es-chg ' + c[0] + '">' + c[1] + '</span>' + (s || '') + '</div></div>'; }
-    html += '<section class="es-k4">' +
+    if (CMP) html += '<section class="es-k4">' +
       kc('เคสประเมินทั้งหมด', F.int(N) + '<small>เคส</small>', true, chg(N, P), cfg.prev + ' ' + F.int(P)) +
       kc('ประเภทที่มากสุด', top ? esc(top.n) : '–', false, ['n', top ? F.int(top.N) + ' เคส · ' + (N ? Math.round(top.N / N * 100) : 0) + '%' : '–']) +
       kc('เพิ่มขึ้นมากสุด (จำนวนเคส)', gr ? esc(gr.n) : '–', false, gr ? ['g', dlt(gr)] : ['n', 'ไม่มี'], gr ? F.int(gr.P) + ' → ' + F.int(gr.N) + ' เคส · ' + chg(gr.N, gr.P)[1] : '') +
       kc('ลดลงมากสุด (จำนวนเคส)', dr ? esc(dr.n) : '–', false, dr ? ['b', dlt(dr)] : ['n', 'ไม่มี'], dr ? F.int(dr.P) + ' → ' + F.int(dr.N) + ' เคส · ' + chg(dr.N, dr.P)[1] : '') + '</section>';
-    html += '<section class="card mt"><div class="card-head"><div><h2 class="card-title">เคสประเมินแยกประเภทสินค้า</h2><div class="card-sub">แท่งเหลือง = ช่วงนี้ · แท่งเทา = ' + cfg.prev + ' · ตัวเลขสีใต้ชื่อ = เปลี่ยนจากช่วงก่อน · เรียงจากมากไปน้อย</div></div>' + (D.length > 11 ? '<button class="btn ghost sm" id="esAll">' + (ef.all ? 'ย่อเหลือ 10 อันดับ' : 'ดูทั้งหมด ' + D.length + ' ประเภท') + '</button>' : '') + '</div>' +
-      '<div class="es-lg"><span><i class="a"></i>ช่วงนี้</span><span><i class="p"></i>' + cfg.prev + '</span></div><div class="es-cw"><div class="es-scroll"><svg class="es-svg" id="esCat" role="img" aria-label="เคสประเมินแยกประเภทสินค้า"></svg></div><div class="es-tip" id="esTip1"></div></div></section>';
-    html += '<section class="es-g2 mt"><div class="card"><div class="card-head"><div><h2 class="card-title">' + cfg.tt + '</h2><div class="card-sub">ทุกประเภทสินค้ารวมกัน · ตัวเลขบนแท่ง = เคส · เส้นเทา = ' + cfg.prev + '</div></div></div>' +
-      '<div class="es-lg"><span><i class="a"></i>ช่วงนี้</span><span><i class="ln"></i>' + cfg.prev + '</span></div><div class="es-cw"><svg class="es-svg" id="esTr"></svg><div class="es-tip" id="esTip2"></div></div></div>' +
+    else {
+      var tot = [], bi = -1, bv = -1; for (var q = 0; q < n; q++) { var tv = 0; D.forEach(function (d) { tv += d.now[q] || 0; }); tot.push(q < lim ? tv : null); if (q < lim && tv > bv) { bv = tv; bi = q; } }
+      var slots = tot.filter(function (v) { return v != null; }).length, hourly = cfg.unit === 'รายชั่วโมง';
+      html += '<section class="es-k4">' +
+        kc('เคสประเมินทั้งหมด', F.int(N) + '<small>เคส</small>', true, ['n', cfg.r1]) +
+        kc('ประเภทที่มากสุด', top ? esc(top.n) : '–', false, ['n', top ? F.int(top.N) + ' เคส · ' + (N ? Math.round(top.N / N * 100) : 0) + '%' : '–']) +
+        kc(hourly ? 'เฉลี่ยต่อชั่วโมง' : 'เฉลี่ยต่อวัน', (slots ? (N / slots).toFixed(1) : '0') + '<small>เคส</small>', true, ['n', 'จาก ' + slots + (hourly ? ' ชั่วโมง' : ' วัน')]) +
+        kc(hourly ? 'ชั่วโมงที่มากสุด' : 'วันที่มากสุด', bi >= 0 && bv > 0 ? esc(hourly ? cfg.lab(bi) + ' น.' : cfg.tip(bi).replace(/^วัน/, '')) : '–', false, ['n', bi >= 0 && bv > 0 ? F.int(bv) + ' เคส' : 'ยังไม่มี']) + '</section>';
+    }
+    html += '<section class="card mt"><div class="card-head"><div><h2 class="card-title">เคสประเมินแยกประเภทสินค้า</h2><div class="card-sub">' + (CMP ? 'แท่งเหลือง = ช่วงนี้ · แท่งเทา = ' + cfg.prev + ' · ตัวเลขสีใต้ชื่อ = เปลี่ยนจากช่วงก่อน · ' : 'ตัวเลขใต้ชื่อ = % ของเคสทั้งหมด · ') + 'เรียงจากมากไปน้อย</div></div>' + (D.length > 11 ? '<button class="btn ghost sm" id="esAll">' + (ef.all ? 'ย่อเหลือ 10 อันดับ' : 'ดูทั้งหมด ' + D.length + ' ประเภท') + '</button>' : '') + '</div>' +
+      (CMP ? '<div class="es-lg"><span><i class="a"></i>ช่วงนี้</span><span><i class="p"></i>' + cfg.prev + '</span></div>' : '') + '<div class="es-cw"><div class="es-scroll"><svg class="es-svg" id="esCat" role="img" aria-label="เคสประเมินแยกประเภทสินค้า"></svg></div><div class="es-tip" id="esTip1"></div></div></section>';
+    html += '<section class="es-g2 mt"><div class="card"><div class="card-head"><div><h2 class="card-title">' + cfg.tt + '</h2><div class="card-sub">ทุกประเภทสินค้ารวมกัน · ตัวเลขบนแท่ง = เคส' + (CMP ? ' · เส้นเทา = ' + cfg.prev : '') + '</div></div></div>' +
+      (CMP ? '<div class="es-lg"><span><i class="a"></i>ช่วงนี้</span><span><i class="ln"></i>' + cfg.prev + '</span></div>' : '') + '<div class="es-cw"><svg class="es-svg" id="esTr"></svg><div class="es-tip" id="esTip2"></div></div></div>' +
       '<div class="card"><div class="card-head"><div><h2 class="card-title">สัดส่วนประเภทสินค้า</h2><div class="card-sub">ช่วงนี้ · % ของเคสทั้งหมด</div></div></div><div class="es-dnw" id="esDn"></div></div></section>';
-    html += '<section class="card mt"><div class="card-head"><div><h2 class="card-title">แนวโน้มรายประเภท</h2><div class="card-sub">' + cfg.unit + ' · เส้นเหลือง = ช่วงนี้ · เส้นเทา = ' + cfg.prev + '</div></div></div><div class="es-sm">' +
-      D.slice(0, 8).map(function (d) { var w = chg(d.N, d.P); return '<div class="es-smc"><div class="h"><b>' + esc(d.n) + '</b><span class="' + w[0] + '">' + w[1] + '</span></div><div class="v"><span data-n>' + F.int(d.N) + '</span><small>เคส · ก่อน ' + F.int(d.P) + '</small></div>' + esSpark(d.now, d.prev, n) + '</div>'; }).join('') + '</div></section>';
+    html += '<section class="card mt"><div class="card-head"><div><h2 class="card-title">แนวโน้มรายประเภท</h2><div class="card-sub">' + cfg.unit + ' · เส้นเหลือง = ช่วงนี้' + (CMP ? ' · เส้นเทา = ' + cfg.prev : '') + '</div></div></div><div class="es-sm">' +
+      D.slice(0, 8).map(function (d) { var w = chg(d.N, d.P); return '<div class="es-smc"><div class="h"><b>' + esc(d.n) + '</b>' + (CMP ? '<span class="' + w[0] + '">' + w[1] + '</span>' : '<span class="n">' + (N ? Math.round(d.N / N * 100) : 0) + '%</span>') + '</div><div class="v"><span data-n>' + F.int(d.N) + '</span><small>เคส' + (CMP ? ' · ก่อน ' + F.int(d.P) : '') + '</small></div>' + esSpark(d.now, CMP ? d.prev : [], n) + '</div>'; }).join('') + '</div></section>';
 
     // donut
     var r = 70, CI = 2 * Math.PI * r, o2 = 0, top6 = D.slice(0, 6), rest = N, parts = top6.filter(function (d) { return d.N; }).map(function (d) { rest -= d.N; return [d.n, d.N, d.col]; });
@@ -2231,6 +2310,7 @@
   function bindEst() {
     $$('[data-ec]').forEach(function (b) { b.onclick = function () { S.ef.c = b.dataset.ec; pageEst(); }; });
     $$('[data-eh]').forEach(function (b) { b.onclick = function () { S.ef.h = b.dataset.eh; pageEst(); }; });
+    $$('[data-ecmp]').forEach(function (b) { b.onclick = function () { S.ef.cmp = b.dataset.ecmp === '1'; pageEst(); }; });
     if ($('#ecF')) {
       $('#ecF').onchange = function () { if (this.value) { S.ef.cf = this.value; pageEst(); } };
       $('#ecT').onchange = function () { if (this.value) { S.ef.ct = this.value; pageEst(); } };
@@ -2260,6 +2340,7 @@
   }
   function esCat(svg, tip, D, cfg, chg) {
     if (!svg) return;
+    var cmp = cfg.cmp !== false, tot = 0; D.forEach(function (d) { tot += d.N; });
     var box = svg.parentNode.clientWidth || 900, n = Math.max(D.length, 1), W = Math.max(box, n * 64), nar = box < 600, H = nar ? 320 : 370, L = 4, R = 4, T = 40, B = nar ? 74 : 66, pw = W - L - R, ph = H - T - B, gw = pw / n, bw = Math.min(30, gw * 0.32), base = T + ph;
     svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.style.height = H + 'px'; svg.style.width = W + 'px';
     var mx = Math.max.apply(null, D.map(function (d) { return Math.max(d.N, d.P); }).concat([1])) * 1.15;
@@ -2270,27 +2351,29 @@
     D.forEach(function (d, i) {
       var cx = L + i * gw + gw / 2, xa = cx - bw - 2, xp = cx + 2, w = chg(d.N, d.P), pc = d.P ? Math.round((d.N - d.P) / d.P * 100) : null;
       o += '<g class="grp"><rect x="' + (cx - gw / 2) + '" y="' + T + '" width="' + gw + '" height="' + ph + '" fill="transparent"/>';
-      o += '<rect class="col a" x="' + xa + '" y="' + base + '" width="' + bw + '" height="0" rx="6" fill="url(#esNow)"/><rect class="col p" x="' + xp + '" y="' + base + '" width="' + bw + '" height="0" rx="6" fill="url(#esPrev)"/>';
+      if (!cmp) { xa = cx - bw / 2; }
+      o += '<rect class="col a" x="' + xa + '" y="' + base + '" width="' + bw + '" height="0" rx="6" fill="url(#esNow)"/>' + (cmp ? '<rect class="col p" x="' + xp + '" y="' + base + '" width="' + bw + '" height="0" rx="6" fill="url(#esPrev)"/>' : '');
       o += '<text class="es-va" x="' + (xa + bw / 2) + '" y="' + base + '" text-anchor="middle" font-size="' + (nar ? 10.5 : 13) + '" style="opacity:0">0</text>';
-      o += '<text class="es-vp" x="' + (xp + bw / 2) + '" y="' + base + '" text-anchor="middle" font-size="' + (nar ? 9.5 : 11) + '" style="opacity:0">0</text>';
+      if (cmp) o += '<text class="es-vp" x="' + (xp + bw / 2) + '" y="' + base + '" text-anchor="middle" font-size="' + (nar ? 9.5 : 11) + '" style="opacity:0">0</text>';
       var lab = /^[A-Za-z]/.test(d.n) ? d.n.split(' ') : [d.n];
       o += '<text class="es-n1" x="' + cx + '" y="' + (base + 18) + '" text-anchor="middle" font-size="' + (nar ? 10.5 : 12.5) + '">' + esc(lab[0]) + '</text>';
       if (lab[1]) o += '<text class="es-n2" x="' + cx + '" y="' + (base + 33) + '" text-anchor="middle" font-size="' + (nar ? 10 : 11.5) + '">' + esc(lab.slice(1).join(' ')) + '</text>';
-      o += '<text class="es-pc ' + w[0] + '" x="' + cx + '" y="' + (base + (lab[1] ? 50 : 35)) + '" text-anchor="middle" font-size="' + (nar ? 10 : 12) + '">' + (pc == null ? (d.N ? 'ใหม่' : '') : pc === 0 ? '0%' : (pc > 0 ? '▲ +' : '▼ ') + pc + '%') + '</text></g>';
+      o += '<text class="es-pc ' + (cmp ? w[0] : 'n') + '" x="' + cx + '" y="' + (base + (lab[1] ? 50 : 35)) + '" text-anchor="middle" font-size="' + (nar ? 10 : 12) + '">' + (!cmp ? (tot ? Math.round(d.N / tot * 100) : 0) + '%' : pc == null ? (d.N ? 'ใหม่' : '') : pc === 0 ? '0%' : (pc > 0 ? '▲ +' : '▼ ') + pc + '%') + '</text></g>';
     });
     svg.innerHTML = o;
     var items = [];
     $$('g.grp', svg).forEach(function (g, i) { var d = D[i];
       items.push({ r: $('.a', g), t: $('.es-va', g), h: base - y(d.N), v: d.N, base: base, d: i * 70 });
-      items.push({ r: $('.p', g), t: $('.es-vp', g), h: base - y(d.P), v: d.P, base: base, d: i * 70 + 120 });
+      if (cmp) items.push({ r: $('.p', g), t: $('.es-vp', g), h: base - y(d.P), v: d.P, base: base, d: i * 70 + 120 });
       g.onmouseenter = function () { svg.classList.add('hov'); var w = chg(d.N, d.P);
-        esTipAt(tip, svg, L + i * gw + gw / 2, y(Math.max(d.N, d.P)) - 10, W, H, '<b>' + esc(d.n) + '</b><div><span><i style="background:#f5a800"></i>ช่วงนี้</span><span>' + F.int(d.N) + ' เคส</span></div><div><span><i style="background:#cfd2dc"></i>' + cfg.prev + '</span><span>' + F.int(d.P) + ' เคส</span></div><div><span>เปลี่ยน</span><span>' + w[1] + '</span></div>'); };
+        esTipAt(tip, svg, L + i * gw + gw / 2, y(Math.max(d.N, d.P)) - 10, W, H, '<b>' + esc(d.n) + '</b><div><span><i style="background:#f5a800"></i>' + (cmp ? 'ช่วงนี้' : 'เคส') + '</span><span>' + F.int(d.N) + ' เคส</span></div>' + (cmp ? '<div><span><i style="background:#cfd2dc"></i>' + cfg.prev + '</span><span>' + F.int(d.P) + ' เคส</span></div><div><span>เปลี่ยน</span><span>' + w[1] + '</span></div>' : '<div><span>สัดส่วน</span><span>' + (tot ? Math.round(d.N / tot * 100) : 0) + '%</span></div>')); };
       g.onmouseleave = function () { svg.classList.remove('hov'); tip.style.opacity = 0; };
     });
     esGrow(items, 900);
   }
   function esTrend(svg, tip, tn, tp, cfg, chg) {
     if (!svg) return;
+    var cmp = cfg.cmp !== false; if (!cmp) tp = tn.map(function () { return null; });
     var W = svg.clientWidth || 700, H = 310, L = 4, R = 4, T = 26, B = 30, pw = W - L - R, ph = H - T - B, n = tn.length, gw = pw / n, bw = Math.min(40, gw * 0.6), base = T + ph;
     svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.style.height = H + 'px';
     var mx = Math.max.apply(null, tn.concat(tp).filter(function (v) { return v != null; }).concat([1])) * 1.2;
@@ -2312,7 +2395,7 @@
     $$('g.grp', svg).forEach(function (g, i) { var a = $('.a', g);
       if (a) items.push({ r: a, t: $('.es-va', g), h: base - y(tn[i]), v: tn[i], base: base, d: i * 35 });
       g.onmouseenter = function () { svg.classList.add('hov'); var v = tn[i], p = tp[i];
-        esTipAt(tip, svg, L + i * gw + gw / 2, y(Math.max(v || 0, p || 0)) - 8, W, H, '<b>' + cfg.tip(i) + '</b><div><span><i style="background:#f5a800"></i>ช่วงนี้</span><span>' + (v == null ? 'ยังไม่ถึง' : F.int(v) + ' เคส') + '</span></div><div><span><i style="background:#8b90a7"></i>' + cfg.ptip(i) + '</span><span>' + (p == null ? '–' : F.int(p) + ' เคส') + '</span></div>' + (v != null && p ? '<div><span>เปลี่ยน</span><span>' + chg(v, p)[1] + '</span></div>' : '')); };
+        esTipAt(tip, svg, L + i * gw + gw / 2, y(Math.max(v || 0, p || 0)) - 8, W, H, '<b>' + cfg.tip(i) + '</b><div><span><i style="background:#f5a800"></i>' + (cmp ? 'ช่วงนี้' : 'เคส') + '</span><span>' + (v == null ? 'ยังไม่ถึง' : F.int(v) + ' เคส') + '</span></div>' + (cmp ? '<div><span><i style="background:#8b90a7"></i>' + cfg.ptip(i) + '</span><span>' + (p == null ? '–' : F.int(p) + ' เคส') + '</span></div>' + (v != null && p ? '<div><span>เปลี่ยน</span><span>' + chg(v, p)[1] + '</span></div>' : '') : '')); };
       g.onmouseleave = function () { svg.classList.remove('hov'); tip.style.opacity = 0; };
     });
     esGrow(items, 800);
