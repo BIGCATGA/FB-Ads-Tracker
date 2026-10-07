@@ -616,12 +616,16 @@
     var sel = camps.filter(function (x) { return x.name === camp; })[0];
     if (sel) {
       var ads = sel.ads.slice().sort(function (a, b) { return isTrue(b.active) - isTrue(a.active); });
-      html += '<div class="adp-step">2. โฆษณา</div><div class="adp-ads">' + ads.map(function (a) {
-        return '<button type="button" class="adp-a' + (a.id === cur ? ' on' : '') + (isTrue(a.active) ? '' : ' off') + '" data-id="' + esc(a.id) + '">' + esc(a.ad_name) + (a.adset && a.adset !== a.ad_name ? '<small>' + esc(a.adset) + '</small>' : '') + '</button>';
+      // แสดงตามชื่อ Ad set (ตรงกับที่เห็นใน Facebook) · ชื่อโฆษณาเป็นตัวเล็กด้านล่าง
+      html += '<div class="adp-step">2. Ad set / โฆษณา</div><div class="adp-ads">' + ads.map(function (a) {
+        var main = a.adset || a.ad_name, sub = a.adset && a.ad_name && a.ad_name !== a.adset ? 'โฆษณา: ' + a.ad_name : '';
+        return '<button type="button" class="adp-a' + (a.id === cur ? ' on' : '') + (isTrue(a.active) ? '' : ' off') + '" data-id="' + esc(a.id) + '" title="' + esc(isTrue(a.active) ? 'ใช้งานอยู่' : 'ปิดแล้ว') + '">' + esc(main) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</button>';
       }).join('') + '</div>';
     } else html += '<div class="muted small" style="margin-top:6px">กดเลือกแคมเปญก่อน แล้วจะขึ้นโฆษณาในแคมเปญนั้น</div>';
     box.innerHTML = html;
     $$('.adp-c', box).forEach(function (b) { b.onclick = function () { box.dataset.camp = b.dataset.c; var one = (camps.filter(function (x) { return x.name === b.dataset.c; })[0] || { ads: [] }).ads;
+      var picked = adOf(el, prefix);
+      if (picked && picked.campaign !== b.dataset.c) { $('#' + prefix + 'AdId', el).value = ''; $('#' + prefix + 'Ad', el).value = ''; onPick(); } // เปลี่ยนแคมเปญ → ล้างโฆษณาเดิม
       if (one.length === 1) { $('#' + prefix + 'AdId', el).value = one[0].id; $('#' + prefix + 'Ad', el).value = one[0].ad_name; onPick(); }
       renderAdPicker(el, prefix, onPick); }; });
     $$('.adp-a', box).forEach(function (b) { b.onclick = function () { var a = S.data.ads.filter(function (x) { return x.id === b.dataset.id; })[0]; $('#' + prefix + 'AdId', el).value = a.id; $('#' + prefix + 'Ad', el).value = a.ad_name; onPick(); renderAdPicker(el, prefix, onPick); }; });
