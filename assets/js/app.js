@@ -398,6 +398,7 @@
     $('#btnSummary').onclick = function () { openSummary(m); };
     $$('[data-pm]').forEach(function (b) { b.onclick = function () { S.pmetric = b.dataset.pm; pageDashboard(); }; });
     $$('[data-pc]').forEach(function (b) { b.onclick = function () { S.popen = S.popen || {}; S.popen[b.dataset.pc] = !S.popen[b.dataset.pc]; pageDashboard(); }; });
+    if ($('#toggleOffAdsets')) $('#toggleOffAdsets').onclick = function () { S.showOffAdsets = !S.showOffAdsets; pageDashboard(); };
     $$('[data-chat]').forEach(function (r) { r.onclick = function () { editChat(r.dataset.chat, pageDashboard); }; });
   }
 
@@ -463,6 +464,10 @@
       t.leads = ppl.filter(function (p) { return C.stageOf(p.status) >= 1; }).length;
       t.closedList = ppl.filter(function (p) { return p.status === '5-ปิดการขาย'; }).sort(function (a, b) { return (b.closed_date || b.date) < (a.closed_date || a.date) ? -1 : 1; });
       t.closed = t.closedList.length; t.amount = t.closedList.reduce(function (x, p) { return x + (Number(p.amount) || 0); }, 0);
+      // แยกตาม Ad set ที่ลูกค้ามา
+      var am = {};
+      ppl.forEach(function (p) { if (C.stageOf(p.status) < 1) return; var k = p.adset || 'ไม่ระบุ Ad set', o = am[k] || (am[k] = { n: k, leads: 0, closed: 0, amount: 0 }); o.leads++; if (p.status === '5-ปิดการขาย') { o.closed++; o.amount += Number(p.amount) || 0; } });
+      t.byAdset = Object.keys(am).map(function (k) { return am[k]; }).sort(function (a, b) { return b.leads - a.leads || b.closed - a.closed; });
       t.imp = 0; t.clk = 0; var ck2 = 0;
       (S.data.fbads || []).forEach(function (r) { if (r.campaign === sel.camp && (!sel.lv || r.adset === sel.lv) && inRuns(t, r.date)) { t.imp += Number(r.impressions) || 0; t.clk += Number(r.link_clicks) || 0; ck2 += Number(r.clicks) || 0; } });
       if (!t.clk) t.clk = ck2; // ข้อมูลเก่าที่ยังไม่มีคลิกลิงก์ → ใช้คลิกทั้งหมด
@@ -496,9 +501,11 @@
           '<div>ทักแชท<b>' + F.int(t.leads) + '</b><small>' + (t.chr == null ? '&nbsp;' : (t.chr * 100).toFixed(1) + '% ของคลิก') + '</small>' + dl(t.chr, pv && pv.chr, true) + '</div>' +
           '<div>ปิดได้<b>' + t.closed + '</b><small>' + (t.clr == null ? '&nbsp;' : (t.clr * 100).toFixed(1) + '% ของแชท') + '</small>' + dl(t.clr, pv && pv.clr, true) + '</div></div>' +
         '<div class="amt">ยอดรับซื้อ <b>' + F.baht(t.amount) + '</b></div>' +
-        '<div class="tabs2"><button data-btt="' + t.amt + '|c" class="' + (tab === 'c' ? 'on' : '') + '">ลูกค้าที่ปิดได้ (' + t.closed + ')</button><button data-btt="' + t.amt + '|d" class="' + (tab === 'd' ? 'on' : '') + '">สินค้าที่ลูกค้าทักมา</button></div>' +
-        (tab === 'd' ? (function () { var un = (t.prod.filter(function (x) { return x[0] === 'ไม่ระบุ'; })[0] || [0, 0])[1], pr = t.prod.filter(function (x) { return x[0] !== 'ไม่ระบุ'; }); return pr.length ? '<div class="pdl">' + pr.slice(0, 6).map(function (x) { var mx = pr[0][1]; return '<div class="pr"><span>' + esc(x[0]) + '</span><u style="width:' + (x[1] / mx * 100).toFixed(0) + '%"></u><b>' + x[1] + '</b><small>' + Math.round(x[1] / t.leads * 100 || 0) + '%</small></div>'; }).join('') + (un ? '<div class="more">ไม่ได้ระบุสินค้า ' + un + ' คน</div>' : '') + '</div>' : '<div class="more">ยังไม่ได้ระบุสินค้าในแชท (กดเลือกสินค้าตอนบันทึกแชท)</div>'; })() :
-          (t.closedList.length ? '<div class="cls">' + t.closedList.slice(0, 5).map(function (p) { return '<div class="cr"><div><b>' + esc(p.customer || '–') + '</b><small>' + esc(p.product || '–') + ' · ' + F.thDate(p.closed_date || p.date) + '</small></div><div class="am">' + (p.amount ? F.int(p.amount) : '–') + '</div></div>'; }).join('') +
+        '<div class="tabs2"><button data-btt="' + t.amt + '|c" class="' + (tab === 'c' ? 'on' : '') + '">ลูกค้าที่ปิดได้ (' + t.closed + ')</button><button data-btt="' + t.amt + '|d" class="' + (tab === 'd' ? 'on' : '') + '">สินค้าที่ลูกค้าทักมา</button>' +
+          (!D.sel.lv ? '<button data-btt="' + t.amt + '|a" class="' + (tab === 'a' ? 'on' : '') + '">มาจาก Ad set ไหน</button>' : '') + '</div>' +
+        (tab === 'a' ? (t.byAdset.length ? '<div class="pdl asl"><div class="pr hd"><span>Ad set</span><u></u><b>Lead</b><small>ปิดได้</small></div>' + t.byAdset.slice(0, 8).map(function (x) { var mx = t.byAdset[0].leads || 1; return '<div class="pr"><span title="' + esc(x.n) + '">' + esc(x.n) + '</span><u style="width:' + (x.leads / mx * 100).toFixed(0) + '%"></u><b>' + x.leads + '</b><small>' + (x.closed ? x.closed + ' · ' + kf(x.amount) : '–') + '</small></div>'; }).join('') + '</div>' : '<div class="more">ยังไม่มี Lead</div>') :
+        tab === 'd' ? (function () { var un = (t.prod.filter(function (x) { return x[0] === 'ไม่ระบุ'; })[0] || [0, 0])[1], pr = t.prod.filter(function (x) { return x[0] !== 'ไม่ระบุ'; }); return pr.length ? '<div class="pdl">' + pr.slice(0, 6).map(function (x) { var mx = pr[0][1]; return '<div class="pr"><span>' + esc(x[0]) + '</span><u style="width:' + (x[1] / mx * 100).toFixed(0) + '%"></u><b>' + x[1] + '</b><small>' + Math.round(x[1] / t.leads * 100 || 0) + '%</small></div>'; }).join('') + (un ? '<div class="more">ไม่ได้ระบุสินค้า ' + un + ' คน</div>' : '') + '</div>' : '<div class="more">ยังไม่ได้ระบุสินค้าในแชท (กดเลือกสินค้าตอนบันทึกแชท)</div>'; })() :
+          (t.closedList.length ? '<div class="cls">' + t.closedList.slice(0, 5).map(function (p) { return '<div class="cr"><div><b>' + esc(p.customer || '–') + '</b><small>' + esc(p.product || '–') + ' · ' + F.thDate(p.closed_date || p.date) + '</small>' + (!D.sel.lv && p.adset ? '<small class="as">Ad set: ' + esc(p.adset) + '</small>' : '') + '</div><div class="am">' + (p.amount ? F.int(p.amount) : '–') + '</div></div>'; }).join('') +
             (t.closedList.length > 5 ? '<div class="more">+ อีก ' + (t.closedList.length - 5) + ' คน</div>' : '') + '</div>' : '<div class="more">ยังไม่มีเคสที่ปิดได้</div>')) + '</div>';
     }).join('') + '</div></div>';
     return html;
@@ -512,7 +519,8 @@
       if (t.imp) L.push('• เห็นโฆษณา ' + F.int(t.imp) + (t.clk ? ' · คลิก ' + F.int(t.clk) + ' (CTR ' + (t.ctr * 100).toFixed(2) + '%)' : ''));
       L.push('• Lead ' + t.leads + ' · ' + t.lpd.toFixed(1) + '/วัน' + (t.cpl != null ? ' · ' + F.baht(t.cpl) + '/Lead' : ''));
       L.push('• ปิดได้ ' + t.closed + ' เคส · ยอดรับซื้อ ' + F.baht(t.amount) + (t.cpu != null ? ' · ค่า Ads ' + F.baht(t.cpu) + '/เครื่อง' : ''));
-      t.closedList.slice(0, 10).forEach(function (p) { L.push('  - ' + (p.customer || '–') + ' · ' + (p.product || '–') + ' · ' + (p.amount ? F.int(p.amount) : '–')); });
+      t.closedList.slice(0, 10).forEach(function (p) { L.push('  - ' + (p.customer || '–') + ' · ' + (p.product || '–') + ' · ' + (p.amount ? F.int(p.amount) : '–') + (!D.sel.lv && p.adset ? ' · ' + p.adset : '')); });
+      if (!D.sel.lv && t.byAdset && t.byAdset.length > 1) L.push('• Lead แยก Ad set: ' + t.byAdset.slice(0, 5).map(function (x) { return x.n + ' ' + x.leads + (x.closed ? ' (ปิด ' + x.closed + ')' : ''); }).join(' · '));
       L.push('');
     });
     var a = D.list[0], b = D.list[1];
@@ -2573,13 +2581,25 @@
     var dg = worst ? '<div class="dg bad"><b>หลุดมากสุด: ' + msg[worst.i][0] + ' (' + F.pct(worst.r, 1) + ')</b><span>' + msg[worst.i][1] + '</span></div>' : '<div class="dg ok"><b>ทุกขั้นอยู่ในเกณฑ์ปกติ</b></div>';
     dg += '<div class="dg"><b>อ่านกรวยยังไง</b><span>ป้ายระหว่างขั้น = คนจากขั้นบนไปต่อขั้นล่างกี่ % · สีแดง = ต่ำกว่าเกณฑ์ · ▲▼ = เทียบช่วงก่อนหน้า</span></div>';
     html += section('ลูกค้าหลุดตรงไหน — ตั้งแต่เห็นโฆษณาจนรับซื้อได้', 'สีฟ้า = Facebook · สีส้ม = แอดมินบันทึก', '<div class="fwrap"><div class="vfun">' + fh + '</div><div class="diag">' + dg + '</div></div>', 'full');
-    // campaign/ad table
+    // campaign/ad table — ในแคมเปญ: แยกตาม Ad set (ชื่อเดียวกับใน Facebook) ไม่ใช่ชื่อโฆษณา (โฆษณาที่ก๊อปมาชื่อซ้ำกันได้)
+    function adsetItems(camp) {
+      var seen = {}, live = {};
+      (S.data.ads || []).forEach(function (a) { if (a.campaign === camp && isTrue(a.active)) live[a.adset || ''] = true; });
+      (S.data.fbads || []).forEach(function (r) { if (r.campaign === camp && r.date >= f.from && r.date <= f.to) seen[r.adset || ''] = true; });
+      Object.keys(live).forEach(function (k) { seen[k] = true; });
+      return Object.keys(seen).map(function (k) {
+        var ads = (S.data.ads || []).filter(function (a) { return a.campaign === camp && (a.adset || '') === k; }).map(function (a) { return a.ad_name; }).filter(function (n, i, arr) { return n && n !== k && arr.indexOf(n) === i; });
+        return { name: k || '(ไม่ระบุ Ad set)', adset: k, live: !!live[k], ads: ads, c: C.fbPerf(S.data, f.from, f.to, camp, '', k), o: prevRange ? C.fbPerf(S.data, prevRange[0], prevRange[1], camp, '', k) : {} };
+      }).sort(function (a, b) { return (b.live - a.live) || (b.c.spend - a.c.spend); });
+    }
+    function adsetLabel(x) { return '<span class="sdot ' + (x.live ? 'on' : 'off') + '" title="' + (x.live ? 'ใช้งานอยู่' : 'ปิดแล้ว') + '"></span> ' + esc(x.name) + (x.ads.length ? '<div class="muted small">โฆษณา: ' + esc(x.ads.join(' · ')) + '</div>' : ''); }
     var all = !f.campaign, items;
     if (all) { var cs = {}; C.fbPerf; (S.data.fbads || []).forEach(function (r) { if (r.date >= f.from && r.date <= f.to) cs[r.campaign] = true; });
       items = Object.keys(cs).map(function (c) { return { name: c, camp: c, c: C.fbPerf(S.data, f.from, f.to, c), o: prevRange ? C.fbPerf(S.data, prevRange[0], prevRange[1], c) : {} }; }); }
-    else { var as = {}; (S.data.fbads || []).forEach(function (r) { if (r.campaign === f.campaign && r.date >= f.from && r.date <= f.to) as[r.ad] = true; });
-      items = Object.keys(as).map(function (a) { return { name: a, c: C.fbPerf(S.data, f.from, f.to, f.campaign, a), o: prevRange ? C.fbPerf(S.data, prevRange[0], prevRange[1], f.campaign, a) : {} }; }); }
-    items = items.filter(function (x) { return x.c.spend > 0; });
+    else { items = adsetItems(f.campaign); }
+    items = items.filter(function (x) { return x.c.spend > 0 || x.live; });
+    var hiddenOff = 0;
+    if (!all && !S.showOffAdsets) { hiddenOff = items.filter(function (x) { return !x.live; }).length; if (items.some(function (x) { return x.live; })) items = items.filter(function (x) { return x.live; }); else hiddenOff = 0; }
     var cps = items.map(function (x) { return x.c.cpc; }).filter(Boolean), mn = Math.min.apply(null, cps), mx = Math.max.apply(null, cps), mxAll = mx;
     S.popen = S.popen || {};
     function prow(name, c, o, cls, extra, sub) {
@@ -2589,15 +2609,15 @@
         '<td class="r num"><div class="cell2">' + F.pct(c.ctr, 1) + dBadge(c.ctr, o.ctr, true, 'pt') + '</div></td><td class="r num">' + F.int(Math.round(c.chat)) + '</td>' +
         '<td class="r num"><div class="cpc2"><div class="cell2"><b>' + F.baht(c.cpc) + '</b>' + dBadge(c.cpc, o.cpc, false, 'pct') + '</div><div class="tr2"><i style="width:' + (c.cpc && mxAll ? Math.min(100, c.cpc / mxAll * 100) : 0) + '%;background:' + col + '"></i></div></div></td><td>' + tag + '</td></tr>';
     }
-    var th = '<thead><tr><th>' + (all ? 'แคมเปญ' : 'โฆษณา') + '</th><th class="r">ค่า Ads</th><th class="r">คนเห็น</th><th class="r">ความถี่</th><th class="r">CTR</th><th class="r">แชท</th><th class="r">ต้นทุน/แชท</th><th></th></tr></thead><tbody>';
+    var th = '<thead><tr><th>' + (all ? 'แคมเปญ' : 'Ad set') + '</th><th class="r">ค่า Ads</th><th class="r">คนเห็น</th><th class="r">ความถี่</th><th class="r">CTR</th><th class="r">แชท</th><th class="r">ต้นทุน/แชท</th><th></th></tr></thead><tbody>';
     items.forEach(function (x) {
       if (all) { var op = S.popen[x.camp]; th += prow('<span class="caret' + (op ? ' open' : '') + '">▸</span>' + esc(x.name), x.c, x.o, 'click pcamp', ' data-pc="' + esc(x.camp) + '"');
-        if (op) { var as2 = {}; (S.data.fbads || []).forEach(function (r) { if (r.campaign === x.camp && r.date >= f.from && r.date <= f.to) as2[r.ad] = true; });
-          Object.keys(as2).forEach(function (a) { var c = C.fbPerf(S.data, f.from, f.to, x.camp, a); if (c.spend > 0) th += prow(esc(a), c, prevRange ? C.fbPerf(S.data, prevRange[0], prevRange[1], x.camp, a) : {}, 'sub-row', '', true); }); } }
-      else th += prow(esc(x.name), x.c, x.o, '', '', true);
+        if (op) adsetItems(x.camp).forEach(function (y) { if (y.c.spend > 0 || y.live) th += prow(adsetLabel(y), y.c, y.o, 'sub-row' + (y.live ? '' : ' dim'), '', true); }); }
+      else th += prow(adsetLabel(x), x.c, x.o, x.live ? '' : 'dim', '', true);
     });
-    html += section(all ? 'เทียบแคมเปญ (Facebook)' : 'เทียบโฆษณาในแคมเปญนี้', (all ? 'กดแถวเพื่อดูโฆษณาข้างใน · ' : '') + 'แถบสี = ต้นทุนต่อแชท (สั้น = ถูก) · ▲▼ เทียบช่วงก่อนหน้า',
-      items.length ? '<div class="table-wrap"><table class="t">' + th + '</tbody></table></div>' : '<div class="empty">ไม่มีการยิงในช่วงนี้</div>', 'full');
+    var offBtn = !all && (hiddenOff || S.showOffAdsets) ? '<div class="actions" style="justify-content:center;margin-top:10px"><button class="btn ghost sm" id="toggleOffAdsets">' + (S.showOffAdsets ? 'ซ่อน Ad set ที่ปิดแล้ว' : 'แสดง Ad set ที่ปิดแล้ว (' + hiddenOff + ')') + '</button></div>' : '';
+    html += section(all ? 'เทียบแคมเปญ (Facebook)' : 'เทียบ Ad set ในแคมเปญนี้', (all ? 'กดแถวเพื่อดู Ad set ข้างใน · ' : '● เขียว = ใช้งานอยู่ · ') + 'แถบสี = ต้นทุนต่อแชท (สั้น = ถูก) · ▲▼ เทียบช่วงก่อนหน้า',
+      items.length ? '<div class="table-wrap"><table class="t">' + th + '</tbody></table></div>' + offBtn : '<div class="empty">ไม่มีการยิงในช่วงนี้</div>', 'full');
     return html;
   }
 

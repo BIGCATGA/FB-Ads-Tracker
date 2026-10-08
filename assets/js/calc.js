@@ -787,10 +787,10 @@
     return { t: out, cut: cut, cap: cap };
   }
   /** ประสิทธิภาพ FB ช่วงหนึ่ง (แคมเปญเดียว หรือทั้งหมด) */
-  function fbPerf(data, from, to, camp, ad) {
+  function fbPerf(data, from, to, camp, ad, adset) {
     var o = { spend: 0, spi: 0, imp: 0, reach: 0, clk: 0, lclk: 0, chat: 0, days: {} };
     fbRows(data, from, to).forEach(function (r) {
-      if (camp && r.campaign !== camp) return; if (ad && r.ad !== ad) return;
+      if (camp && r.campaign !== camp) return; if (ad && r.ad !== ad) return; if (adset != null && (r.adset || '') !== adset) return;
       o.spend += Number(r.spend) || 0; if (!r.est) o.spi += Number(r.spend) || 0; o.imp += Number(r.impressions) || 0; o.reach += Number(r.reach) || 0; o.clk += Number(r.clicks) || 0; o.lclk += Number(r.link_clicks) || 0; o.chat += Number(r.chats) || 0;
     });
     o.reach = o.reach * (daysIncl(from, to) > 1 ? 0.72 : 1); // คนเดียวกันเห็นหลายวัน — ประมาณจากผลรวมรายวัน
