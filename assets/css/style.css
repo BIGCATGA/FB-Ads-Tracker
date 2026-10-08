@@ -1494,3 +1494,13 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 .es-mv b { text-align: right; } .es-mv b.g { color: var(--good); } .es-mv b.b { color: var(--bad); }
 .es-smc[data-ep] { cursor: pointer; } .es-smc[data-ep]:hover { border-color: var(--line-strong); }
 @media (max-width: 600px) { .es-big { font-size: 38px; } .es-stats { grid-template-columns: 1fr 1fr; } .es-hero { padding: 18px; } }
+.t tr.dim td { opacity: .55; }
+.btc .asl { gap: 10px; }
+.btc .asl .pr { grid-template-columns: minmax(0, 1fr) 34px 64px; row-gap: 4px; }
+.btc .asl .pr span { grid-column: 1; grid-row: 1; white-space: normal; line-height: 1.3; }
+.btc .asl .pr u { grid-column: 1; grid-row: 2; height: 6px; }
+.btc .asl .pr b, .btc .asl .pr small { grid-row: 1 / span 2; }
+.btc .asl .pr.hd u { display: none; }
+.btc .asl .pr.hd { font-size: 11.5px; color: var(--text-3); } .btc .asl .pr.hd u { background: none; } .btc .asl .pr.hd b { font-weight: 500; color: var(--text-3); }
+.btc .cr small.as { display: block; color: var(--text-2); font-size: 11.5px; }
+.btc .tabs2 { flex-wrap: wrap; }
