@@ -2333,7 +2333,7 @@
     S.drawCharts = function (force) {
       var w = ($('#esHero') || {}).clientWidth; if (!force && w === lastW) return; lastW = w;
       esCat($('#esCat'), $('#esTip1'), Dc, cfg, chg);
-      esHero($('#esHero'), $('#esTipH'), tn, tp, cfg, chg, heroSel, (Sel[0] && PROD) ? Sel[0].col : '', function (k) { heroSel = k; });
+      esHero($('#esHero'), $('#esTipH'), tn, tp, cfg, chg, -1, (Sel[0] && PROD) ? Sel[0].col : '');
     };
     S.drawCharts(true);
     Charts.countUp($('#page'));
@@ -2446,49 +2446,49 @@
     }
     return d;
   }
-  /** กราฟหลัก: แท่ง = ช่วงนี้ · เส้นโค้ง = ช่วงก่อน · เส้นประ = ค่าเฉลี่ย · แตะแท่ง = ป้ายลอย */
-  function esHero(svg, tip, tn, tp, cfg, chg, sel, col, onSel) {
+  /** กราฟหลัก: แท่ง = ช่วงนี้ · เส้นโค้ง = ช่วงก่อน · เส้นประ = ค่าเฉลี่ย
+   *  วาดครั้งเดียว (แท่งงอกตอนโหลดเท่านั้น) · ชี้/แตะ = ไฮไลต์แท่ง + ป้ายลอย โดยไม่วาดใหม่ */
+  function esHero(svg, tip, tn, tp, cfg, chg, sel, col) {
     if (!svg) return;
-    var cmp = cfg.cmp !== false, W = svg.clientWidth || 900, nar = W < 600, H = nar ? 250 : 300, L = 34, R = 8, T = 34, B = 30, pw = W - L - R, ph = H - T - B, n = tn.length, gw = pw / n, bw = Math.min(54, gw * 0.58), base = T + ph;
+    var cmp = cfg.cmp !== false, W = svg.clientWidth || 900, nar = W < 600, H = nar ? 250 : 300, L = 34, R = 8, T = 30, B = 30, pw = W - L - R, ph = H - T - B, n = tn.length, gw = pw / n, bw = Math.min(48, gw * 0.62), base = T + ph;
     svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.style.height = H + 'px';
     var vals = tn.concat(cmp ? tp : []).filter(function (v) { return v != null; }), mx = Math.max.apply(null, vals.concat([1]));
-    var steps = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000], st = steps.filter(function (s) { return mx / s <= 4; })[0] || 2000, top = Math.ceil(mx * 1.15 / st) * st || st;
+    var steps = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000], st = steps.filter(function (s) { return mx / s <= 4; })[0] || 2000, top = Math.ceil(mx * 1.18 / st) * st || st;
     function y(v) { return base - v / top * ph; } function cx(i) { return L + i * gw + gw / 2; }
-    var g1 = col || '#ffd23f', g2 = col || '#f5a800';
-    var o = '<defs><linearGradient id="ehOn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + g1 + '"/><stop offset="1" stop-color="' + g2 + '"/></linearGradient>' +
-      '<linearGradient id="ehOff" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + g1 + '" stop-opacity=".32"/><stop offset="1" stop-color="' + g2 + '" stop-opacity=".45"/></linearGradient>' +
-      '<filter id="ehSh" x="-30%" y="-20%" width="160%" height="160%"><feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="' + g2 + '" flood-opacity=".35"/></filter></defs>';
+    var c1 = col || '#ffc928', c2 = col || '#f5a800';
+    var o = '<defs><linearGradient id="ehG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + c1 + '"/><stop offset="1" stop-color="' + c2 + '"/></linearGradient></defs>';
     for (var v = 0; v <= top; v += st) o += '<line class="es-grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '"' + (v ? ' stroke-dasharray="2 6" stroke-linecap="round"' : '') + '/><text class="es-x" x="' + (L - 10) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + v + '</text>';
     var cnt = tn.filter(function (v) { return v != null; }), avg = cnt.length ? cnt.reduce(function (a, b) { return a + b; }, 0) / cnt.length : 0;
-    var lstep = n > 20 ? (nar ? 6 : 3) : n > 12 ? (nar ? 4 : 2) : 1, rx = Math.min(14, bw / 2.6);
+    var lstep = n > 20 ? (nar ? 6 : 3) : n > 12 ? (nar ? 4 : 2) : 1, rx = Math.min(10, bw / 3), showVal = gw >= 16;
     tn.forEach(function (v, i) {
-      var on = i === sel;
-      o += '<g class="eh" data-i="' + i + '"><rect x="' + (cx(i) - gw / 2) + '" y="' + T + '" width="' + gw + '" height="' + ph + '" fill="transparent"/>';
-      if (on && v != null) o += '<rect x="' + (cx(i) - bw / 2 - 7) + '" y="' + T + '" width="' + (bw + 14) + '" height="' + (ph + 4) + '" rx="' + (rx + 6) + '" class="es-selbg"/>';
-      if (v != null) { var h = Math.max(base - y(v), v ? 4 : 0); o += '<rect class="ehb" x="' + (cx(i) - bw / 2) + '" y="' + base + '" data-y="' + (base - h) + '" width="' + bw + '" height="0" data-h="' + h + '" rx="' + rx + '" fill="url(#' + (on ? 'ehOn' : 'ehOff') + ')"' + (on ? ' filter="url(#ehSh)"' : '') + '/>'; }
-      else o += '<rect class="es-fut" x="' + (cx(i) - bw / 2) + '" y="' + (base - 4) + '" width="' + bw + '" height="4" rx="2"/>';
-      if (i % lstep === 0 || on) o += '<text class="es-x" x="' + cx(i) + '" y="' + (H - 8) + '" text-anchor="middle"' + (on ? ' style="fill:var(--text);font-weight:600"' : '') + '>' + cfg.lab(i) + '</text>';
+      o += '<g class="eh" data-i="' + i + '"><rect class="eh-hit" x="' + (cx(i) - gw / 2) + '" y="' + T + '" width="' + gw + '" height="' + ph + '"/>';
+      if (v == null) o += '<rect class="es-fut" x="' + (cx(i) - bw / 2) + '" y="' + (base - 3) + '" width="' + bw + '" height="3" rx="1.5"/>';
+      else if (v > 0) { var h = Math.max(base - y(v), 3); o += '<rect class="ehb" x="' + (cx(i) - bw / 2) + '" y="' + (base - h) + '" width="' + bw + '" height="' + h + '" rx="' + rx + '" fill="url(#ehG)" style="--h:' + h + 'px;animation-delay:' + Math.min(i * 25, 500) + 'ms"/>' +
+        (showVal ? '<text class="ehv" x="' + cx(i) + '" y="' + (base - h - 6) + '" text-anchor="middle">' + F.int(v) + '</text>' : ''); }
       o += '</g>';
+      if (i % lstep === 0) o += '<text class="es-x" x="' + cx(i) + '" y="' + (H - 8) + '" text-anchor="middle">' + cfg.lab(i) + '</text>';
     });
-    if (avg) o += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(avg) + '" y2="' + y(avg) + '" class="es-avg"/><text x="' + (W - R) + '" y="' + (y(avg) - 7) + '" text-anchor="end" class="es-avgt">เฉลี่ย ' + avg.toFixed(1) + '</text>';
+    if (avg) o += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(avg) + '" y2="' + y(avg) + '" class="es-avg"/><text x="' + (L + 4) + '" y="' + (y(avg) - 6) + '" class="es-avgt">เฉลี่ย ' + avg.toFixed(1) + '</text>';
     if (cmp) {
       var pp = []; tp.forEach(function (v, i) { if (v != null) pp.push([cx(i), y(v), i]); });
-      o += '<path class="es-pl2" d="' + esSmooth(pp) + '" fill="none" stroke-width="3" stroke-linecap="round"/>';
-      pp.forEach(function (q) { o += '<circle class="es-pd" cx="' + q[0] + '" cy="' + q[1] + '" r="' + (q[2] === sel ? 5 : (n > 12 ? 0 : 3.5)) + '" stroke-width="2.5"/>'; });
+      o += '<path class="es-pl2" d="' + esSmooth(pp) + '" fill="none" stroke-width="2.5" stroke-linecap="round"/>';
+      if (n <= 14) pp.forEach(function (q) { o += '<circle class="es-pd" cx="' + q[0] + '" cy="' + q[1] + '" r="3.5" stroke-width="2"/>'; });
     }
     svg.innerHTML = o;
-    // แท่งงอกขึ้น
-    var bars = $$('.ehb', svg), t0 = performance.now(), still = esReduced();
-    (function f(ts) { var done = true; bars.forEach(function (r, k) { var p = still ? 1 : Math.max(0, Math.min(1, (ts - t0 - k * 30) / 650)); if (p < 1) done = false; var e = 1 - Math.pow(1 - p, 3), h = Number(r.dataset.h) * e; r.setAttribute('y', base - h); r.setAttribute('height', h); }); if (!done) requestAnimationFrame(f); })(t0);
-    function showTip(i) {
+    svg.classList.toggle('es-anim', !esReduced());
+    var cur = -1;
+    function show(i) {
+      if (i === cur) return; cur = i;
+      $$('g.eh', svg).forEach(function (g) { g.classList.toggle('on', Number(g.dataset.i) === i); });
+      svg.classList.toggle('hov', i >= 0);
       var v = tn[i], p = tp[i];
-      if (v == null) { tip.style.opacity = 0; return; }
+      if (i < 0 || v == null) { tip.style.opacity = 0; return; }
       var w = cmp && p != null ? chg(v, p) : null;
-      esTipAt(tip, svg, cx(i), Math.min(y(v), cmp && p != null ? y(p) : y(v)) - 6, W, H, '<b>' + cfg.tip(i) + '</b><div><span>' + (cmp ? 'ช่วงนี้' : 'เคส') + '</span><span><b style="display:inline;font-size:15px">' + F.int(v) + '</b> เคส</span></div>' +
+      esTipAt(tip, svg, cx(i), Math.min(y(v), cmp && p != null ? y(p) : y(v)) - 4, W, H, '<b>' + cfg.tip(i) + '</b><div><span>' + (cmp ? 'ช่วงนี้' : 'เคสประเมิน') + '</span><span>' + F.int(v) + ' เคส</span></div>' +
         (w ? '<div><span>' + cfg.ptip(i) + '</span><span>' + F.int(p) + ' เคส</span></div><div><span>เปลี่ยน</span><span class="es-tchg ' + w[0] + '">' + w[1] + '</span></div>' : ''));
     }
-    $$('g.eh', svg).forEach(function (g) { var i = Number(g.dataset.i); g.onclick = g.onmouseenter = function () { if (i === sel || tn[i] == null) return; onSel(i); esHero(svg, tip, tn, tp, cfg, chg, i, col, onSel); }; });
-    if (sel >= 0) setTimeout(function () { showTip(sel); }, still ? 0 : 350);
+    $$('g.eh', svg).forEach(function (g) { var i = Number(g.dataset.i); g.onmouseenter = g.onclick = function () { show(i); }; });
+    svg.onmouseleave = function () { show(-1); };
   }
   function esSpark(a, b, n) {
     var mx = Math.max.apply(null, a.concat(b).filter(function (v) { return v != null; }).concat([1]));
