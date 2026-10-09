@@ -1470,7 +1470,14 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 .es-pc.on { background: var(--card); border-color: var(--text); font-weight: 600; }
 .es-pc.more { padding: 5px 14px; color: var(--text-2); }
 .es-hero .es-cw { margin-top: 16px; }
-.es-svg .es-selbg { fill: var(--text); opacity: .045; }
+.es-svg .eh-hit { fill: transparent; }
+.es-svg g.eh.on .eh-hit { fill: var(--text); fill-opacity: .04; }
+.es-svg .ehb { transition: opacity .15s; }
+.es-svg.hov g.eh:not(.on) .ehb { opacity: .4; }
+.es-svg .ehv { fill: var(--text-2); font-size: 11.5px; font-weight: 600; transition: opacity .15s; }
+.es-svg.hov g.eh:not(.on) .ehv { opacity: .35; } .es-svg g.eh.on .ehv { fill: var(--text); font-weight: 700; }
+.es-svg.es-anim .ehb { transform-box: fill-box; transform-origin: bottom; animation: ehGrow .6s cubic-bezier(.2,.8,.3,1) both; }
+@keyframes ehGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 .es-svg .es-avg { stroke: var(--text); stroke-opacity: .5; stroke-dasharray: 4 6; stroke-linecap: round; stroke-width: 1.5; }
 .es-svg .es-avgt { fill: var(--text-2); font-size: 11px; }
 .es-svg .es-pl2 { stroke: var(--es-prev-line, #c3c5d0); }
