@@ -147,7 +147,8 @@
       purchases: (function () {
         var out = [], t = new Date(), P = [['iPhone', 4, 4200], ['iPad', 2.5, 3300], ['MacBook', 1.6, 4300], ['Notebook Gaming', 1.4, 4700], ['Notebook Office', 1, 3800], ['Comset Gaming', 0.5, 3600], ['Apple Watch', 1.5, 2000]];
         for (var i = 120; i >= 1; i--) { var d = new Date(t); d.setDate(d.getDate() - i); var ds = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
-          P.forEach(function (p) { var n = Math.floor(p[1] * (0.4 + r() * 1.2)); for (var k = 0; k < n; k++) { var fb = r() < 0.4, ln = !fb && r() < 0.85, b = 10000 + Math.round(r() * 10000); out.push([ds, p[0], fb ? 1 : 0, ln ? 1 : 0, b, 0, b + Math.round(p[2] * (0.7 + r() * 0.6)), '']); } }); }
+          P.forEach(function (p) { var n = Math.floor(p[1] * (0.4 + r() * 1.2)); for (var k = 0; k < n; k++) { var fb = r() < 0.4, ln = !fb && r() < 0.85, b = 10000 + Math.round(r() * 10000); var late = i <= 7 && r() < 0.12, sd = new Date(d); sd.setDate(sd.getDate() + (late ? 1 + Math.floor(r() * 3) : 0)); var seen = sd.getFullYear() + '-' + ('0' + (sd.getMonth() + 1)).slice(-2) + '-' + ('0' + sd.getDate()).slice(-2) + (late ? ' 1' + Math.floor(r() * 8) + ':2' + Math.floor(r() * 9) : ' 18:00');
+              out.push([ds, p[0], fb ? 1 : 0, ln ? 1 : 0, b, 0, b + Math.round(p[2] * (0.7 + r() * 0.6)), '', p[0] + ' ' + ['128GB', '256GB', 'M2 8/256', 'Pro 11"'][Math.floor(r() * 4)], seen]); } }); }
         return out;
       })(),
       estimates: (function () {
