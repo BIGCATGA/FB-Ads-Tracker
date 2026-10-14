@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>FB Ads Tracker</title>
-  <!-- v56 · ไฟล์เดียว: CSS/JS ฝังในนี้ทั้งหมด ยกเว้น assets/js/config.js -->
+  <!-- v57 · ไฟล์เดียว: CSS/JS ฝังในนี้ทั้งหมด ยกเว้น assets/js/config.js -->
   <meta name="description" content="บันทึกแชทจาก Facebook Ads และ Dashboard ต้นทุน/funnel">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%236a4ef0'/%3E%3Cpath d='M9 22V10h9a4 4 0 010 8H9' fill='none' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1598,6 +1598,10 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 .sm-tog.on { color: var(--bad); background: var(--bad-bg); }
 .es-lg2 i.a { background: #f5a800; }
 
+.sm-t tfoot td { background: var(--bg-soft); border-bottom: 0; border-top: 2px solid var(--line-strong); }
+.sm-t tfoot td:first-child { border-radius: 0 0 0 12px; } .sm-t tfoot td:last-child { border-radius: 0 0 12px 0; }
+.sm-t { min-width: 860px; }
+
 </style>
   <script>
     // ตั้งธีมก่อนหน้าโหลด กันจอกระพริบ
@@ -1606,7 +1610,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 </head>
 <body>
   <div id="root"><div class="loading">กำลังโหลด…</div></div>
-  <script src="assets/js/config.js?v=56"></script>
+  <script src="assets/js/config.js?v=57"></script>
   <script>
 /**
  * ข้อมูลจำลองสำหรับ "โหมดตัวอย่าง" (ใช้ตอนยังไม่ได้ใส่ API_URL)
@@ -5897,21 +5901,26 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
         '<td><div class="cnt"><div class="bar">' + (aw > 0 ? '<i style="width:' + aw + '%' + (add > 0 ? ';border-radius:5px 0 0 5px' : '') + '"></i>' : '') + (add > 0 ? '<u style="left:calc(' + aw + '% + ' + (aw > 0 ? 2 : 0) + 'px);width:calc(' + bw + '% - ' + (aw > 0 ? 2 : 0) + 'px)' + (aw > 0 ? '' : ';border-radius:5px') + '"></u>' : '') + '</div>' + (z.passed ? '<span class="muted">' + z.rep.closed + ' →</span>' : '') + '<b>' + z.cur.closed + '</b>' + (add > 0 ? '<em>+' + add + '</em>' : '') + '</div></td>' +
         '<td class="r num">' + F.int(z.cur.bought) + plus(z.cur.bought - z.rep.bought) + '</td>' +
         '<td class="r num">' + F.int(z.cur.diff) + plus(z.cur.diff - z.rep.diff) + '</td>' +
-        '<td class="r num muted">' + F.int(Math.round(z.cur.ads)) + '</td>' +
+        '<td class="r num">' + F.int(Math.round(z.cur.conv)) + '</td>' +
+        '<td class="r num">' + F.int(Math.round(z.cur.ads)) + '</td>' +
         '<td class="r num net"><b>' + F.int(Math.round(z.cur.net)) + '</b>' + plus(z.cur.diff - z.rep.diff) + '</td>' +
         '<td class="r num">' + bt(z.cur.closed ? z.cur.ads / z.cur.closed : null) + (add > 0 && z.rep.closed ? '<small>เดิม ' + bt(z.cur.ads / z.rep.closed) + '</small>' : '') + '</td>' +
         '<td class="sm-car">' + (z.items.length ? '<span class="sm-tog' + (open ? ' on' : '') + '">' + (open ? 'ซ่อน ▴' : 'ดู ' + z.items.length + ' ▾') + '</span>' : '') + '</td></tr>';
-      if (open) h += '<tr class="sm-det"><td colspan="8"><div class="items">' + z.items.map(function (x, k) { var gap = Math.round((new Date(x.close + 'T00:00:00') - new Date(x.date + 'T00:00:00')) / 864e5);
+      if (open) h += '<tr class="sm-det"><td colspan="9"><div class="items">' + z.items.map(function (x, k) { var gap = Math.round((new Date(x.close + 'T00:00:00') - new Date(x.date + 'T00:00:00')) / 864e5);
         return '<div class="itm"><span class="no">+' + (k + 1) + '</span><div><b>' + esc(x.detail || x.cat || '–') + '</b><small>' + esc(x.cat || '') + ' · ปิดได้ ' + thBE(x.close, true) + ' (หลังประเมิน ' + gap + ' วัน)' + (x.p ? '' : ' · ยังไม่เจอในแท็บ Orders') + '</small></div>' +
           '<div class="r"><small>รับซื้อ</small> ' + (x.p ? F.int(x.bought) : '–') + '</div><div class="r"><small>ส่วนต่าง</small> ' + (x.sell ? '<b class="pos">' + F.int(x.diff) + '</b>' : '–') + '</div><div class="r"><small>ขาย</small> ' + (x.sell ? F.int(x.sell) : '–') + '</div></div>'; }).join('') + '</div></td></tr>';
       return h;
     }).join('');
+    var T7 = sumAgg(C.addDays(sf.d, -6), sf.d), T7r = sumAgg(C.addDays(sf.d, -6), sf.d, true), t7add = T7.closed - T7r.closed;
+    var totRow = '<tfoot><tr class="sm-tot"><td class="dt"><b>รวม 7 วัน</b></td><td><div class="cnt"><span class="muted">' + T7r.closed + ' →</span><b>' + T7.closed + '</b>' + (t7add > 0 ? '<em>+' + t7add + '</em>' : '') + '</div></td>' +
+      '<td class="r num"><b>' + F.int(T7.bought) + '</b></td><td class="r num"><b>' + F.int(T7.diff) + '</b></td><td class="r num"><b>' + F.int(Math.round(T7.conv)) + '</b></td><td class="r num"><b>' + F.int(Math.round(T7.ads)) + '</b></td>' +
+      '<td class="r num net"><b>' + F.int(Math.round(T7.net)) + '</b></td><td class="r num"><b>' + bt(T7.closed ? T7.ads / T7.closed : null) + '</b></td><td></td></tr></tfoot>';
     var lateHtml = '<div class="card sm-late"><div class="card-head"><div><h2 class="card-title">ย้อนหลัง 7 วัน — ยอดที่ตามมาทีหลัง</h2><div class="card-sub">นับตามวันที่ประเมิน · "ตอนรายงาน" = ปิดได้ในวันที่ประเมิน · "ตอนนี้" = รวมเคสที่มาปิดได้วันหลัง · กดแถว = ดูเครื่องที่ตามมา</div></div></div>' +
       '<div class="sm-sum"><div><span>ยอดตามมาทีหลัง (7 วัน)</span><b class="pos">+' + lateN + ' ตัว</b><small>จาก ' + repN + ' → ' + curN + ' ตัว</small></div>' +
         '<div><span>ยอดรับซื้อเพิ่ม</span><b class="pos">+' + F.int(lateB) + '</b><small>จาก ' + F.int(repB) + ' → ' + F.int(curB) + ' บาท</small></div>' +
         '<div><span>ส่วนต่างเพิ่ม</span><b class="pos">+' + F.int(lateD) + '</b><small>จาก ' + F.int(repD) + ' → ' + F.int(curD) + ' บาท</small></div>' +
         '<div><span>ที่รายงานไป ต่ำกว่าจริง</span><b>' + (curN ? '~' + (lateN / curN * 100).toFixed(1) + '%' : '–') + '</b><small>รายงานไป ' + repN + ' ตัว · จริง ' + curN + ' ตัว<br>' + (avgLag == null ? 'ยังไม่มียอดตามมา' : 'เคสที่ตามมา ปิดช้ากว่าวันประเมินเฉลี่ย ' + avgLag.toFixed(1) + ' วัน') + '</small></div></div>' +
-      '<div class="table-wrap"><table class="t sm-t"><thead><tr><th>วันที่</th><th>ปิดได้<br><small>ตอนรายงาน → ตอนนี้</small></th><th class="r">ยอดรับซื้อ<br><small>ตอนนี้</small></th><th class="r">ส่วนต่าง<br><small>ตอนนี้</small></th><th class="r">ค่า Ads</th><th class="r">หลังหักค่า Ads<br><small>ตอนนี้</small></th><th class="r">ต้นทุน Ads<br><small>ต่อตัว</small></th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<div class="table-wrap"><table class="t sm-t"><thead><tr><th>วันที่</th><th>ปิดได้<br><small>ตอนรายงาน → ตอนนี้</small></th><th class="r">ยอดรับซื้อ<br><small>ตอนนี้</small></th><th class="r">ส่วนต่าง<br><small>ตอนนี้</small></th><th class="r">Conversion</th><th class="r">ค่า Ads</th><th class="r">หลังหักค่า Ads<br><small>ตอนนี้</small></th><th class="r">ต้นทุน Ads<br><small>ต่อตัว</small></th><th></th></tr></thead><tbody>' + rows + '</tbody>' + totRow + '</table></div>' +
       '<div class="es-lg es-lg2"><span><i class="a"></i>ยอดตอนรายงาน</span><span><i class="late"></i>ตามมาทีหลัง</span></div></div>';
     // ---- กราฟ ----
     var pts = [];
