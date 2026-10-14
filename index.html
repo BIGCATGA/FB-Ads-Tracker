@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>FB Ads Tracker</title>
-  <!-- v54 · ไฟล์เดียว: CSS/JS ฝังในนี้ทั้งหมด ยกเว้น assets/js/config.js -->
+  <!-- v55 · ไฟล์เดียว: CSS/JS ฝังในนี้ทั้งหมด ยกเว้น assets/js/config.js -->
   <meta name="description" content="บันทึกแชทจาก Facebook Ads และ Dashboard ต้นทุน/funnel">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%236a4ef0'/%3E%3Cpath d='M9 22V10h9a4 4 0 010 8H9' fill='none' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1584,6 +1584,15 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 .sm-closed { min-width: 116px; }
 .sm-split span { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
 
+/* กราฟสรุปผล: สูงเท่าการ์ดใบสรุป · แกนขวา = ปิดได้ */
+.sm-wrap { align-items: stretch; }
+.sm-right { display: flex; flex-direction: column; }
+.sm-chart { flex: 1; display: flex; flex-direction: column; }
+.sm-cw { flex: 1; min-height: 280px; position: relative; }
+.sm-cw > svg { position: absolute; left: 0; top: 0; width: 100%; }
+.es-svg .sm-ax2 { fill: var(--text); font-size: 11px; font-weight: 600; }
+.es-svg .sm-pv { fill: var(--text); font-size: 11px; font-weight: 700; paint-order: stroke; stroke: var(--card); stroke-width: 3px; }
+
 </style>
   <script>
     // ตั้งธีมก่อนหน้าโหลด กันจอกระพริบ
@@ -1592,7 +1601,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 </head>
 <body>
   <div id="root"><div class="loading">กำลังโหลด…</div></div>
-  <script src="assets/js/config.js?v=54"></script>
+  <script src="assets/js/config.js?v=55"></script>
   <script>
 /**
  * ข้อมูลจำลองสำหรับ "โหมดตัวอย่าง" (ใช้ตอนยังไม่ได้ใส่ API_URL)
@@ -5905,9 +5914,9 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
     else if (sf.m === 'w') for (var k2 = 11; k2 >= 0; k2--) { var rw = sumRange('w', C.addDays(r[0], -7 * k2)); pts.push({ l: thBE(rw[0], true), t: thBE(rw[0], true) + ' – ' + thBE(rw[1]), a: rw[0], b: rw[1] }); }
     else for (var k3 = 11; k3 >= 0; k3--) { var dm = new Date(Number(r[0].slice(0, 4)), Number(r[0].slice(5, 7)) - 1 - k3, 1), rm = sumRange('m', C.iso(dm)); pts.push({ l: TH_MO[dm.getMonth()] + (dm.getMonth() === 0 || k3 === 11 ? ' ' + String(dm.getFullYear() + 543).slice(2) : ''), t: TH_MO[dm.getMonth()] + ' ' + (dm.getFullYear() + 543), a: rm[0], b: rm[1] }); }
     pts.forEach(function (p) { var g = sumAgg(p.a, p.b); p.net = g.net; p.closed = g.closed; });
-    html += '<div class="sm-right"><div class="card"><div class="card-head"><div><h2 class="card-title">' + (sf.m === 'd' ? '14 วันล่าสุด' : sf.m === 'w' ? '12 สัปดาห์ล่าสุด' : '12 เดือนล่าสุด') + '</h2><div class="card-sub">แท่ง = ส่วนต่างหลังหักค่า Ads · เส้น = ปิดได้</div></div></div>' +
-      '<div class="es-cw"><svg class="es-svg" id="smCh"></svg><div class="es-tip" id="smTip"></div></div>' +
-      '<div class="es-lg es-lg2"><span><i class="a"></i>หลังหักค่า Ads</span><span><i class="ln" style="background:var(--text)"></i>ปิดได้ (ตัว)</span></div></div></div></div>' + lateHtml;
+    html += '<div class="sm-right"><div class="card sm-chart"><div class="card-head"><div><h2 class="card-title">' + (sf.m === 'd' ? '14 วันล่าสุด' : sf.m === 'w' ? '12 สัปดาห์ล่าสุด' : '12 เดือนล่าสุด') + '</h2><div class="card-sub">แท่ง (แกนซ้าย) = ส่วนต่างหลังหักค่า Ads · เส้น (แกนขวา) = ปิดได้</div></div></div>' +
+      '<div class="es-cw sm-cw"><svg class="es-svg" id="smCh"></svg><div class="es-tip" id="smTip"></div></div>' +
+      '<div class="es-lg es-lg2"><span><i class="a"></i>หลังหักค่า Ads (บาท) — แกนซ้าย</span><span><i class="ln" style="background:var(--text)"></i>ปิดได้ (ตัว) — แกนขวา</span></div></div></div></div>' + lateHtml;
     $('#page').innerHTML = html;
     S.drawCharts = function () { smChart($('#smCh'), $('#smTip'), pts); };
     S.drawCharts();
@@ -5931,20 +5940,25 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
   /** แท่ง = หลังหักค่า Ads · เส้น = ปิดได้ · ชี้ = ป้ายลอย (ไม่วาดใหม่) */
   function smChart(svg, tip, pts) {
     if (!svg) return;
-    var W = svg.clientWidth || 800, H = 340, L = 8, R = 8, T = 28, B = 26, pw = W - L - R, ph = H - T - B, base = T + ph, n = pts.length, gw = pw / n, bw = Math.min(38, gw * 0.56);
-    var mx = Math.max.apply(null, pts.map(function (p) { return Math.abs(p.net); }).concat([1])) * 1.2, mn = Math.min(0, Math.min.apply(null, pts.map(function (p) { return p.net; }))) * 1.2, mc = Math.max.apply(null, pts.map(function (p) { return p.closed; }).concat([1])) * 1.25;
-    function y(v) { return T + (mx - v) / (mx - mn) * ph; } function y2(v) { return base - v / mc * ph * 0.88; } function cx(i) { return L + i * gw + gw / 2; }
-    function k(v) { var a = Math.abs(v); return (v < 0 ? '−' : '') + (a >= 1e6 ? (a / 1e6).toFixed(2) + 'M' : a >= 1000 ? Math.round(a / 1000) + 'k' : Math.round(a)); }
+    var box = svg.parentNode, W = box.clientWidth || 800, H = Math.max(260, box.clientHeight || 340), L = 46, R = 34, T = 26, B = 26, pw = W - L - R, ph = H - T - B, base = T + ph, n = pts.length, gw = pw / n, bw = Math.min(36, gw * 0.56);
+    function nice(m) { var st = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000, 1e4, 2e4, 2.5e4, 5e4, 1e5, 2e5, 2.5e5, 5e5, 1e6, 2e6, 5e6]; for (var i = 0; i < st.length; i++) if (m / st[i] <= 4) return st[i]; return 1e7; }
+    var rawMx = Math.max.apply(null, pts.map(function (p) { return p.net; }).concat([1])), rawMn = Math.min(0, Math.min.apply(null, pts.map(function (p) { return p.net; })));
+    var st = nice(Math.max(rawMx, -rawMn)), mx = Math.ceil(rawMx * 1.08 / st) * st || st, mn = rawMn < 0 ? Math.floor(rawMn * 1.08 / st) * st : 0;
+    var cMax = Math.max.apply(null, pts.map(function (p) { return p.closed; }).concat([1])), cst = nice(cMax), mc = Math.ceil(cMax * 1.15 / cst) * cst || cst;
+    function y(v) { return T + (mx - v) / (mx - mn) * ph; } function y2(v) { return base - v / mc * ph; } function cx(i) { return L + i * gw + gw / 2; }
+    function k(v) { var a = Math.abs(v); return (v < 0 ? '−' : '') + (a >= 1e6 ? (a / 1e6).toFixed(a >= 1e7 ? 0 : 1) + 'M' : a >= 1000 ? Math.round(a / 1000) + 'k' : Math.round(a)); }
     svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.style.height = H + 'px';
-    var o = '<defs><linearGradient id="smG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffc928"/><stop offset="1" stop-color="#f5a800"/></linearGradient></defs><line class="es-grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(0) + '" y2="' + y(0) + '"/>';
+    var o = '<defs><linearGradient id="smG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffc928"/><stop offset="1" stop-color="#f5a800"/></linearGradient></defs>';
+    for (var v = mn; v <= mx + 1e-9; v += st) o += '<line class="es-grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '"' + (v ? ' stroke-dasharray="2 6" stroke-linecap="round"' : '') + '/><text class="es-x" x="' + (L - 8) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + k(v) + '</text>';
+    for (var c = 0; c <= mc; c += cst) o += '<text class="sm-ax2" x="' + (W - R + 8) + '" y="' + (y2(c) + 4) + '">' + c + '</text>';
+    var lstep = n > 20 ? 3 : 1;
     pts.forEach(function (p, i) { var y0 = y(0), yv = y(p.net), top = Math.min(y0, yv), h = Math.max(Math.abs(yv - y0), p.net ? 3 : 0);
       o += '<g class="eh" data-i="' + i + '"><rect class="eh-hit" x="' + (cx(i) - gw / 2) + '" y="' + T + '" width="' + gw + '" height="' + ph + '"/>' +
-        (h ? '<rect class="ehb" x="' + (cx(i) - bw / 2) + '" y="' + top + '" width="' + bw + '" height="' + h + '" rx="' + Math.min(9, bw / 3) + '" fill="' + (p.net < 0 ? '#f04438' : 'url(#smG)') + '" style="animation-delay:' + Math.min(i * 25, 400) + 'ms"/>' : '') +
-        (gw >= 26 && p.net ? '<text class="ehv" x="' + cx(i) + '" y="' + (p.net < 0 ? top + h + 13 : top - 6) + '" text-anchor="middle">' + k(p.net) + '</text>' : '') + '</g>' +
-        '<text class="es-x" x="' + cx(i) + '" y="' + (H - 8) + '" text-anchor="middle">' + p.l + '</text>'; });
+        (h ? '<rect class="ehb" x="' + (cx(i) - bw / 2) + '" y="' + top + '" width="' + bw + '" height="' + h + '" rx="' + Math.min(8, bw / 3) + '" fill="' + (p.net < 0 ? '#f04438' : 'url(#smG)') + '" style="opacity:.88;animation-delay:' + Math.min(i * 25, 400) + 'ms"/>' : '') + '</g>' +
+        (i % lstep === 0 ? '<text class="es-x" x="' + cx(i) + '" y="' + (H - 8) + '" text-anchor="middle">' + p.l + '</text>' : ''); });
     var pp = pts.map(function (p, i) { return [cx(i), y2(p.closed)]; });
-    o += '<path d="' + esSmooth(pp) + '" fill="none" stroke="var(--text)" stroke-width="2.4" stroke-linecap="round"/>';
-    pp.forEach(function (q) { o += '<circle cx="' + q[0] + '" cy="' + q[1] + '" r="3.5" fill="var(--card)" stroke="var(--text)" stroke-width="2"/>'; });
+    o += '<path d="' + esSmooth(pp) + '" fill="none" stroke="var(--text)" stroke-width="2.4" stroke-linecap="round" pointer-events="none"/>';
+    pp.forEach(function (q, i) { o += '<circle cx="' + q[0] + '" cy="' + q[1] + '" r="4" fill="var(--card)" stroke="var(--text)" stroke-width="2" pointer-events="none"/><text class="sm-pv" x="' + q[0] + '" y="' + (q[1] - 9) + '" text-anchor="middle" pointer-events="none">' + pts[i].closed + '</text>'; });
     svg.innerHTML = o; svg.classList.toggle('es-anim', !esReduced());
     var cur = -1;
     function show(i) { if (i === cur) return; cur = i; $$('g.eh', svg).forEach(function (g) { g.classList.toggle('on', Number(g.dataset.i) === i); }); svg.classList.toggle('hov', i >= 0);
