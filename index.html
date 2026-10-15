@@ -1605,6 +1605,12 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 .sm-pb i { background: #f5a800; } .sm-pb u { background: #12b76a; text-decoration: none; }
 .sm-t td.sm-rt { white-space: nowrap; font-weight: 600; } .sm-t .cnt .small em { font-size: 12px; }
 .sm-t { min-width: 940px; } .sm-t th, .sm-t td { padding-left: 7px; padding-right: 7px; } .sm-t .cnt { gap: 6px; }
+.sm-t .sm-cn { color: var(--text-3); font-size: 12.5px; } .sm-t .sm-cn b { color: var(--text); font-size: 14px; } .sm-t .sm-cn small { display: block; font-size: 11px; } .sm-t .sm-cn em { font-style: normal; color: var(--good); font-weight: 600; font-size: 11px; }
+.sm-t .sm-bd { display: block; font-size: 11px; line-height: 1.35; margin-top: 2px; color: var(--text-3); font-weight: 400; white-space: nowrap; } .sm-t .sm-bd em { font-style: normal; color: var(--good); font-weight: 600; }
+.live-st { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-3); white-space: nowrap; margin-right: 10px; } .live-st:empty { display: none; }
+.live-st i { width: 8px; height: 8px; border-radius: 50%; background: #12b76a; box-shadow: 0 0 0 0 rgba(18,183,106,.5); animation: livep 2s infinite; } .live-st.err i { background: #f04438; animation: none; }
+@keyframes livep { 0% { box-shadow: 0 0 0 0 rgba(18,183,106,.45); } 70% { box-shadow: 0 0 0 7px rgba(18,183,106,0); } 100% { box-shadow: 0 0 0 0 rgba(18,183,106,0); } }
+@media (max-width: 700px) { .live-st { display: none; } }
 
 </style>
   <script>
@@ -1614,7 +1620,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 </head>
 <body>
   <div id="root"><div class="loading">กำลังโหลด…</div></div>
-  <script src="assets/js/config.js?v=62"></script>
+  <script src="assets/js/config.js?v=65"></script>
   <script>
 /**
  * ข้อมูลจำลองสำหรับ "โหมดตัวอย่าง" (ใช้ตอนยังไม่ได้ใส่ API_URL)
@@ -2006,6 +2012,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
       var pr = URL_ ? remote(action, payload) : Promise.resolve().then(function () { return local(action, payload || {}); });
       return pr.then(function (r) { busyEnd(b, true); return r; }, function (e) { busyEnd(b, false); throw e; });
     },
+    quiet: function (action, payload) { return URL_ ? remote(action, payload) : Promise.reject(new Error('demo')); }, // ไม่โชว์กล่องโหลด
     token: function (v) { return store('fbat_token', v); },
     userName: function (v) { return store('fbat_user', v); },
     resetDemo: function () { store(DEMO_KEY, null); demo = null; },
@@ -3341,6 +3348,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
     API.call('bootstrap').then(function (d) {
       S.data = normalize(d);
       API.outdated = !API.isDemo && (Number(d.backend_version) || 0) < API.MIN_BACKEND;
+      liveStart(d);
       var hash = location.hash.replace('#', '');
       if (NAV.some(function (n) { return n.id === hash; })) S.page = hash;
       try { render(); } catch (err) {
@@ -3413,7 +3421,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
       '<div class="topbar">' +
       '<h1 class="page-title"><small>' + ({ biz: 'ภาพรวมธุรกิจ', fb: 'Facebook Ads', sys: 'ระบบ' })[NAV.filter(function (n) { return n.id === S.page; })[0].group] + '</small>' + title + '</h1>' +
       '<label class="search">' + I.search + '<input id="globalSearch" placeholder="ค้นหาชื่อลูกค้า…" value="' + esc(S.page === 'chats' ? S.chatFilter.q : '') + '"></label>' +
-      '<span class="spacer"></span>' +
+      '<span class="spacer"></span><span class="live-st" id="liveSt"></span>' +
       (API.isDemo ? '<span class="demo-badge">โหมดตัวอย่าง · ข้อมูลจำลอง</span>' : '') +
       (API.outdated ? '<div class="outdated">⚠️ หลังบ้าน (Apps Script) ยังเป็นเวอร์ชันเก่า — ถ้าบันทึกตอนนี้ข้อมูลบางส่วนจะหายหลังรีเฟรช จึงปิดการบันทึกไว้ก่อน · แก้: วาง Code.gs ใหม่ → Run <b>setup</b> → Deploy → Manage deployments → ✎ → <b>New version</b></div>' : '') +
       '<div class="avatar" title="' + esc(S.data.me) + '" style="width:40px;height:40px">' + esc(initials(S.data.me)) + '</div>' +
@@ -3433,7 +3441,52 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
     };
     if (S.page === 'chats') $('#globalSearch').oninput = function () { S.chatFilter.q = this.value.trim(); renderChatList(); };
 
-    ({ dashboard: pageDashboard, chats: pageChats, campaigns: pageCampaigns, kpi: pageKpi, est: pageEst, time: pageTime, sum: pageSum, settings: pageSettings })[S.page]();
+    renderPage();
+    liveBadge();
+  }
+  function renderPage() { ({ dashboard: pageDashboard, chats: pageChats, campaigns: pageCampaigns, kpi: pageKpi, est: pageEst, time: pageTime, sum: pageSum, settings: pageSettings })[S.page](); }
+
+  // ---- ยอดรับซื้อ + เคสประเมิน แบบเรียลไทม์: ถามหลังบ้านทุก 1 นาที (เฉพาะตอนเปิดแท็บอยู่) ----
+  var LIVE = { ver: null, busy: false, off: false, at: '', err: '', last: 0, pending: false, timer: null };
+  function liveStart(d) {
+    if (API.isDemo || LIVE.timer) return;
+    LIVE.ver = d.live_ver || null;
+    LIVE.timer = setInterval(liveTick, 60000);
+    setTimeout(liveTick, 3000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden && Date.now() - LIVE.last > 20000) liveTick(); });
+  }
+  function liveTick() {
+    if (LIVE.pending) liveApply();
+    if (API.isDemo || LIVE.off || LIVE.busy || document.hidden || !S.data || !API.token()) return;
+    LIVE.busy = true; LIVE.last = Date.now();
+    API.quiet('live', { ver: LIVE.ver }).then(function (r) {
+      LIVE.busy = false; LIVE.ver = r.ver; LIVE.at = r.at || LIVE.at; LIVE.err = r.err || '';
+      if (r.purchases || r.estimates) {
+        var n = normalize({ chats: [], purchases: r.purchases || [], estimates: r.estimates || [] });
+        if (r.purchases) S.data.purchases = n.purchases;
+        if (r.estimates) S.data.estimates = n.estimates;
+        S._deals = null; LIVE.pending = true; liveApply();
+      }
+      liveBadge();
+    }).catch(function (e) { LIVE.busy = false; if (/UNKNOWN_ACTION|ไม่รู้จักคำสั่ง/.test(String(e && e.message || e))) LIVE.off = true; });
+  }
+  /** วาดเฉพาะเนื้อหาหน้าใหม่ (ไม่กระพริบ ไม่เลื่อน ไม่เล่นตัวเลขวิ่ง) · กำลังกรอกฟอร์ม/เปิดหน้าต่างอยู่ = รอรอบหน้า */
+  function liveApply() {
+    if (!LIVE.pending || !$('#page')) return;
+    var ae = document.activeElement;
+    if (document.querySelector('.modal-back') || (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && ae.type !== 'date')) return;
+    LIVE.pending = false;
+    var y = window.scrollY, cu = Charts.countUp; Charts.countUp = function () {};
+    try { renderPage(); } catch (e) { console.error(e); } finally { Charts.countUp = cu; }
+    window.scrollTo(0, y);
+  }
+  function liveBadge() {
+    var el = $('#liveSt'); if (!el) return;
+    if (API.isDemo || LIVE.off || !LIVE.at) { el.innerHTML = ''; return; }
+    var t = new Date(LIVE.at), hm = ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2);
+    el.className = 'live-st' + (LIVE.err ? ' err' : '');
+    el.title = LIVE.err ? 'ดึงล่าสุดไม่สำเร็จ: ' + LIVE.err : 'ยอดรับซื้อ + เคสประเมิน อัปเดตเองทุก 1 นาที';
+    el.innerHTML = '<i></i>รับซื้อ/ประเมิน · ' + hm + ' น.';
   }
 
   function go(page) {
@@ -5905,15 +5958,15 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
     S.smOpen = S.smOpen || {};
     var rows = days.map(function (z) {
       var add = z.cur.closed - z.rep.closed, open = S.smOpen[z.d] && z.items.length;
-      var plus = function (v) { return v > 0 ? '<span class="plus">+' + F.int(v) + '</span>' : ''; };
+      var plus = function (v, r) { return v > 0 ? '<span class="sm-bd">วันนั้น ' + F.int(Math.round(r)) + '<br><em>+ ตามมา ' + F.int(v) + '</em></span>' : ''; };
       var h = '<tr class="sm-row' + (z.items.length ? ' click' : '') + (open ? ' open' : '') + '" data-sd="' + z.d + '"><td class="dt"><b>' + thBE(z.d, true) + '</b><small>' + DOW_S[dowOf(z.d)] + '.</small></td>' +
-        '<td><div class="cnt">' + pbar(z.rep.closed, add, z.n) + '<span class="muted small">' + z.rep.closed + (add > 0 ? ' <em>+' + add + '</em>' : '') + ' / ' + z.n + '</span></div></td>' +
+        '<td><div class="cnt">' + pbar(z.rep.closed, add, z.n) + '<span class="sm-cn"><b>' + z.cur.closed + '</b> / ' + z.n + (add > 0 ? '<small>วันนั้น ' + z.rep.closed + ' · <em>ตามมา ' + add + '</em></small>' : '') + '</span></div></td>' +
         rateCell(z.rep.closed, z.cur.closed, z.n) +
-        '<td class="r num">' + F.int(z.cur.bought) + plus(z.cur.bought - z.rep.bought) + '</td>' +
-        '<td class="r num">' + F.int(z.cur.diff) + plus(z.cur.diff - z.rep.diff) + '</td>' +
+        '<td class="r num">' + F.int(z.cur.bought) + plus(z.cur.bought - z.rep.bought, z.rep.bought) + '</td>' +
+        '<td class="r num">' + F.int(z.cur.diff) + plus(z.cur.diff - z.rep.diff, z.rep.diff) + '</td>' +
         '<td class="r num">' + F.int(Math.round(z.cur.conv)) + '</td>' +
         '<td class="r num">' + F.int(Math.round(z.cur.ads)) + '</td>' +
-        '<td class="r num net"><b>' + F.int(Math.round(z.cur.net)) + '</b>' + plus(z.cur.diff - z.rep.diff) + '</td>' +
+        '<td class="r num net"><b>' + F.int(Math.round(z.cur.net)) + '</b>' + plus(z.cur.diff - z.rep.diff, z.rep.net) + '</td>' +
         cpc(z.cur.ads, z.rep.closed, z.cur.closed) +
         '<td class="sm-car">' + (z.items.length ? '<span class="sm-tog' + (open ? ' on' : '') + '">' + (open ? 'ซ่อน ▴' : 'ดู ' + z.items.length + ' ▾') + '</span>' : '') + '</td></tr>';
       if (open) h += '<tr class="sm-det"><td colspan="10"><div class="items">' + z.items.map(function (x, k) {
@@ -5922,18 +5975,18 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
       return h;
     }).join('');
     var T7 = sumAgg(C.addDays(sf.d, -6), sf.d, false, true), T7r = sumAgg(C.addDays(sf.d, -6), sf.d, true, true), t7add = T7.closed - T7r.closed;
-    var tplus = function (v) { return v > 0 ? '<span class="plus">+' + F.int(v) + '</span>' : ''; };
+    var tplus = function (v, r) { return v > 0 ? '<span class="sm-bd">วันนั้น ' + F.int(Math.round(r)) + '<br><em>+ ตามมา ' + F.int(v) + '</em></span>' : ''; };
     var totRow = '<tfoot><tr class="sm-tot"><td class="dt"><b>รวม 7 วัน</b></td>' +
-      '<td><div class="cnt">' + pbar(T7r.closed, t7add, estTot) + '<span class="muted small">' + T7r.closed + (t7add > 0 ? ' <em>+' + t7add + '</em>' : '') + ' / ' + estTot + '</span></div></td>' + rateCell(T7r.closed, T7.closed, estTot) +
-      '<td class="r num"><b>' + F.int(T7.bought) + '</b>' + tplus(T7.bought - T7r.bought) + '</td><td class="r num"><b>' + F.int(T7.diff) + '</b>' + tplus(T7.diff - T7r.diff) + '</td><td class="r num"><b>' + F.int(Math.round(T7.conv)) + '</b></td><td class="r num"><b>' + F.int(Math.round(T7.ads)) + '</b></td>' +
-      '<td class="r num net"><b>' + F.int(Math.round(T7.net)) + '</b>' + tplus(T7.diff - T7r.diff) + '</td>' + cpc(T7.ads, T7r.closed, T7.closed) + '<td></td></tr></tfoot>';
+      '<td><div class="cnt">' + pbar(T7r.closed, t7add, estTot) + '<span class="sm-cn"><b>' + T7.closed + '</b> / ' + estTot + (t7add > 0 ? '<small>วันนั้น ' + T7r.closed + ' · <em>ตามมา ' + t7add + '</em></small>' : '') + '</span></div></td>' + rateCell(T7r.closed, T7.closed, estTot) +
+      '<td class="r num"><b>' + F.int(T7.bought) + '</b>' + tplus(T7.bought - T7r.bought, T7r.bought) + '</td><td class="r num"><b>' + F.int(T7.diff) + '</b>' + tplus(T7.diff - T7r.diff, T7r.diff) + '</td><td class="r num"><b>' + F.int(Math.round(T7.conv)) + '</b></td><td class="r num"><b>' + F.int(Math.round(T7.ads)) + '</b></td>' +
+      '<td class="r num net"><b>' + F.int(Math.round(T7.net)) + '</b>' + tplus(T7.diff - T7r.diff, T7r.net) + '</td>' + cpc(T7.ads, T7r.closed, T7.closed) + '<td></td></tr></tfoot>';
     var ptUp = estTot ? (curN - repN) / estTot * 100 : null;
     var lateHtml = '<div class="card sm-late"><div class="card-head"><div><h2 class="card-title">ย้อนหลัง 7 วัน — อัตราปิดของเคสแต่ละวัน</h2><div class="card-sub">นับตามวันที่ประเมิน (การ์ดซ้ายนับตามวันที่ปิด ยอดจึงไม่เท่ากัน) · แท่ง = เคสประเมินทั้งหมดของวันนั้น 100% · เหลือง = ปิดในวันประเมิน · เขียว = ปิดตามมา · เทา = ยังไม่ปิด · กดแถว = ดูเครื่องที่ปิดตามมา</div></div></div>' +
       '<div class="sm-sum"><div><span>อัตราปิด วันประเมิน (7 วัน)</span><b>' + rp(repN, estTot) + '</b><small>ปิด ' + repN + ' จาก ' + F.int(estTot) + ' เคส</small></div>' +
         '<div><span>อัตราปิด ตอนนี้</span><b class="pos">' + rp(curN, estTot) + '</b><small>ปิด ' + curN + ' จาก ' + F.int(estTot) + ' เคส</small></div>' +
         '<div><span>เพิ่มขึ้นจากเคสที่ตามมา</span><b class="pos">' + (ptUp == null ? '–' : '+' + ptUp.toFixed(1) + ' จุด') + '</b><small>+' + lateN + ' ตัว · รับซื้อ +' + F.int(lateB) + ' · ส่วนต่าง +' + F.int(lateD) + '</small></div>' +
         '<div><span>เคสที่ปิดตามมา ใช้เวลาเฉลี่ย</span><b>' + (avgLag == null ? '–' : avgLag.toFixed(1) + ' วัน') + '</b><small>' + (avgLag == null ? 'ยังไม่มีเคสที่ปิดตามมา (60 วันล่าสุด)' : 'หลังประเมิน (60 วันล่าสุด)') + '</small></div></div>' +
-      '<div class="table-wrap"><table class="t sm-t"><thead><tr><th>วันที่ประเมิน</th><th>ปิดได้ / เคสประเมิน<br><small>ปิดวันนั้น +ตามมา / ทั้งหมด</small></th><th>อัตราปิด<br><small>วันนั้น → ตอนนี้</small></th><th class="r">ยอดรับซื้อ</th><th class="r">ส่วนต่าง</th><th class="r">Conversion</th><th class="r">ค่า Ads</th><th class="r">หลังหักค่า Ads</th><th class="r">ต้นทุน Ads ต่อตัว<br><small>วันนั้น → ตอนนี้</small></th><th></th></tr></thead><tbody>' + rows + '</tbody>' + totRow + '</table></div>' +
+      '<div class="table-wrap"><table class="t sm-t"><thead><tr><th>วันที่ประเมิน</th><th>ปิดได้ / เคสประเมิน<br><small>ปิดได้รวม / เคสทั้งหมด</small></th><th>อัตราปิด<br><small>วันนั้น → ตอนนี้</small></th><th class="r">ยอดรับซื้อ</th><th class="r">ส่วนต่าง</th><th class="r">Conversion</th><th class="r">ค่า Ads</th><th class="r">หลังหักค่า Ads</th><th class="r">ต้นทุน Ads ต่อตัว<br><small>วันนั้น → ตอนนี้</small></th><th></th></tr></thead><tbody>' + rows + '</tbody>' + totRow + '</table></div>' +
       '<div class="es-lg es-lg2"><span><i class="a"></i>ปิดในวันประเมิน</span><span><i class="late"></i>ปิดตามมา</span><span><i style="background:var(--bg-soft)"></i>ยังไม่ปิด</span></div></div>';
     // ---- กราฟ ----
     var pts = [];
