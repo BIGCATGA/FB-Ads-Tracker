@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>FB Ads Tracker</title>
-  <!-- v57 · ไฟล์เดียว: CSS/JS ฝังในนี้ทั้งหมด ยกเว้น assets/js/config.js -->
+  <!-- v58 · ไฟล์เดียว: CSS/JS ฝังในนี้ทั้งหมด ยกเว้น assets/js/config.js -->
   <meta name="description" content="บันทึกแชทจาก Facebook Ads และ Dashboard ต้นทุน/funnel">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%236a4ef0'/%3E%3Cpath d='M9 22V10h9a4 4 0 010 8H9' fill='none' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1610,7 +1610,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 </head>
 <body>
   <div id="root"><div class="loading">กำลังโหลด…</div></div>
-  <script src="assets/js/config.js?v=57"></script>
+  <script src="assets/js/config.js?v=58"></script>
   <script>
 /**
  * ข้อมูลจำลองสำหรับ "โหมดตัวอย่าง" (ใช้ตอนยังไม่ได้ใส่ API_URL)
@@ -5828,27 +5828,24 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
   function reportCut(d) { var h = Number(S.data.config.report_hour) || 10; return C.addDays(d, 1) + ' ' + ('0' + h).slice(-2) + ':00'; }
   function nowLocal() { var n = new Date(); return C.iso(n) + ' ' + ('0' + n.getHours()).slice(-2) + ':' + ('0' + n.getMinutes()).slice(-2); }
   function ga4Events() { return String(S.data.config.ga4_events || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); }
-  /** จับคู่ยอดรับซื้อ (Orders) กับเคสประเมินที่ปิดสำเร็จ — ด้วย ProductID หรือเลขใบประเมิน
-   *  ยอดของแต่ละเคสนับเข้า "วันที่ประเมิน" · ปิดวันเดียวกัน = ทันรายงาน · ปิดวันหลัง = ตามมาทีหลัง
-   *  ยอดรับซื้อที่หาใบประเมินไม่เจอ → นับตามวันที่รับซื้อ (ถือว่าทันรายงาน) */
+  /** ยอดปิดได้ = แถวในแท็บ Orders นับตาม "วันที่รับซื้อ" (ตรงกับบอทสรุปยอดรับซื้อประจำวัน)
+   *  "ตอนรายงาน" = แถวที่ลงชีตก่อน report_hour (10:00) ของวันถัดไป · ลงชีตหลังจากนั้น = ตามมาทีหลัง
+   *  วันที่ประเมินดึงจากแท็บ Estimations (จับคู่ ProductID / เลขใบประเมิน) ไว้แสดงในรายละเอียด */
   function sumDeals() {
     var key = (S.data.purchases || []).length + '|' + (S.data.estimates || []).length;
     if (S._deals && S._deals.key === key) return S._deals.list;
-    var byPid = {}, byRef = {}, used = {}, list = [];
-    (S.data.purchases || []).forEach(function (p, i) { if (p.pid) byPid[p.pid] = i; if (p.estRef) byRef[p.estRef] = i; });
-    (S.data.estimates || []).forEach(function (e) {
-      if (!e.closed || !e.date) return;
-      var pi = e.pid && byPid[e.pid] != null ? byPid[e.pid] : e.estId && byRef[e.estId] != null ? byRef[e.estId] : -1;
-      var p = pi >= 0 && !used[pi] ? (S.data.purchases[pi]) : null; if (p) used[pi] = true;
-      var cd = e.closeDate || (p && p.date) || e.date;
-      list.push({ date: e.date, close: cd < e.date ? e.date : cd, p: p, cat: e.cat || e.category, detail: e.detail || (p && p.detail) || '' });
+    var estByPid = {}, estById = {};
+    (S.data.estimates || []).forEach(function (e) { if (!e.closed) return; if (e.pid) estByPid[e.pid] = e; if (e.estId) estById[e.estId] = e; });
+    var list = (S.data.purchases || []).filter(function (p) { return p.date; }).map(function (p) {
+      var e = (p.pid && estByPid[p.pid]) || (p.estRef && estById[p.estRef]) || null, cut = reportCut(p.date);
+      var bought = Number(p.bought) || 0, sell = Number(p.sell) > 0 ? Number(p.sell) : 0;
+      return { date: p.date, p: p, estDate: e ? e.date : '', seen: p.seen || '', late: !!(p.seen && p.seen > cut), cat: p.cat || p.category, detail: p.detail || (e && e.detail) || '',
+        bought: bought, sell: sell, diff: sell ? sell - bought : 0 };
     });
-    (S.data.purchases || []).forEach(function (p, i) { if (!used[i] && p.date) list.push({ date: p.date, close: p.date, p: p, cat: p.cat || p.category, detail: p.detail || '', noEst: true }); });
-    list.forEach(function (d) { d.late = d.close > d.date; d.bought = d.p ? Number(d.p.bought) || 0 : 0; d.diff = d.p && Number(d.p.sell) > 0 ? Number(d.p.sell) - d.bought : 0; d.sell = d.p && Number(d.p.sell) > 0 ? Number(d.p.sell) : 0; });
     S._deals = { key: key, list: list };
     return list;
   }
-  /** ตัวเลขของช่วงวันที่ประเมิน [a,b] — onlyOnTime = นับเฉพาะเคสที่ปิดได้ในวันประเมิน ("ตอนรายงาน") */
+  /** ตัวเลขของช่วงวันที่ปิด [a,b] — onlyOnTime = นับเฉพาะแถวที่ลงชีตทันรายงาน ("ตอนรายงาน") */
   function sumAgg(a, b, onlyOnTime) {
     var o = { closed: 0, bought: 0, diff: 0, ads: 0, conv: 0, convSrc: '' };
     sumDeals().forEach(function (d) {
@@ -5864,8 +5861,8 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
   }
   function sumLate(d) {
     var cur = sumAgg(d, d), rep = sumAgg(d, d, true);
-    var items = sumDeals().filter(function (x) { return x.date === d && x.late; }).sort(function (a, b) { return a.close < b.close ? -1 : 1; });
-    return { d: d, cur: cur, rep: rep, items: items, passed: true };
+    var items = sumDeals().filter(function (x) { return x.date === d && x.late; }).sort(function (a, b) { return a.seen < b.seen ? -1 : 1; });
+    return { d: d, cur: cur, rep: rep, items: items, passed: nowLocal() >= reportCut(d) };
   }
   function pageSum() {
     var sf = S.sf || (S.sf = { m: 'd', d: C.addDays(today(), -1) });
@@ -5875,7 +5872,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
       '<div class="sm-sh"><div class="d">' + (sf.m === 'd' ? 'สรุปประจำวัน' : sf.m === 'w' ? 'สรุปรายสัปดาห์' : 'สรุปรายเดือน') + '</div><h2>' + (sf.m === 'd' ? 'วัน' + DOW[dowOf(r[0])] + ' ' + thBE(r[0]) : sumTitle(sf.m, r).replace(/^สรุป(รายสัปดาห์|เดือน) /, '')) + '</h2>' +
         '<div class="sm-nav"><button data-sn="-1" aria-label="ก่อนหน้า">‹</button><input type="date" id="smD" value="' + sf.d + '"><button data-sn="1" aria-label="ถัดไป">›</button></div>' +
         '<div class="sm-closed"><b data-n>' + F.int(x.closed) + '</b><small>ปิดได้ (ตัว)</small>' +
-          '<div class="sm-split"><span>ปิดวันนั้น <b>' + F.int(xr.closed) + '</b></span><span class="pos">ตามมา <b>+' + F.int(xLate) + '</b></span></div></div></div>' +
+          '<div class="sm-split"><span>ทันรายงาน <b>' + F.int(xr.closed) + '</b></span><span class="pos">ลงชีตทีหลัง <b>+' + F.int(xLate) + '</b></span></div></div></div>' +
       '<div class="sm-body">' +
         '<div class="ln"><span>Conversion' + (x.convSrc === 'gads' ? ' <small class="muted">(จาก Google Ads · ยังไม่ต่อ GA4)</small>' : '') + '</span><b>' + F.int(Math.round(x.conv)) + '</b></div>' +
         '<div class="ln"><span>ค่า Ads</span><b>' + F.int(Math.round(x.ads)) + '</b></div>' +
@@ -5890,7 +5887,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
     var days = []; for (var i = 0; i < 7; i++) days.push(sumLate(C.addDays(sf.d, -i)));
     var lateN = 0, lateB = 0, lateD = 0, repN = 0, curN = 0, repB = 0, curB = 0, repD = 0, curD = 0;
     days.forEach(function (z) { if (!z.passed) return; lateN += z.cur.closed - z.rep.closed; lateB += z.cur.bought - z.rep.bought; lateD += z.cur.diff - z.rep.diff; repN += z.rep.closed; curN += z.cur.closed; repB += z.rep.bought; curB += z.cur.bought; repD += z.rep.diff; curD += z.cur.diff; });
-    var lags = []; sumDeals().forEach(function (x) { if (x.late && x.date >= C.addDays(sf.d, -60) && x.date <= sf.d) lags.push(Math.round((new Date(x.close + 'T00:00:00') - new Date(x.date + 'T00:00:00')) / 864e5)); });
+    var lags = []; sumDeals().forEach(function (x) { if (x.late && x.date >= C.addDays(sf.d, -60) && x.date <= sf.d) lags.push(Math.max(1, Math.round((new Date(x.seen.slice(0, 10) + 'T00:00:00') - new Date(x.date + 'T00:00:00')) / 864e5))); });
     var avgLag = lags.length ? lags.reduce(function (a, b) { return a + b; }, 0) / lags.length : null;
     var mxC = Math.max.apply(null, days.map(function (z) { return z.cur.closed; }).concat([1]));
     S.smOpen = S.smOpen || {};
@@ -5906,20 +5903,20 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
         '<td class="r num net"><b>' + F.int(Math.round(z.cur.net)) + '</b>' + plus(z.cur.diff - z.rep.diff) + '</td>' +
         '<td class="r num">' + bt(z.cur.closed ? z.cur.ads / z.cur.closed : null) + (add > 0 && z.rep.closed ? '<small>เดิม ' + bt(z.cur.ads / z.rep.closed) + '</small>' : '') + '</td>' +
         '<td class="sm-car">' + (z.items.length ? '<span class="sm-tog' + (open ? ' on' : '') + '">' + (open ? 'ซ่อน ▴' : 'ดู ' + z.items.length + ' ▾') + '</span>' : '') + '</td></tr>';
-      if (open) h += '<tr class="sm-det"><td colspan="9"><div class="items">' + z.items.map(function (x, k) { var gap = Math.round((new Date(x.close + 'T00:00:00') - new Date(x.date + 'T00:00:00')) / 864e5);
-        return '<div class="itm"><span class="no">+' + (k + 1) + '</span><div><b>' + esc(x.detail || x.cat || '–') + '</b><small>' + esc(x.cat || '') + ' · ปิดได้ ' + thBE(x.close, true) + ' (หลังประเมิน ' + gap + ' วัน)' + (x.p ? '' : ' · ยังไม่เจอในแท็บ Orders') + '</small></div>' +
-          '<div class="r"><small>รับซื้อ</small> ' + (x.p ? F.int(x.bought) : '–') + '</div><div class="r"><small>ส่วนต่าง</small> ' + (x.sell ? '<b class="pos">' + F.int(x.diff) + '</b>' : '–') + '</div><div class="r"><small>ขาย</small> ' + (x.sell ? F.int(x.sell) : '–') + '</div></div>'; }).join('') + '</div></td></tr>';
+      if (open) h += '<tr class="sm-det"><td colspan="9"><div class="items">' + z.items.map(function (x, k) {
+        return '<div class="itm"><span class="no">+' + (k + 1) + '</span><div><b>' + esc(x.detail || x.cat || '–') + '</b><small>' + esc(x.cat || '') + ' · ลงชีต ' + thBE(x.seen.slice(0, 10), true) + ' ' + x.seen.slice(11, 16) + ' น.' + (x.estDate ? ' · ประเมิน ' + thBE(x.estDate, true) : '') + '</small></div>' +
+          '<div class="r"><small>รับซื้อ</small> ' + F.int(x.bought) + '</div><div class="r"><small>ส่วนต่าง</small> ' + (x.sell ? '<b class="pos">' + F.int(x.diff) + '</b>' : '–') + '</div><div class="r"><small>ขาย</small> ' + (x.sell ? F.int(x.sell) : '–') + '</div></div>'; }).join('') + '</div></td></tr>';
       return h;
     }).join('');
     var T7 = sumAgg(C.addDays(sf.d, -6), sf.d), T7r = sumAgg(C.addDays(sf.d, -6), sf.d, true), t7add = T7.closed - T7r.closed;
     var totRow = '<tfoot><tr class="sm-tot"><td class="dt"><b>รวม 7 วัน</b></td><td><div class="cnt"><span class="muted">' + T7r.closed + ' →</span><b>' + T7.closed + '</b>' + (t7add > 0 ? '<em>+' + t7add + '</em>' : '') + '</div></td>' +
       '<td class="r num"><b>' + F.int(T7.bought) + '</b></td><td class="r num"><b>' + F.int(T7.diff) + '</b></td><td class="r num"><b>' + F.int(Math.round(T7.conv)) + '</b></td><td class="r num"><b>' + F.int(Math.round(T7.ads)) + '</b></td>' +
       '<td class="r num net"><b>' + F.int(Math.round(T7.net)) + '</b></td><td class="r num"><b>' + bt(T7.closed ? T7.ads / T7.closed : null) + '</b></td><td></td></tr></tfoot>';
-    var lateHtml = '<div class="card sm-late"><div class="card-head"><div><h2 class="card-title">ย้อนหลัง 7 วัน — ยอดที่ตามมาทีหลัง</h2><div class="card-sub">นับตามวันที่ประเมิน · "ตอนรายงาน" = ปิดได้ในวันที่ประเมิน · "ตอนนี้" = รวมเคสที่มาปิดได้วันหลัง · กดแถว = ดูเครื่องที่ตามมา</div></div></div>' +
+    var lateHtml = '<div class="card sm-late"><div class="card-head"><div><h2 class="card-title">ย้อนหลัง 7 วัน — ยอดที่ตามมาทีหลัง</h2><div class="card-sub">นับตามวันที่ปิดจริง (วันที่รับซื้อ) · "ตอนรายงาน" = ลงชีตก่อน ' + (Number(S.data.config.report_hour) || 10) + ':00 น. ของวันถัดไป · "ตอนนี้" = รวมเครื่องที่ลงชีตทีหลัง · กดแถว = ดูเครื่องที่ตามมา</div></div></div>' +
       '<div class="sm-sum"><div><span>ยอดตามมาทีหลัง (7 วัน)</span><b class="pos">+' + lateN + ' ตัว</b><small>จาก ' + repN + ' → ' + curN + ' ตัว</small></div>' +
         '<div><span>ยอดรับซื้อเพิ่ม</span><b class="pos">+' + F.int(lateB) + '</b><small>จาก ' + F.int(repB) + ' → ' + F.int(curB) + ' บาท</small></div>' +
         '<div><span>ส่วนต่างเพิ่ม</span><b class="pos">+' + F.int(lateD) + '</b><small>จาก ' + F.int(repD) + ' → ' + F.int(curD) + ' บาท</small></div>' +
-        '<div><span>ที่รายงานไป ต่ำกว่าจริง</span><b>' + (curN ? '~' + (lateN / curN * 100).toFixed(1) + '%' : '–') + '</b><small>รายงานไป ' + repN + ' ตัว · จริง ' + curN + ' ตัว<br>' + (avgLag == null ? 'ยังไม่มียอดตามมา' : 'เคสที่ตามมา ปิดช้ากว่าวันประเมินเฉลี่ย ' + avgLag.toFixed(1) + ' วัน') + '</small></div></div>' +
+        '<div><span>ที่รายงานไป ต่ำกว่าจริง</span><b>' + (curN ? '~' + (lateN / curN * 100).toFixed(1) + '%' : '–') + '</b><small>รายงานไป ' + repN + ' ตัว · จริง ' + curN + ' ตัว<br>' + (avgLag == null ? 'ยังไม่มียอดตามมา' : 'เครื่องที่ตามมา ลงชีตช้าเฉลี่ย ' + avgLag.toFixed(1) + ' วัน') + '</small></div></div>' +
       '<div class="table-wrap"><table class="t sm-t"><thead><tr><th>วันที่</th><th>ปิดได้<br><small>ตอนรายงาน → ตอนนี้</small></th><th class="r">ยอดรับซื้อ<br><small>ตอนนี้</small></th><th class="r">ส่วนต่าง<br><small>ตอนนี้</small></th><th class="r">Conversion</th><th class="r">ค่า Ads</th><th class="r">หลังหักค่า Ads<br><small>ตอนนี้</small></th><th class="r">ต้นทุน Ads<br><small>ต่อตัว</small></th><th></th></tr></thead><tbody>' + rows + '</tbody>' + totRow + '</table></div>' +
       '<div class="es-lg es-lg2"><span><i class="a"></i>ยอดตอนรายงาน</span><span><i class="late"></i>ตามมาทีหลัง</span></div></div>';
     // ---- กราฟ ----
