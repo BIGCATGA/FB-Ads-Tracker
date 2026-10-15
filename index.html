@@ -4,7 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>FB Ads Tracker</title>
-  <!-- v58 · ไฟล์เดียว: CSS/JS ฝังในนี้ทั้งหมด ยกเว้น assets/js/config.js -->
   <meta name="description" content="บันทึกแชทจาก Facebook Ads และ Dashboard ต้นทุน/funnel">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%236a4ef0'/%3E%3Cpath d='M9 22V10h9a4 4 0 010 8H9' fill='none' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1610,7 +1609,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 </head>
 <body>
   <div id="root"><div class="loading">กำลังโหลด…</div></div>
-  <script src="assets/js/config.js?v=58"></script>
+  <script src="assets/js/config.js?v=59"></script>
   <script>
 /**
  * ข้อมูลจำลองสำหรับ "โหมดตัวอย่าง" (ใช้ตอนยังไม่ได้ใส่ API_URL)
@@ -1762,14 +1761,15 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
         var out = [], t = new Date(), P = [['iPhone', 4, 4200], ['iPad', 2.5, 3300], ['MacBook', 1.6, 4300], ['Notebook Gaming', 1.4, 4700], ['Notebook Office', 1, 3800], ['Comset Gaming', 0.5, 3600], ['Apple Watch', 1.5, 2000]];
         for (var i = 120; i >= 1; i--) { var d = new Date(t); d.setDate(d.getDate() - i); var ds = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
           P.forEach(function (p) { var n = Math.floor(p[1] * (0.4 + r() * 1.2)); for (var k = 0; k < n; k++) { var fb = r() < 0.4, ln = !fb && r() < 0.85, b = 10000 + Math.round(r() * 10000); var late = i <= 7 && r() < 0.12, sd = new Date(d); sd.setDate(sd.getDate() + (late ? 1 + Math.floor(r() * 3) : 0)); var seen = sd.getFullYear() + '-' + ('0' + (sd.getMonth() + 1)).slice(-2) + '-' + ('0' + sd.getDate()).slice(-2) + (late ? ' 1' + Math.floor(r() * 8) + ':2' + Math.floor(r() * 9) : ' 18:00');
-              out.push([ds, p[0], fb ? 1 : 0, ln ? 1 : 0, b, 0, b + Math.round(p[2] * (0.7 + r() * 0.6)), '', p[0] + ' ' + ['128GB', '256GB', 'M2 8/256', 'Pro 11"'][Math.floor(r() * 4)], seen]); } }); }
+              var pid = 'DP' + out.length, ed = new Date(d); if (r() < 0.22) ed.setDate(ed.getDate() - 1 - Math.floor(r() * 3)); (window.__demoEst = window.__demoEst || []).push([ed.getFullYear() + '-' + ('0' + (ed.getMonth() + 1)).slice(-2) + '-' + ('0' + ed.getDate()).slice(-2), 12, p[0], fb ? 1 : 0, fb ? 0 : 1, 1, p[0], ds, pid, '']);
+              out.push([ds, p[0], fb ? 1 : 0, ln ? 1 : 0, b, 0, b + Math.round(p[2] * (0.7 + r() * 0.6)), '', p[0] + ' ' + ['128GB', '256GB', 'M2 8/256', 'Pro 11"'][Math.floor(r() * 4)], seen, pid]); } }); }
         return out;
       })(),
       estimates: (function () {
         var out = [], t = new Date(), P = [['iPhone', 9], ['iPad', 5], ['MacBook', 3], ['Notebook Gaming', 3], ['Notebook Office', 2], ['Comset Gaming', 2], ['AirPods', 4], ['Apple Watch', 2], ['Game Console', 2]];
         for (var i = 120; i >= 0; i--) { var d = new Date(t); d.setDate(d.getDate() - i); var ds = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2), wk = d.getDay() === 0 || d.getDay() === 6;
-          P.forEach(function (p) { var n = Math.floor(p[1] * (0.5 + r()) * (wk ? 0.8 : 1)); for (var k = 0; k < n; k++) { var h = Math.floor(8 + r() * 15) % 24, fb = r() < 0.35; var NB = ['ASUS TUF GAMING F15 FX506HE-HN011W', 'LENOVO IDEAPAD SLIM 3 15IRH8 83EM009STA', 'ACER NITRO V15 ANV15-41-R488', 'ASUS VIVOBOOK 15 X1502VA-NJ545WA', 'HP 15S-FQ2725TU'], isNb = /^Notebook/.test(p[0]) && r() < 0.6, dt = isNb ? NB[Math.floor(r() * NB.length)] : ''; var cl = r() < 0.12, lt = cl && r() < 0.25, cd = new Date(d); cd.setDate(cd.getDate() + (lt ? 1 + Math.floor(r() * 3) : 0)); out.push([ds, h, isNb ? (r() < 0.8 ? 'อื่นๆ' : 'Smart Phone') : p[0], fb ? 1 : 0, fb ? 0 : 1, cl ? 1 : 0, dt || (p[0] + ' 128GB'), cl ? cd.getFullYear() + '-' + ('0' + (cd.getMonth() + 1)).slice(-2) + '-' + ('0' + cd.getDate()).slice(-2) : '', '', '']); } }); }
-        return out;
+          P.forEach(function (p) { var n = Math.floor(p[1] * (0.5 + r()) * (wk ? 0.8 : 1)); for (var k = 0; k < n; k++) { var h = Math.floor(8 + r() * 15) % 24, fb = r() < 0.35; var NB = ['ASUS TUF GAMING F15 FX506HE-HN011W', 'LENOVO IDEAPAD SLIM 3 15IRH8 83EM009STA', 'ACER NITRO V15 ANV15-41-R488', 'ASUS VIVOBOOK 15 X1502VA-NJ545WA', 'HP 15S-FQ2725TU'], isNb = /^Notebook/.test(p[0]) && r() < 0.6, dt = isNb ? NB[Math.floor(r() * NB.length)] : ''; var cl = false, lt = cl && r() < 0.25, cd = new Date(d); cd.setDate(cd.getDate() + (lt ? 1 + Math.floor(r() * 3) : 0)); out.push([ds, h, isNb ? (r() < 0.8 ? 'อื่นๆ' : 'Smart Phone') : p[0], fb ? 1 : 0, fb ? 0 : 1, cl ? 1 : 0, dt || (p[0] + ' 128GB'), cl ? cd.getFullYear() + '-' + ('0' + (cd.getMonth() + 1)).slice(-2) + '-' + ('0' + cd.getDate()).slice(-2) : '', '', '']); } }); }
+        return out.concat(window.__demoEst || []);
       })(),
       fbhourly: (function () {
         var out = [], W = [0.2, 0.1, 0.1, 0.1, 0.1, 0.2, 0.4, 0.7, 0.9, 1, 1, 1.1, 1.1, 1, 1, 1, 1.1, 1.2, 1.3, 1.5, 1.6, 1.5, 1.2, 0.6], ws = W.reduce(function (a, b) { return a + b; }, 0);
@@ -5828,28 +5828,29 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
   function reportCut(d) { var h = Number(S.data.config.report_hour) || 10; return C.addDays(d, 1) + ' ' + ('0' + h).slice(-2) + ':00'; }
   function nowLocal() { var n = new Date(); return C.iso(n) + ' ' + ('0' + n.getHours()).slice(-2) + ':' + ('0' + n.getMinutes()).slice(-2); }
   function ga4Events() { return String(S.data.config.ga4_events || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); }
-  /** ยอดปิดได้ = แถวในแท็บ Orders นับตาม "วันที่รับซื้อ" (ตรงกับบอทสรุปยอดรับซื้อประจำวัน)
-   *  "ตอนรายงาน" = แถวที่ลงชีตก่อน report_hour (10:00) ของวันถัดไป · ลงชีตหลังจากนั้น = ตามมาทีหลัง
-   *  วันที่ประเมินดึงจากแท็บ Estimations (จับคู่ ProductID / เลขใบประเมิน) ไว้แสดงในรายละเอียด */
+  /** ยอดปิดได้ = แถวในแท็บ Orders นับตาม "วันที่รับซื้อ" (วันที่ปิดจริง)
+   *  late = ปิดจากเคสที่ประเมินไว้วันก่อน (จับคู่ Estimations ด้วย ProductID / เลขใบประเมิน) · ไม่เจอใบประเมิน = นับเป็นเคสวันนั้น */
   function sumDeals() {
     var key = (S.data.purchases || []).length + '|' + (S.data.estimates || []).length;
     if (S._deals && S._deals.key === key) return S._deals.list;
     var estByPid = {}, estById = {};
     (S.data.estimates || []).forEach(function (e) { if (!e.closed) return; if (e.pid) estByPid[e.pid] = e; if (e.estId) estById[e.estId] = e; });
     var list = (S.data.purchases || []).filter(function (p) { return p.date; }).map(function (p) {
-      var e = (p.pid && estByPid[p.pid]) || (p.estRef && estById[p.estRef]) || null, cut = reportCut(p.date);
+      var e = (p.pid && estByPid[p.pid]) || (p.estRef && estById[p.estRef]) || null;
       var bought = Number(p.bought) || 0, sell = Number(p.sell) > 0 ? Number(p.sell) : 0;
-      return { date: p.date, p: p, estDate: e ? e.date : '', seen: p.seen || '', late: !!(p.seen && p.seen > cut), cat: p.cat || p.category, detail: p.detail || (e && e.detail) || '',
+      return { date: p.date, p: p, estDate: e ? e.date : '', seen: p.seen || '', late: !!(e && e.date && e.date < p.date), cat: p.cat || p.category, detail: p.detail || (e && e.detail) || '',
         bought: bought, sell: sell, diff: sell ? sell - bought : 0 };
     });
     S._deals = { key: key, list: list };
     return list;
   }
-  /** ตัวเลขของช่วงวันที่ปิด [a,b] — onlyOnTime = นับเฉพาะแถวที่ลงชีตทันรายงาน ("ตอนรายงาน") */
-  function sumAgg(a, b, onlyOnTime) {
+  /** ตัวเลขของช่วงวันที่ปิด [a,b] — onlyOnTime = นับเฉพาะเคสที่ประเมินวันเดียวกับวันปิด */
+  /** byEst = นับตามวันที่ประเมิน (ไม่มีใบประเมิน → ใช้วันปิด) · onlyOnTime = เฉพาะที่ปิดวันเดียวกับวันประเมิน */
+  function sumAgg(a, b, onlyOnTime, byEst) {
     var o = { closed: 0, bought: 0, diff: 0, ads: 0, conv: 0, convSrc: '' };
     sumDeals().forEach(function (d) {
-      if (d.date < a || d.date > b || (onlyOnTime && d.late)) return;
+      var k = byEst ? (d.estDate || d.date) : d.date;
+      if (k < a || k > b || (onlyOnTime && d.late)) return;
       o.closed++; o.bought += d.bought; o.diff += d.diff;
     });
     (S.data.gads || []).forEach(function (g) { if (g.date >= a && g.date <= b) o.ads += g.cost; });
@@ -5860,9 +5861,9 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
     return o;
   }
   function sumLate(d) {
-    var cur = sumAgg(d, d), rep = sumAgg(d, d, true);
-    var items = sumDeals().filter(function (x) { return x.date === d && x.late; }).sort(function (a, b) { return a.seen < b.seen ? -1 : 1; });
-    return { d: d, cur: cur, rep: rep, items: items, passed: nowLocal() >= reportCut(d) };
+    var cur = sumAgg(d, d, false, true), rep = sumAgg(d, d, true, true);
+    var items = sumDeals().filter(function (x) { return x.estDate === d && x.late; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    return { d: d, cur: cur, rep: rep, items: items, passed: true };
   }
   function pageSum() {
     var sf = S.sf || (S.sf = { m: 'd', d: C.addDays(today(), -1) });
@@ -5872,7 +5873,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
       '<div class="sm-sh"><div class="d">' + (sf.m === 'd' ? 'สรุปประจำวัน' : sf.m === 'w' ? 'สรุปรายสัปดาห์' : 'สรุปรายเดือน') + '</div><h2>' + (sf.m === 'd' ? 'วัน' + DOW[dowOf(r[0])] + ' ' + thBE(r[0]) : sumTitle(sf.m, r).replace(/^สรุป(รายสัปดาห์|เดือน) /, '')) + '</h2>' +
         '<div class="sm-nav"><button data-sn="-1" aria-label="ก่อนหน้า">‹</button><input type="date" id="smD" value="' + sf.d + '"><button data-sn="1" aria-label="ถัดไป">›</button></div>' +
         '<div class="sm-closed"><b data-n>' + F.int(x.closed) + '</b><small>ปิดได้ (ตัว)</small>' +
-          '<div class="sm-split"><span>ทันรายงาน <b>' + F.int(xr.closed) + '</b></span><span class="pos">ลงชีตทีหลัง <b>+' + F.int(xLate) + '</b></span></div></div></div>' +
+          '<div class="sm-split"><span>เคสวันนั้น <b>' + F.int(xr.closed) + '</b></span><span class="pos">เคสวันก่อน <b>+' + F.int(xLate) + '</b></span></div></div></div>' +
       '<div class="sm-body">' +
         '<div class="ln"><span>Conversion' + (x.convSrc === 'gads' ? ' <small class="muted">(จาก Google Ads · ยังไม่ต่อ GA4)</small>' : '') + '</span><b>' + F.int(Math.round(x.conv)) + '</b></div>' +
         '<div class="ln"><span>ค่า Ads</span><b>' + F.int(Math.round(x.ads)) + '</b></div>' +
@@ -5887,7 +5888,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
     var days = []; for (var i = 0; i < 7; i++) days.push(sumLate(C.addDays(sf.d, -i)));
     var lateN = 0, lateB = 0, lateD = 0, repN = 0, curN = 0, repB = 0, curB = 0, repD = 0, curD = 0;
     days.forEach(function (z) { if (!z.passed) return; lateN += z.cur.closed - z.rep.closed; lateB += z.cur.bought - z.rep.bought; lateD += z.cur.diff - z.rep.diff; repN += z.rep.closed; curN += z.cur.closed; repB += z.rep.bought; curB += z.cur.bought; repD += z.rep.diff; curD += z.cur.diff; });
-    var lags = []; sumDeals().forEach(function (x) { if (x.late && x.date >= C.addDays(sf.d, -60) && x.date <= sf.d) lags.push(Math.max(1, Math.round((new Date(x.seen.slice(0, 10) + 'T00:00:00') - new Date(x.date + 'T00:00:00')) / 864e5))); });
+    var lags = []; sumDeals().forEach(function (x) { if (x.late && x.date >= C.addDays(sf.d, -60) && x.date <= sf.d) lags.push(Math.max(1, Math.round((new Date(x.date + 'T00:00:00') - new Date(x.estDate + 'T00:00:00')) / 864e5))); });
     var avgLag = lags.length ? lags.reduce(function (a, b) { return a + b; }, 0) / lags.length : null;
     var mxC = Math.max.apply(null, days.map(function (z) { return z.cur.closed; }).concat([1]));
     S.smOpen = S.smOpen || {};
@@ -5895,30 +5896,30 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
       var add = z.cur.closed - z.rep.closed, aw = z.rep.closed / mxC * 100, bw = add / mxC * 100, open = S.smOpen[z.d] && z.items.length;
       var plus = function (v) { return v > 0 ? '<span class="plus">+' + F.int(v) + '</span>' : ''; };
       var h = '<tr class="sm-row' + (z.items.length ? ' click' : '') + (open ? ' open' : '') + '" data-sd="' + z.d + '"><td class="dt"><b>' + thBE(z.d, true) + '</b><small>' + DOW_S[dowOf(z.d)] + '.</small></td>' +
-        '<td><div class="cnt"><div class="bar">' + (aw > 0 ? '<i style="width:' + aw + '%' + (add > 0 ? ';border-radius:5px 0 0 5px' : '') + '"></i>' : '') + (add > 0 ? '<u style="left:calc(' + aw + '% + ' + (aw > 0 ? 2 : 0) + 'px);width:calc(' + bw + '% - ' + (aw > 0 ? 2 : 0) + 'px)' + (aw > 0 ? '' : ';border-radius:5px') + '"></u>' : '') + '</div>' + (z.passed ? '<span class="muted">' + z.rep.closed + ' →</span>' : '') + '<b>' + z.cur.closed + '</b>' + (add > 0 ? '<em>+' + add + '</em>' : '') + '</div></td>' +
+        '<td><div class="cnt"><div class="bar">' + (aw > 0 ? '<i style="width:' + aw + '%' + (add > 0 ? ';border-radius:5px 0 0 5px' : '') + '"></i>' : '') + (add > 0 ? '<u style="left:calc(' + aw + '% + ' + (aw > 0 ? 2 : 0) + 'px);width:calc(' + bw + '% - ' + (aw > 0 ? 2 : 0) + 'px)' + (aw > 0 ? '' : ';border-radius:5px') + '"></u>' : '') + '</div>' + (add > 0 ? '<span class="muted">' + z.rep.closed + '</span><em>+' + add + '</em><span class="muted">=</span>' : '') + '<b>' + z.cur.closed + '</b></div></td>' +
         '<td class="r num">' + F.int(z.cur.bought) + plus(z.cur.bought - z.rep.bought) + '</td>' +
         '<td class="r num">' + F.int(z.cur.diff) + plus(z.cur.diff - z.rep.diff) + '</td>' +
         '<td class="r num">' + F.int(Math.round(z.cur.conv)) + '</td>' +
         '<td class="r num">' + F.int(Math.round(z.cur.ads)) + '</td>' +
         '<td class="r num net"><b>' + F.int(Math.round(z.cur.net)) + '</b>' + plus(z.cur.diff - z.rep.diff) + '</td>' +
-        '<td class="r num">' + bt(z.cur.closed ? z.cur.ads / z.cur.closed : null) + (add > 0 && z.rep.closed ? '<small>เดิม ' + bt(z.cur.ads / z.rep.closed) + '</small>' : '') + '</td>' +
+        '<td class="r num">' + bt(z.cur.closed ? z.cur.ads / z.cur.closed : null) + '</td>' +
         '<td class="sm-car">' + (z.items.length ? '<span class="sm-tog' + (open ? ' on' : '') + '">' + (open ? 'ซ่อน ▴' : 'ดู ' + z.items.length + ' ▾') + '</span>' : '') + '</td></tr>';
       if (open) h += '<tr class="sm-det"><td colspan="9"><div class="items">' + z.items.map(function (x, k) {
-        return '<div class="itm"><span class="no">+' + (k + 1) + '</span><div><b>' + esc(x.detail || x.cat || '–') + '</b><small>' + esc(x.cat || '') + ' · ลงชีต ' + thBE(x.seen.slice(0, 10), true) + ' ' + x.seen.slice(11, 16) + ' น.' + (x.estDate ? ' · ประเมิน ' + thBE(x.estDate, true) : '') + '</small></div>' +
+        return '<div class="itm"><span class="no">+' + (k + 1) + '</span><div><b>' + esc(x.detail || x.cat || '–') + '</b><small>' + esc(x.cat || '') + ' · ปิด ' + thBE(x.date, true) + ' (หลังประเมิน ' + Math.round((new Date(x.date + 'T00:00:00') - new Date(x.estDate + 'T00:00:00')) / 864e5) + ' วัน)</small></div>' +
           '<div class="r"><small>รับซื้อ</small> ' + F.int(x.bought) + '</div><div class="r"><small>ส่วนต่าง</small> ' + (x.sell ? '<b class="pos">' + F.int(x.diff) + '</b>' : '–') + '</div><div class="r"><small>ขาย</small> ' + (x.sell ? F.int(x.sell) : '–') + '</div></div>'; }).join('') + '</div></td></tr>';
       return h;
     }).join('');
-    var T7 = sumAgg(C.addDays(sf.d, -6), sf.d), T7r = sumAgg(C.addDays(sf.d, -6), sf.d, true), t7add = T7.closed - T7r.closed;
-    var totRow = '<tfoot><tr class="sm-tot"><td class="dt"><b>รวม 7 วัน</b></td><td><div class="cnt"><span class="muted">' + T7r.closed + ' →</span><b>' + T7.closed + '</b>' + (t7add > 0 ? '<em>+' + t7add + '</em>' : '') + '</div></td>' +
+    var T7 = sumAgg(C.addDays(sf.d, -6), sf.d, false, true), T7r = sumAgg(C.addDays(sf.d, -6), sf.d, true, true), t7add = T7.closed - T7r.closed;
+    var totRow = '<tfoot><tr class="sm-tot"><td class="dt"><b>รวม 7 วัน</b></td><td><div class="cnt">' + (t7add > 0 ? '<span class="muted">' + T7r.closed + '</span><em>+' + t7add + '</em><span class="muted">=</span>' : '') + '<b>' + T7.closed + '</b></div></td>' +
       '<td class="r num"><b>' + F.int(T7.bought) + '</b></td><td class="r num"><b>' + F.int(T7.diff) + '</b></td><td class="r num"><b>' + F.int(Math.round(T7.conv)) + '</b></td><td class="r num"><b>' + F.int(Math.round(T7.ads)) + '</b></td>' +
       '<td class="r num net"><b>' + F.int(Math.round(T7.net)) + '</b></td><td class="r num"><b>' + bt(T7.closed ? T7.ads / T7.closed : null) + '</b></td><td></td></tr></tfoot>';
-    var lateHtml = '<div class="card sm-late"><div class="card-head"><div><h2 class="card-title">ย้อนหลัง 7 วัน — ยอดที่ตามมาทีหลัง</h2><div class="card-sub">นับตามวันที่ปิดจริง (วันที่รับซื้อ) · "ตอนรายงาน" = ลงชีตก่อน ' + (Number(S.data.config.report_hour) || 10) + ':00 น. ของวันถัดไป · "ตอนนี้" = รวมเครื่องที่ลงชีตทีหลัง · กดแถว = ดูเครื่องที่ตามมา</div></div></div>' +
-      '<div class="sm-sum"><div><span>ยอดตามมาทีหลัง (7 วัน)</span><b class="pos">+' + lateN + ' ตัว</b><small>จาก ' + repN + ' → ' + curN + ' ตัว</small></div>' +
-        '<div><span>ยอดรับซื้อเพิ่ม</span><b class="pos">+' + F.int(lateB) + '</b><small>จาก ' + F.int(repB) + ' → ' + F.int(curB) + ' บาท</small></div>' +
-        '<div><span>ส่วนต่างเพิ่ม</span><b class="pos">+' + F.int(lateD) + '</b><small>จาก ' + F.int(repD) + ' → ' + F.int(curD) + ' บาท</small></div>' +
-        '<div><span>ที่รายงานไป ต่ำกว่าจริง</span><b>' + (curN ? '~' + (lateN / curN * 100).toFixed(1) + '%' : '–') + '</b><small>รายงานไป ' + repN + ' ตัว · จริง ' + curN + ' ตัว<br>' + (avgLag == null ? 'ยังไม่มียอดตามมา' : 'เครื่องที่ตามมา ลงชีตช้าเฉลี่ย ' + avgLag.toFixed(1) + ' วัน') + '</small></div></div>' +
-      '<div class="table-wrap"><table class="t sm-t"><thead><tr><th>วันที่</th><th>ปิดได้<br><small>ตอนรายงาน → ตอนนี้</small></th><th class="r">ยอดรับซื้อ<br><small>ตอนนี้</small></th><th class="r">ส่วนต่าง<br><small>ตอนนี้</small></th><th class="r">Conversion</th><th class="r">ค่า Ads</th><th class="r">หลังหักค่า Ads<br><small>ตอนนี้</small></th><th class="r">ต้นทุน Ads<br><small>ต่อตัว</small></th><th></th></tr></thead><tbody>' + rows + '</tbody>' + totRow + '</table></div>' +
-      '<div class="es-lg es-lg2"><span><i class="a"></i>ยอดตอนรายงาน</span><span><i class="late"></i>ตามมาทีหลัง</span></div></div>';
+    var lateHtml = '<div class="card sm-late"><div class="card-head"><div><h2 class="card-title">ย้อนหลัง 7 วัน — เคสแต่ละวันทยอยปิดได้เท่าไหร่</h2><div class="card-sub">นับตามวันที่ประเมิน · เหลือง = ปิดได้ในวันประเมิน · เขียว = ปิดตามมาวันหลัง · Conversion / ค่า Ads = ของวันนั้น · กดแถว = ดูเครื่องที่ปิดตามมา</div></div></div>' +
+      '<div class="sm-sum"><div><span>ปิดตามมาวันหลัง (เคส 7 วัน)</span><b class="pos">+' + lateN + ' ตัว</b><small>ปิดในวันประเมิน ' + repN + ' → รวม ' + curN + ' ตัว</small></div>' +
+        '<div><span>ยอดรับซื้อที่ตามมา</span><b class="pos">+' + F.int(lateB) + '</b><small>จากทั้งหมด ' + F.int(curB) + ' บาท</small></div>' +
+        '<div><span>ส่วนต่างที่ตามมา</span><b class="pos">+' + F.int(lateD) + '</b><small>จากทั้งหมด ' + F.int(curD) + ' บาท</small></div>' +
+        '<div><span>สัดส่วนที่ปิดตามมาทีหลัง</span><b>' + (curN ? (lateN / curN * 100).toFixed(1) + '%' : '–') + '</b><small>' + (avgLag == null ? 'ยังไม่มีเคสที่ปิดตามมา (60 วันล่าสุด)' : 'เคสที่ปิดตามมา ใช้เวลาเฉลี่ย ' + avgLag.toFixed(1) + ' วันหลังประเมิน') + '</small></div></div>' +
+      '<div class="table-wrap"><table class="t sm-t"><thead><tr><th>วันที่ประเมิน</th><th>ปิดได้<br><small>วันนั้น + ตามมา</small></th><th class="r">ยอดรับซื้อ</th><th class="r">ส่วนต่าง</th><th class="r">Conversion</th><th class="r">ค่า Ads</th><th class="r">หลังหักค่า Ads</th><th class="r">ต้นทุน Ads<br><small>ต่อตัว</small></th><th></th></tr></thead><tbody>' + rows + '</tbody>' + totRow + '</table></div>' +
+      '<div class="es-lg es-lg2"><span><i class="a"></i>ปิดได้ในวันประเมิน</span><span><i class="late"></i>ปิดตามมาวันหลัง</span></div></div>';
     // ---- กราฟ ----
     var pts = [];
     if (sf.m === 'd') for (var k = 13; k >= 0; k--) { var dd = C.addDays(sf.d, -k); pts.push({ l: String(Number(dd.slice(8))), t: 'วัน' + DOW[dowOf(dd)] + ' ' + thBE(dd), a: dd, b: dd }); }
@@ -5944,8 +5945,6 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
       '- Conversion : ' + f(x.conv), '- ค่า Ads : ' + f(x.ads) + ' บาท', '- ยอดรับซื้อ : ' + f(x.bought) + ' บาท', '- ยอดขาย : ' + f(x.sell) + ' บาท', '- ยอดส่วนต่าง : ' + f(x.diff) + ' บาท', '- ส่วนต่างหลังหักค่า Ads : ' + f(x.net) + ' บาท', '',
       'ตัวชี้วัด', '- อัตราปิดการขาย : ' + pct(x.closed, x.conv), '- ต้นทุน Ads ต่อ 1 conversion : ' + (x.conv ? f(x.ads / x.conv) : '–') + ' บาท', '- ต้นทุน Ads ต่อการปิด 1 ตัว : ' + (x.closed ? f(x.ads / x.closed) : '–') + ' บาท',
       '- % ส่วนต่างต่อยอดรับซื้อ : ' + pct(x.diff, x.bought), '- ค่า Ads คิดเป็น ' + pct(x.ads, x.diff) + ' ของส่วนต่าง'];
-    if (mode === 'd') { var up = days.filter(function (z) { return z.d !== r[0] && z.cur.closed > z.rep.closed; });
-      if (up.length) { L.push('', 'อัปเดตยอดย้อนหลัง'); up.forEach(function (z) { L.push('- ' + thBE(z.d, true) + ' +' + (z.cur.closed - z.rep.closed) + ' ตัว (รวม ' + z.cur.closed + ' ตัว · ส่วนต่าง +' + f(z.cur.diff - z.rep.diff) + ' บาท)'); }); } }
     return L.join('\n');
   }
   /** แท่ง = หลังหักค่า Ads · เส้น = ปิดได้ · ชี้ = ป้ายลอย (ไม่วาดใหม่) */
