@@ -1614,7 +1614,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 </head>
 <body>
   <div id="root"><div class="loading">กำลังโหลด…</div></div>
-  <script src="assets/js/config.js?v=61"></script>
+  <script src="assets/js/config.js?v=62"></script>
   <script>
 /**
  * ข้อมูลจำลองสำหรับ "โหมดตัวอย่าง" (ใช้ตอนยังไม่ได้ใส่ API_URL)
@@ -5901,6 +5901,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
     var rp = function (a, b) { return b ? (a / b * 100).toFixed(1) + '%' : '–'; };
     var pbar = function (a, l, n) { var aw = n ? Math.min(100, a / n * 100) : 0, lw = n ? Math.min(100 - aw, l / n * 100) : 0; return '<div class="sm-pb"><i style="width:' + aw + '%"></i><u style="width:' + lw + '%"></u></div>'; };
     var rateCell = function (a, t, n) { return '<td class="sm-rt">' + (n ? '<span class="muted">' + rp(a, n) + '</span>' + (t > a ? ' → <b class="pos">' + rp(t, n) + '</b>' : '') : '<span class="muted">–</span>') + '</td>'; };
+    var cpc = function (ads, a, t) { if (!t) return '<td class="r num sm-rt"><span class="muted">–</span></td>'; return '<td class="r num sm-rt">' + (t > a ? '<span class="muted">' + (a ? bt(ads / a) : '–') + '</span> → <b class="pos">' + bt(ads / t) + '</b>' : bt(ads / t)) + '</td>'; };
     S.smOpen = S.smOpen || {};
     var rows = days.map(function (z) {
       var add = z.cur.closed - z.rep.closed, open = S.smOpen[z.d] && z.items.length;
@@ -5913,7 +5914,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
         '<td class="r num">' + F.int(Math.round(z.cur.conv)) + '</td>' +
         '<td class="r num">' + F.int(Math.round(z.cur.ads)) + '</td>' +
         '<td class="r num net"><b>' + F.int(Math.round(z.cur.net)) + '</b>' + plus(z.cur.diff - z.rep.diff) + '</td>' +
-        '<td class="r num">' + bt(z.cur.closed ? z.cur.ads / z.cur.closed : null) + '</td>' +
+        cpc(z.cur.ads, z.rep.closed, z.cur.closed) +
         '<td class="sm-car">' + (z.items.length ? '<span class="sm-tog' + (open ? ' on' : '') + '">' + (open ? 'ซ่อน ▴' : 'ดู ' + z.items.length + ' ▾') + '</span>' : '') + '</td></tr>';
       if (open) h += '<tr class="sm-det"><td colspan="10"><div class="items">' + z.items.map(function (x, k) {
         return '<div class="itm"><span class="no">+' + (k + 1) + '</span><div><b>' + esc(x.detail || x.cat || '–') + '</b><small>' + esc(x.cat || '') + ' · ปิด ' + thBE(x.date, true) + (dayGap(x.estDate, x.date) != null ? ' (หลังประเมิน ' + dayGap(x.estDate, x.date) + ' วัน)' : '') + '</small></div>' +
@@ -5925,14 +5926,14 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
     var totRow = '<tfoot><tr class="sm-tot"><td class="dt"><b>รวม 7 วัน</b></td>' +
       '<td><div class="cnt">' + pbar(T7r.closed, t7add, estTot) + '<span class="muted small">' + T7r.closed + (t7add > 0 ? ' <em>+' + t7add + '</em>' : '') + ' / ' + estTot + '</span></div></td>' + rateCell(T7r.closed, T7.closed, estTot) +
       '<td class="r num"><b>' + F.int(T7.bought) + '</b>' + tplus(T7.bought - T7r.bought) + '</td><td class="r num"><b>' + F.int(T7.diff) + '</b>' + tplus(T7.diff - T7r.diff) + '</td><td class="r num"><b>' + F.int(Math.round(T7.conv)) + '</b></td><td class="r num"><b>' + F.int(Math.round(T7.ads)) + '</b></td>' +
-      '<td class="r num net"><b>' + F.int(Math.round(T7.net)) + '</b>' + tplus(T7.diff - T7r.diff) + '</td><td class="r num"><b>' + bt(T7.closed ? T7.ads / T7.closed : null) + '</b></td><td></td></tr></tfoot>';
+      '<td class="r num net"><b>' + F.int(Math.round(T7.net)) + '</b>' + tplus(T7.diff - T7r.diff) + '</td>' + cpc(T7.ads, T7r.closed, T7.closed) + '<td></td></tr></tfoot>';
     var ptUp = estTot ? (curN - repN) / estTot * 100 : null;
     var lateHtml = '<div class="card sm-late"><div class="card-head"><div><h2 class="card-title">ย้อนหลัง 7 วัน — อัตราปิดของเคสแต่ละวัน</h2><div class="card-sub">นับตามวันที่ประเมิน (การ์ดซ้ายนับตามวันที่ปิด ยอดจึงไม่เท่ากัน) · แท่ง = เคสประเมินทั้งหมดของวันนั้น 100% · เหลือง = ปิดในวันประเมิน · เขียว = ปิดตามมา · เทา = ยังไม่ปิด · กดแถว = ดูเครื่องที่ปิดตามมา</div></div></div>' +
       '<div class="sm-sum"><div><span>อัตราปิด วันประเมิน (7 วัน)</span><b>' + rp(repN, estTot) + '</b><small>ปิด ' + repN + ' จาก ' + F.int(estTot) + ' เคส</small></div>' +
         '<div><span>อัตราปิด ตอนนี้</span><b class="pos">' + rp(curN, estTot) + '</b><small>ปิด ' + curN + ' จาก ' + F.int(estTot) + ' เคส</small></div>' +
         '<div><span>เพิ่มขึ้นจากเคสที่ตามมา</span><b class="pos">' + (ptUp == null ? '–' : '+' + ptUp.toFixed(1) + ' จุด') + '</b><small>+' + lateN + ' ตัว · รับซื้อ +' + F.int(lateB) + ' · ส่วนต่าง +' + F.int(lateD) + '</small></div>' +
         '<div><span>เคสที่ปิดตามมา ใช้เวลาเฉลี่ย</span><b>' + (avgLag == null ? '–' : avgLag.toFixed(1) + ' วัน') + '</b><small>' + (avgLag == null ? 'ยังไม่มีเคสที่ปิดตามมา (60 วันล่าสุด)' : 'หลังประเมิน (60 วันล่าสุด)') + '</small></div></div>' +
-      '<div class="table-wrap"><table class="t sm-t"><thead><tr><th>วันที่ประเมิน</th><th>ปิดได้ / เคสประเมิน<br><small>ปิดวันนั้น +ตามมา / ทั้งหมด</small></th><th>อัตราปิด<br><small>วันนั้น → ตอนนี้</small></th><th class="r">ยอดรับซื้อ</th><th class="r">ส่วนต่าง</th><th class="r">Conversion</th><th class="r">ค่า Ads</th><th class="r">หลังหักค่า Ads</th><th class="r">ต้นทุน Ads<br><small>ต่อตัว</small></th><th></th></tr></thead><tbody>' + rows + '</tbody>' + totRow + '</table></div>' +
+      '<div class="table-wrap"><table class="t sm-t"><thead><tr><th>วันที่ประเมิน</th><th>ปิดได้ / เคสประเมิน<br><small>ปิดวันนั้น +ตามมา / ทั้งหมด</small></th><th>อัตราปิด<br><small>วันนั้น → ตอนนี้</small></th><th class="r">ยอดรับซื้อ</th><th class="r">ส่วนต่าง</th><th class="r">Conversion</th><th class="r">ค่า Ads</th><th class="r">หลังหักค่า Ads</th><th class="r">ต้นทุน Ads ต่อตัว<br><small>วันนั้น → ตอนนี้</small></th><th></th></tr></thead><tbody>' + rows + '</tbody>' + totRow + '</table></div>' +
       '<div class="es-lg es-lg2"><span><i class="a"></i>ปิดในวันประเมิน</span><span><i class="late"></i>ปิดตามมา</span><span><i style="background:var(--bg-soft)"></i>ยังไม่ปิด</span></div></div>';
     // ---- กราฟ ----
     var pts = [];
