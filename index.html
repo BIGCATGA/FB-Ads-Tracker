@@ -1609,7 +1609,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 </head>
 <body>
   <div id="root"><div class="loading">กำลังโหลด…</div></div>
-  <script src="assets/js/config.js?v=59"></script>
+  <script src="assets/js/config.js?v=60"></script>
   <script>
 /**
  * ข้อมูลจำลองสำหรับ "โหมดตัวอย่าง" (ใช้ตอนยังไม่ได้ใส่ API_URL)
@@ -5860,6 +5860,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
     o.sell = o.bought + o.diff; o.net = o.diff - o.ads;
     return o;
   }
+  function dayGap(a, b) { var p = function (v) { var m = String(v || '').match(/(\d{4})-(\d{1,2})-(\d{1,2})/); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) : NaN; }, n = Math.round((p(b) - p(a)) / 864e5); return isFinite(n) ? n : null; }
   function sumLate(d) {
     var cur = sumAgg(d, d, false, true), rep = sumAgg(d, d, true, true);
     var items = sumDeals().filter(function (x) { return x.estDate === d && x.late; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
@@ -5888,7 +5889,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
     var days = []; for (var i = 0; i < 7; i++) days.push(sumLate(C.addDays(sf.d, -i)));
     var lateN = 0, lateB = 0, lateD = 0, repN = 0, curN = 0, repB = 0, curB = 0, repD = 0, curD = 0;
     days.forEach(function (z) { if (!z.passed) return; lateN += z.cur.closed - z.rep.closed; lateB += z.cur.bought - z.rep.bought; lateD += z.cur.diff - z.rep.diff; repN += z.rep.closed; curN += z.cur.closed; repB += z.rep.bought; curB += z.cur.bought; repD += z.rep.diff; curD += z.cur.diff; });
-    var lags = []; sumDeals().forEach(function (x) { if (x.late && x.date >= C.addDays(sf.d, -60) && x.date <= sf.d) lags.push(Math.max(1, Math.round((new Date(x.date + 'T00:00:00') - new Date(x.estDate + 'T00:00:00')) / 864e5))); });
+    var lags = []; sumDeals().forEach(function (x) { if (x.late && x.date >= C.addDays(sf.d, -60) && x.date <= sf.d) { var lg = dayGap(x.estDate, x.date); if (lg != null) lags.push(Math.max(1, lg)); } });
     var avgLag = lags.length ? lags.reduce(function (a, b) { return a + b; }, 0) / lags.length : null;
     var mxC = Math.max.apply(null, days.map(function (z) { return z.cur.closed; }).concat([1]));
     S.smOpen = S.smOpen || {};
@@ -5905,7 +5906,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
         '<td class="r num">' + bt(z.cur.closed ? z.cur.ads / z.cur.closed : null) + '</td>' +
         '<td class="sm-car">' + (z.items.length ? '<span class="sm-tog' + (open ? ' on' : '') + '">' + (open ? 'ซ่อน ▴' : 'ดู ' + z.items.length + ' ▾') + '</span>' : '') + '</td></tr>';
       if (open) h += '<tr class="sm-det"><td colspan="9"><div class="items">' + z.items.map(function (x, k) {
-        return '<div class="itm"><span class="no">+' + (k + 1) + '</span><div><b>' + esc(x.detail || x.cat || '–') + '</b><small>' + esc(x.cat || '') + ' · ปิด ' + thBE(x.date, true) + ' (หลังประเมิน ' + Math.round((new Date(x.date + 'T00:00:00') - new Date(x.estDate + 'T00:00:00')) / 864e5) + ' วัน)</small></div>' +
+        return '<div class="itm"><span class="no">+' + (k + 1) + '</span><div><b>' + esc(x.detail || x.cat || '–') + '</b><small>' + esc(x.cat || '') + ' · ปิด ' + thBE(x.date, true) + (dayGap(x.estDate, x.date) != null ? ' (หลังประเมิน ' + dayGap(x.estDate, x.date) + ' วัน)' : '') + '</small></div>' +
           '<div class="r"><small>รับซื้อ</small> ' + F.int(x.bought) + '</div><div class="r"><small>ส่วนต่าง</small> ' + (x.sell ? '<b class="pos">' + F.int(x.diff) + '</b>' : '–') + '</div><div class="r"><small>ขาย</small> ' + (x.sell ? F.int(x.sell) : '–') + '</div></div>'; }).join('') + '</div></td></tr>';
       return h;
     }).join('');
@@ -5913,7 +5914,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
     var totRow = '<tfoot><tr class="sm-tot"><td class="dt"><b>รวม 7 วัน</b></td><td><div class="cnt">' + (t7add > 0 ? '<span class="muted">' + T7r.closed + '</span><em>+' + t7add + '</em><span class="muted">=</span>' : '') + '<b>' + T7.closed + '</b></div></td>' +
       '<td class="r num"><b>' + F.int(T7.bought) + '</b></td><td class="r num"><b>' + F.int(T7.diff) + '</b></td><td class="r num"><b>' + F.int(Math.round(T7.conv)) + '</b></td><td class="r num"><b>' + F.int(Math.round(T7.ads)) + '</b></td>' +
       '<td class="r num net"><b>' + F.int(Math.round(T7.net)) + '</b></td><td class="r num"><b>' + bt(T7.closed ? T7.ads / T7.closed : null) + '</b></td><td></td></tr></tfoot>';
-    var lateHtml = '<div class="card sm-late"><div class="card-head"><div><h2 class="card-title">ย้อนหลัง 7 วัน — เคสแต่ละวันทยอยปิดได้เท่าไหร่</h2><div class="card-sub">นับตามวันที่ประเมิน · เหลือง = ปิดได้ในวันประเมิน · เขียว = ปิดตามมาวันหลัง · Conversion / ค่า Ads = ของวันนั้น · กดแถว = ดูเครื่องที่ปิดตามมา</div></div></div>' +
+    var lateHtml = '<div class="card sm-late"><div class="card-head"><div><h2 class="card-title">ย้อนหลัง 7 วัน — เคสแต่ละวันทยอยปิดได้เท่าไหร่</h2><div class="card-sub">นับตามวันที่ประเมิน (การ์ดซ้ายนับตามวันที่ปิด ยอดจึงไม่เท่ากัน) · เหลือง = ปิดได้ในวันประเมิน · เขียว = ปิดตามมาวันหลัง · Conversion / ค่า Ads = ของวันนั้น · กดแถว = ดูเครื่องที่ปิดตามมา</div></div></div>' +
       '<div class="sm-sum"><div><span>ปิดตามมาวันหลัง (เคส 7 วัน)</span><b class="pos">+' + lateN + ' ตัว</b><small>ปิดในวันประเมิน ' + repN + ' → รวม ' + curN + ' ตัว</small></div>' +
         '<div><span>ยอดรับซื้อที่ตามมา</span><b class="pos">+' + F.int(lateB) + '</b><small>จากทั้งหมด ' + F.int(curB) + ' บาท</small></div>' +
         '<div><span>ส่วนต่างที่ตามมา</span><b class="pos">+' + F.int(lateD) + '</b><small>จากทั้งหมด ' + F.int(curD) + ' บาท</small></div>' +
