@@ -1626,14 +1626,17 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 .tk-k > span { font-size: 13.5px; color: var(--text-2); display: block; }
 .tk-k > b { font-size: 30px; display: block; margin: 4px 0 8px; font-variant-numeric: tabular-nums; line-height: 1.15; }
 .tk-k small { font-size: 12px; color: var(--text-3); display: block; line-height: 1.6; }
-.tk-k.hero { background: linear-gradient(160deg, #ff6b5b 0%, var(--tk-red) 55%, var(--tk-red-2) 100%); color: #fff; box-shadow: 0 10px 26px rgba(240, 68, 56, .28); }
+.tk-k.hero { background: linear-gradient(160deg, #32d583 0%, var(--tk-grn) 55%, #039855 100%); color: #fff; box-shadow: 0 10px 26px rgba(18, 183, 106, .28); }
+.tk-k.hero.neg { background: linear-gradient(160deg, #ff6b5b 0%, var(--tk-red) 55%, var(--tk-red-2) 100%); box-shadow: 0 10px 26px rgba(240, 68, 56, .28); }
 .tk-k.hero > span, .tk-k.hero small { color: rgba(255, 255, 255, .85); }
 .tk-split { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--bg-soft); margin: 2px 0 6px; }
 .tk-split i { background: var(--tk-red); } .tk-split u { background: #fda29b; text-decoration: none; }
 .tk-chip { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: 12px; font-weight: 600; margin-right: 4px; }
 .tk-chip.up { background: var(--good-bg); color: var(--good); } .tk-chip.dn { background: var(--bad-bg); color: var(--bad); }
 .tk-k.hero .tk-chip { background: rgba(255, 255, 255, .22); color: #fff; }
-.tk-cw { position: relative; min-height: 340px; overflow-x: auto; overflow-y: visible; }
+.tk-cw { position: relative; min-height: 340px; }
+.tk-sc { overflow-x: auto; overflow-y: hidden; }
+.tk-cw .es-tip { min-width: 210px; } .tk-cw .es-tip b { white-space: nowrap; }
 .tk-lg i.y { background: var(--tk-yel); } .tk-lg i.r { background: var(--tk-red); } .tk-lg i.g { background: var(--tk-grn); height: 3px; width: 18px; }
 .tk-svg .tk-ln { stroke-dasharray: 1; stroke-dashoffset: 0; }
 .tk-svg.es-anim .tk-ln { animation: tkDraw 1.2s ease .25s both; }
@@ -6134,14 +6137,14 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
           '<small>Google ' + bt(T.g) + ' · Facebook ' + bt(T.f) + '</small><small>' + chg(T.a, P.a, false) + vsTxt + '</small></div>' +
         '<div class="tk-k"><span>ส่วนต่างสินค้ารับซื้อ</span><b data-n>' + bt(T.m) + '</b>' +
           '<small>ซื้อเข้า ' + F.int(T.closed) + ' เครื่อง</small><small>' + chg(T.m, P.m, true) + vsTxt + '</small></div>' +
-        '<div class="tk-k hero"><span>เหลือหลังหักค่า Ads</span><b data-n>' + (T.n < 0 ? '−' : '') + bt(Math.abs(T.n)) + '</b>' +
+        '<div class="tk-k hero' + (T.n < 0 ? ' neg' : '') + '"><span>เหลือหลังหักค่า Ads</span><b data-n>' + (T.n < 0 ? '−' : '') + bt(Math.abs(T.n)) + '</b>' +
           '<small>เฉลี่ยวันละ ' + bt(nDays ? T.n / nDays : 0) + ' บาท</small><small>' + chg(T.n, P.n, true) + vsTxt + '</small></div>' +
         '<div class="tk-k"><span>ค่า Ads คิดเป็น % ของส่วนต่าง</span><b data-n>' + (pct == null ? '–' : pct.toFixed(1) + '%') + '</b>' +
           '<small>' + mo(pm).split(' ')[0] + ' ช่วงเดียวกัน ' + (pPct == null ? '–' : pPct.toFixed(1) + '%') + '</small><small>' + (pct != null && pPct != null ? chg(pct, pPct, false) : '') + '</small></div>' +
       '</div>';
     html += '<div class="card"><div class="card-head"><div><h2 class="card-title">รายวัน + สะสม ตั้งแต่วันที่ 1</h2><div class="card-sub">แท่ง (แกนซ้าย) = รายวัน · เส้น (แกนขวา) = เหลือหลังหักค่า Ads สะสม</div></div></div>' +
       '<div class="es-lg tk-lg"><span><i class="y"></i>ส่วนต่างรายวัน</span><span><i class="r"></i>ค่า Ads รายวัน</span><span><i class="g"></i>เหลือสะสม</span></div>' +
-      '<div class="es-cw tk-cw"><svg class="es-svg tk-svg" id="tkCh"></svg><div class="es-tip" id="tkTip"></div></div>' +
+      '<div class="es-cw tk-cw"><div class="tk-sc"><svg class="es-svg tk-svg" id="tkCh"></svg></div><div class="es-tip" id="tkTip"></div></div>' +
       (live ? '<div class="tk-note">แท่งสีจาง = 5 วันล่าสุด ส่วนต่างยังเพิ่มได้จากดีลที่ปิดตามมา</div>' : '') + '</div>';
     var rows = days.map(function (z) {
       return '<tr class="' + (z.d === td ? 'td' : '') + '"><td><b>' + thBE(z.d, true) + '</b><small>' + DOW_S[dowOf(z.d)] + '.' + (z.d === td ? ' · วันนี้' : '') + '</small></td>' +
@@ -6194,7 +6197,8 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
         '<b>วัน' + DOW[dowOf(z.d)] + ' ' + thBE(z.d) + '</b>' +
         '<div><span><i style="background:#f5a800"></i>ส่วนต่าง</span><span>' + f(z.m) + '</span></div>' +
         '<div><span><i style="background:#f04438"></i>ค่า Ads</span><span>' + f(z.a) + '</span></div>' +
-        '<div><span style="padding-left:15px;opacity:.75">Google · Facebook</span><span style="opacity:.75">' + f(z.g) + ' · ' + f(z.f) + '</span></div>' +
+        '<div style="opacity:.75"><span style="padding-left:15px">Google</span><span>' + f(z.g) + '</span></div>' +
+        '<div style="opacity:.75"><span style="padding-left:15px">Facebook</span><span>' + f(z.f) + '</span></div>' +
         '<div><span>เหลือวันนี้</span><span>' + f(z.n) + '</span></div>' +
         '<div><span><i style="background:#12b76a"></i>เหลือสะสม</span><span>' + f(z.cum) + '</span></div>');
     }
