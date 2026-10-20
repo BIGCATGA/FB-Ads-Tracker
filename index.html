@@ -1683,6 +1683,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 @media (max-width: 1500px) { .tk-kp { grid-template-columns: repeat(6, minmax(0, 1fr)); } .tk-kp > .tk-k { grid-column: span 2; } .tk-kp > .tk-k:nth-child(n+4) { grid-column: span 3; } }
 @media (max-width: 760px) { .tk-kp { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .tk-kp > .tk-k, .tk-kp > .tk-k:nth-child(n+4) { grid-column: auto; } .tk-kp > .tk-k.hero { grid-column: 1 / -1; order: -1; } .tk-k { padding: 14px; min-height: 0; } .tk-kv b { font-size: 22px; } .tk-ks { white-space: normal; } .tk-kf { flex-wrap: wrap; white-space: normal; } }
 
+.tk-pt .tk-cn { font-weight: 400; } .tk-pt .pos, .tk-pt .tk-sh b, .tk-pt td b { font-weight: 400; } .tk-pt .tk-q { color: var(--good); font-weight: 400; } .tk-pt tfoot td { font-weight: 400; }
 </style>
   <script>
     // ตั้งธีมก่อนหน้าโหลด กันจอกระพริบ
@@ -6216,8 +6217,8 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
     var mxP = Math.max.apply(null, cats.map(function (c) { return c.m; }).concat([1]));
     var rows = cats.map(function (c) {
       var o = open[c.k], unsold = c.n - c.sold, p = TM > 0 ? c.m / TM * 100 : 0;
-      var h = '<tr class="tk-pr' + (o ? ' open' : '') + '" data-pk="' + c.k + '"><td><b>' + esc(c.name) + '</b>' + (unsold ? '<span class="tk-uns">ยังไม่ขาย ' + unsold + '</span>' : '') + '</td>' +
-        '<td class="r num"><b>' + F.int(c.n) + '</b> เครื่อง</td><td class="r num">' + bt(c.b) + '</td><td class="r num pos">' + bt(c.m) + '</td>' +
+      var h = '<tr class="tk-pr' + (o ? ' open' : '') + '" data-pk="' + c.k + '"><td><span class="tk-cn">' + esc(c.name) + '</span>' + (unsold ? '<span class="tk-uns">ยังไม่ขาย ' + unsold + '</span>' : '') + '</td>' +
+        '<td class="r num"><span class="tk-q">' + F.int(c.n) + '</span> เครื่อง</td><td class="r num">' + bt(c.b) + '</td><td class="r num pos">' + bt(c.m) + '</td>' +
         '<td class="r num">' + (c.sold ? bt(c.m / c.sold) : '–') + '<small class="tk-sm">เฉพาะที่ขายแล้ว</small></td>' +
         '<td><div class="tk-sh"><div class="tk-sb"><i style="width:' + Math.max(0, c.m / mxP * 100) + '%"></i></div><b class="num">' + p.toFixed(1) + '%</b></div></td>' +
         '<td class="r"><span class="sm-tog' + (o ? ' on' : '') + '">' + (o ? 'ซ่อน ▴' : 'ดูรายเครื่อง ▾') + '</span></td></tr>';
@@ -6234,7 +6235,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
       return h;
     }).join('');
     el.innerHTML = '<div class="table-wrap"><table class="t tk-pt"><thead><tr><th>หมวด</th><th class="r">จำนวน</th><th class="r">ยอดรับซื้อ</th><th class="r">ส่วนต่าง</th><th class="r">ส่วนต่าง/เครื่อง</th><th>สัดส่วนของส่วนต่าง</th><th></th></tr></thead><tbody>' + rows + '</tbody>' +
-      '<tfoot><tr><td>รวม</td><td class="r num">' + F.int(TN) + ' เครื่อง</td><td class="r num">' + bt(TB) + '</td><td class="r num pos">' + bt(TM) + '</td><td class="r num">' + (TS ? bt(TM / TS) : '–') + '</td><td>100%</td><td></td></tr></tfoot></table></div>';
+      '<tfoot><tr><td>รวม</td><td class="r num"><span class="tk-q">' + F.int(TN) + '</span> เครื่อง</td><td class="r num">' + bt(TB) + '</td><td class="r num pos">' + bt(TM) + '</td><td class="r num">' + (TS ? bt(TM / TS) : '–') + '</td><td>100%</td><td></td></tr></tfoot></table></div>';
     $$('tr.tk-pr', el).forEach(function (tr) { tr.onclick = function () { open[tr.dataset.pk] = !open[tr.dataset.pk]; trkProdTable(el, cats); }; });
     $$('[data-pa]', el).forEach(function (bn) { bn.onclick = function (e) { e.stopPropagation(); all[bn.dataset.pa] = !all[bn.dataset.pa]; trkProdTable(el, cats); }; });
   }
