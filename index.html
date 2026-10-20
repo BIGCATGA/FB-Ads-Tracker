@@ -1684,6 +1684,46 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 @media (max-width: 760px) { .tk-kp { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .tk-kp > .tk-k, .tk-kp > .tk-k:nth-child(n+4) { grid-column: auto; } .tk-kp > .tk-k.hero { grid-column: 1 / -1; order: -1; } .tk-k { padding: 14px; min-height: 0; } .tk-kv b { font-size: 22px; } .tk-ks { white-space: normal; } .tk-kf { flex-wrap: wrap; white-space: normal; } }
 
 .tk-pt .tk-cn { font-weight: 400; } .tk-pt .pos, .tk-pt .tk-sh b, .tk-pt td b { font-weight: 400; } .tk-pt .tk-q { color: var(--good); font-weight: 400; } .tk-pt tfoot td { font-weight: 400; }
+/* v71 — เมนูซ้ายโทนกรมท่าเข้ม (แบบ B1) · เหมือนกันทั้งโหมดสว่าง/มืด */
+:root { --side: #121a2c; }
+.app { background: linear-gradient(to right, #121a2c 290px, var(--bg) 290px); }
+@media (max-width: 860px) { .app { background: var(--bg); } }
+.sidebar.sb2 { background: linear-gradient(180deg, #141b2d 0%, #0f1424 100%); color: #b7bfd6; padding: 20px 14px 14px; gap: 0; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; }
+:root[data-theme="dark"] .sidebar.sb2 { background: linear-gradient(180deg, #121827 0%, #0b0f1b 100%); }
+.sidebar.sb2:after { display: none; }
+.sb2-br { display: flex; align-items: center; gap: 11px; padding: 2px 10px 18px; }
+.sb2-lg { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; background: #ffc928; color: #141b2d; font-weight: 700; font-size: 17px; overflow: hidden; position: relative; flex: none; }
+.sb2-lg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.sb2-br b { font-size: 19px; color: #fff; font-weight: 700; } .sb2-br b span { color: #ffc928; font-weight: 600; }
+.sb2-nav { display: flex; flex-direction: column; gap: 2px; }
+.sb2-lab { font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase; font-weight: 600; color: #5d6788; padding: 0 12px; margin: 16px 0 6px; }
+.sb2-lab:first-child { margin-top: 4px; }
+.sidebar.sb2 .sb2-i { display: flex; align-items: center; gap: 12px; width: 100%; border: 0; background: none; font: inherit; font-size: 15px; color: #c3cadf; text-align: left; padding: 10px 12px; border-radius: 11px; cursor: pointer; position: relative; box-shadow: none; transition: background .15s, color .15s; }
+.sidebar.sb2 .sb2-i svg { width: 19px; height: 19px; flex: none; opacity: .85; }
+.sidebar.sb2 .sb2-i span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar.sb2 .sb2-i:hover { background: rgba(255, 255, 255, .05); color: #fff; }
+.sidebar.sb2 .sb2-i.on { background: rgba(255, 201, 40, .13); color: #ffd75c; font-weight: 600; }
+.sidebar.sb2 .sb2-i.on svg { opacity: 1; }
+.sidebar.sb2 .sb2-i.on::before { content: ""; position: absolute; left: -14px; top: 8px; bottom: 8px; width: 4px; border-radius: 0 4px 4px 0; background: #ffc928; }
+.sidebar.sb2 .sb2-i.dim { color: #5d6788; cursor: default; } .sidebar.sb2 .sb2-i.dim:hover { background: none; color: #5d6788; }
+.sb2-soon { font-style: normal; font-size: 11px; background: rgba(255, 255, 255, .06); color: #7d87a5; border-radius: 6px; padding: 1px 8px; flex: none; }
+.sb2-bd { font-style: normal; background: #f04438; color: #fff; font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 0 7px; line-height: 19px; flex: none; }
+.sb2-chev { display: grid; place-items: center; flex: none; opacity: .6; transition: transform .2s; } .sb2-chev svg { width: 16px !important; height: 16px !important; }
+.sb2-grp.open .sb2-chev { transform: rotate(180deg); }
+.sb2-subs { display: none; margin: 2px 0 4px 21px; padding-left: 12px; border-left: 1px solid rgba(255, 255, 255, .08); }
+.sb2-grp.open .sb2-subs { display: block; }
+.sidebar.sb2 .sb2-i.sub { font-size: 14.5px; padding: 8px 10px; } .sidebar.sb2 .sb2-i.sub.on::before { left: -13px; }
+.sb2-sp { flex: 1; min-height: 16px; }
+.sb2-sync { display: flex; align-items: center; gap: 9px; font-size: 12px; color: #7d87a5; padding: 6px 12px; }
+.sb2-sync i { width: 8px; height: 8px; border-radius: 50%; background: #12b76a; box-shadow: 0 0 0 3px rgba(18, 183, 106, .2); flex: none; }
+.sb2-sync b { color: #86d9b0; font-weight: 500; }
+.sb2-foot { display: flex; align-items: center; gap: 8px; padding: 10px; border-radius: 14px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .06); margin-top: 6px; }
+.sb2-av { width: 36px; height: 36px; border-radius: 50%; background: #2c3a5e; color: #ffd75c; display: grid; place-items: center; font-weight: 700; font-size: 12.5px; flex: none; }
+.sb2-who { flex: 1; min-width: 0; } .sb2-who b { display: block; color: #fff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .sb2-who small { color: #7d87a5; font-size: 12px; white-space: nowrap; }
+.sidebar.sb2 .sb2-ib { width: 34px; height: 34px; border-radius: 10px; border: 0; background: none; display: grid; place-items: center; color: #9aa4c2; cursor: pointer; flex: none; padding: 0; box-shadow: none; }
+.sidebar.sb2 .sb2-ib svg { width: 18px; height: 18px; }
+.sidebar.sb2 .sb2-ib:hover { background: rgba(255, 255, 255, .08); color: #fff; } .sidebar.sb2 .sb2-ib.on { background: rgba(255, 201, 40, .13); color: #ffd75c; }
+
 </style>
   <script>
     // ตั้งธีมก่อนหน้าโหลด กันจอกระพริบ
@@ -3299,6 +3339,10 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
     copy: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></svg>',
     est: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M9 3.5h6v3H9zM8.5 11h7M8.5 14.5h7M8.5 18h4"/></svg>',
     sum: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h12v17l-2.5-1.6L13 20.5l-2.5-1.6L8 20.5l-2-1.6z"/><path d="M9 8h6M9 11.5h6M9 15h4"/></svg>',
+    cog: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.6a1.7 1.7 0 013.4 0l.2 1a1.7 1.7 0 002.5 1l.9-.5a1.7 1.7 0 012.4 2.4l-.5.9a1.7 1.7 0 001 2.5l1 .2a1.7 1.7 0 010 3.4l-1 .2a1.7 1.7 0 00-1 2.5l.5.9a1.7 1.7 0 01-2.4 2.4l-.9-.5a1.7 1.7 0 00-2.5 1l-.2 1a1.7 1.7 0 01-3.4 0l-.2-1a1.7 1.7 0 00-2.5-1l-.9.5a1.7 1.7 0 01-2.4-2.4l.5-.9a1.7 1.7 0 00-1-2.5l-1-.2a1.7 1.7 0 010-3.4l1-.2a1.7 1.7 0 001-2.5l-.5-.9a1.7 1.7 0 012.4-2.4l.9.5a1.7 1.7 0 002.5-1z"/><circle cx="12" cy="12" r="3"/></svg>',
+    fbk: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 21v-7.5H16l.4-3h-2.9V8.6c0-.9.3-1.5 1.5-1.5h1.5V4.4c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.8v2.4H8v3h2.6V21z"/></svg>',
+    ggl: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 12.2c0-.6-.1-1.2-.2-1.7H12v3.3h4.5a4 4 0 01-1.7 2.6M12 20a8 8 0 01-7.1-4.4M4.9 8.4A8 8 0 0118 6.5M12 20c2.2 0 4-.7 5.4-2"/></svg>',
+    logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 012 2v12a2 2 0 01-2 2h-3M10 16l4-4-4-4M14 12H4"/></svg>',
     track: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M9.5 20v-6M15 20v-4M20.5 20V8"/><path d="M3.5 7.5 9 4l5 3 6.5-4"/></svg>',
     clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
     chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
@@ -3308,8 +3352,8 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
     { id: 'kpi', label: 'ต้นทุนต่อหมวด', short: 'ต้นทุน', icon: I.coin, group: 'biz' },
     { id: 'est', label: 'เคสประเมิน', short: 'ประเมิน', icon: I.est, group: 'biz' },
     { id: 'time', label: 'วิเคราะห์ช่วงเวลา', short: 'ช่วงเวลา', icon: I.clock, group: 'biz' },
-    { id: 'sum', label: 'สรุปผล', short: 'สรุป', icon: I.sum, group: 'biz' },
-    { id: 'track', label: 'Track เดือนนี้', short: 'Track', icon: I.track, group: 'biz' },
+    { id: 'sum', label: 'สรุปผล', short: 'สรุป', icon: I.sum, group: 'rep' },
+    { id: 'track', label: 'Track เดือนนี้', short: 'Track', icon: I.track, group: 'rep' },
     { id: 'dashboard', label: 'ภาพรวม Ads Facebook', short: 'ภาพรวม FB', icon: I.dash, group: 'fb' },
     { id: 'chats', label: 'บันทึกแชท', short: 'แชท', icon: I.chat, group: 'fb' },
     { id: 'campaigns', label: 'แคมเปญ', short: 'แคมเปญ', icon: I.mega, group: 'fb' },
@@ -3465,35 +3509,36 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
     var dark = document.documentElement.dataset.theme === 'dark';
     var pendN = (S.data.inbox || []).filter(function (r) { return r.status === 'pending'; }).length;
     var fbOpen = true; try { fbOpen = localStorage.getItem('fbat_fbgrp') !== '0'; } catch (e) {}
-    function nItem(n, big) {
+    function nItem(n, sub) {
       var cnt = n.id === 'chats' ? pendN : 0;
-      return '<button data-nav="' + n.id + '" class="ni' + (big ? ' big' : '') + (S.page === n.id ? ' active' : '') + '"><span class="ni-ic">' + n.icon + '</span><span class="ni-tx"><b>' + n.label + '</b>' +
-        (big ? '<small><i class="dot fb"></i>Facebook + <i class="dot gg"></i>Google</small>' : '') + '</span>' + (cnt ? '<i class="nav-badge">' + (cnt > 99 ? '99+' : cnt) + '</i>' : '') + '</button>';
+      return '<button data-nav="' + n.id + '" class="sb2-i' + (sub ? ' sub' : '') + (S.page === n.id ? ' on' : '') + '">' + n.icon + '<span>' + n.label + '</span>' + (cnt ? '<i class="sb2-bd">' + (cnt > 99 ? '99+' : cnt) + '</i>' : '') + '</button>';
     }
     var byId = {}; NAV.forEach(function (n) { byId[n.id] = n; });
     var fbIn = NAV.filter(function (n) { return n.group === 'fb'; }), fbAct = fbIn.some(function (n) { return n.id === S.page; });
     var lastSync = S.data.config.fb_last_sync ? new Date(S.data.config.fb_last_sync) : null;
-    var nav = '<div class="nlab">ภาพรวมธุรกิจ</div>' + nItem(byId.kpi, true) + nItem(byId.est) + nItem(byId.time) + nItem(byId.sum) + nItem(byId.track) +
-      '<div class="nlab">ช่องทางโฆษณา</div>' +
-      '<div class="ngrp' + (fbOpen || fbAct ? ' open' : '') + '"><button class="ngh" id="fbGrp"><b>Facebook Ads</b><span class="chev">' + I.chev + '</span></button><div class="nsub">' + fbIn.map(function (n) { return nItem(n); }).join('') + '</div></div>' +
-      '<div class="ngrp soon"><div class="ngh"><b>Google Ads</b><span class="soon-t">เร็วๆ นี้</span></div></div>';
+    var nav = '<div class="sb2-lab">ภาพรวมธุรกิจ</div>' + nItem(byId.kpi) + nItem(byId.est) + nItem(byId.time) +
+      '<div class="sb2-lab">รายงาน</div>' + nItem(byId.sum) + nItem(byId.track) +
+      '<div class="sb2-lab">ช่องทางโฆษณา</div>' +
+      '<div class="sb2-grp' + (fbOpen || fbAct ? ' open' : '') + '"><button class="sb2-i" id="fbGrp">' + I.fbk + '<span>Facebook Ads</span>' + (!(fbOpen || fbAct) && pendN ? '<i class="sb2-bd">' + (pendN > 99 ? '99+' : pendN) + '</i>' : '') + '<em class="sb2-chev">' + I.chev + '</em></button>' +
+        '<div class="sb2-subs">' + fbIn.map(function (n) { return nItem(n, true); }).join('') + '</div></div>' +
+      '<div class="sb2-i dim">' + I.ggl + '<span>Google Ads</span><em class="sb2-soon">เร็วๆ นี้</em></div>';
     var bnav = NAV.map(function (n) { var cnt = n.id === 'chats' ? pendN : 0; return '<button data-nav="' + n.id + '" class="' + (S.page === n.id ? 'active' : '') + '">' + n.icon + '<span>' + n.short + '</span>' + (cnt ? '<i class="nav-badge">' + (cnt > 99 ? '99+' : cnt) + '</i>' : '') + '</button>'; }).join('');
     var title = NAV.filter(function (n) { return n.id === S.page; })[0].label;
     root.innerHTML =
       '<div class="app">' +
-      '<aside class="sidebar">' +
-      '<div class="brand"><div class="brand-mark">' + (S.data.config.page_id ? '<img src="https://graph.facebook.com/' + esc(S.data.config.page_id) + '/picture?type=large" alt="" onerror="this.remove()">' : '') + 'B</div><div class="brand-name">' + esc(S.data.config.brand || window.APP_CONFIG.BRAND) + ' <span>Ads</span></div></div>' +
-      '<div class="me"><div class="avatar">' + esc(initials(S.data.me)) + '</div><div><div class="me-name">' + esc(S.data.me) + '</div><div class="me-sub">' + (API.isDemo ? 'โหมดตัวอย่าง' : 'แอดมิน') + '</div></div></div>' +
-      '<nav class="nav">' + nav + '</nav>' +
-      '<div class="sidebar-foot">' + nItem(byId.settings) +
-      (lastSync ? '<div class="syncbox"><span class="pulse"></span><div><b>ดึงข้อมูลอัตโนมัติ</b><small>ล่าสุด ' + lastSync.toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' · ทุก 1 ชม.</small></div></div>' : '') +
-      '<div class="label">โหมดสี</div>' +
-      '<div class="seg"><button data-theme="light" class="' + (!dark ? 'on' : '') + '">' + I.sun + 'สว่าง</button><button data-theme="dark" class="' + (dark ? 'on' : '') + '">' + I.moon + 'มืด</button></div>' +
-      (API.isDemo ? '' : '<button class="linkish" id="logout">ออกจากระบบ</button>') +
+      '<aside class="sidebar sb2">' +
+      '<div class="sb2-br"><div class="sb2-lg">' + (S.data.config.page_id ? '<img src="https://graph.facebook.com/' + esc(S.data.config.page_id) + '/picture?type=large" alt="" onerror="this.remove()">' : '') + 'B</div><b>' + esc(S.data.config.brand || window.APP_CONFIG.BRAND) + ' <span>Ads</span></b></div>' +
+      '<div class="sb2-nav">' + nav + '</div>' +
+      '<div class="sb2-sp"></div>' +
+      (lastSync ? '<div class="sb2-sync"><i></i><span><b>อัปเดตอัตโนมัติ</b> · ' + lastSync.toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' · ทุก 1 ชม.</span></div>' : '') +
+      '<div class="sb2-foot"><div class="sb2-av">' + esc(initials(S.data.me)) + '</div><div class="sb2-who"><b>' + esc(S.data.me) + '</b><small>' + (API.isDemo ? 'โหมดตัวอย่าง' : 'แอดมิน') + '</small></div>' +
+        '<button class="sb2-ib' + (S.page === 'settings' ? ' on' : '') + '" data-nav="settings" title="ตั้งค่า" aria-label="ตั้งค่า">' + I.cog + '</button>' +
+        '<button class="sb2-ib" data-theme="' + (dark ? 'light' : 'dark') + '" title="' + (dark ? 'โหมดสว่าง' : 'โหมดมืด') + '" aria-label="' + (dark ? 'โหมดสว่าง' : 'โหมดมืด') + '">' + (dark ? I.sun : I.moon) + '</button>' +
+        (API.isDemo ? '' : '<button class="sb2-ib" id="logout" title="ออกจากระบบ" aria-label="ออกจากระบบ">' + I.logout + '</button>') +
       '</div></aside>' +
       '<main class="main">' +
       '<div class="topbar">' +
-      '<h1 class="page-title"><small>' + ({ biz: 'ภาพรวมธุรกิจ', fb: 'Facebook Ads', sys: 'ระบบ' })[NAV.filter(function (n) { return n.id === S.page; })[0].group] + '</small>' + title + '</h1>' +
+      '<h1 class="page-title"><small>' + ({ biz: 'ภาพรวมธุรกิจ', rep: 'รายงาน', fb: 'Facebook Ads', sys: 'ระบบ' })[NAV.filter(function (n) { return n.id === S.page; })[0].group] + '</small>' + title + '</h1>' +
       '<label class="search">' + I.search + '<input id="globalSearch" placeholder="ค้นหาชื่อลูกค้า…" value="' + esc(S.page === 'chats' ? S.chatFilter.q : '') + '"></label>' +
       '<span class="spacer"></span><span class="live-st" id="liveSt"></span>' +
       (API.isDemo ? '<span class="demo-badge">โหมดตัวอย่าง · ข้อมูลจำลอง</span>' : '') +
