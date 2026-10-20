@@ -1668,6 +1668,21 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 @media (max-width: 560px) { .tk-k > b { font-size: 24px; } }
 @media (max-width: 860px) { .bottom-nav { grid-template-columns: repeat(9, minmax(0, 1fr)) !important; } .bottom-nav button span { font-size: 10px; } }
 
+/* v70 — การ์ด Track จัดใหม่: โครงเดียวกันทุกใบ ตัวเลขขนาดเท่ากัน แถบเทียบชิดล่าง */
+.tk-kp { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; align-items: stretch; }
+.tk-kp > .tk-k, .tk-kp > .tk-k:nth-child(n+4) { grid-column: auto; }
+.tk-k { display: flex; flex-direction: column; padding: 18px 20px 16px; min-height: 152px; }
+.tk-kh { font-size: 14px; color: var(--text-2); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tk-kv { display: flex; align-items: baseline; gap: 6px; margin: 6px 0 4px; }
+.tk-kv b { font-size: 30px; line-height: 1.15; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.tk-kv em { font-style: normal; font-size: 13px; color: var(--text-3); }
+.tk-ks { font-size: 12.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tk-kf { margin-top: auto; padding-top: 12px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; }
+.tk-kf .tk-chip { margin: 0; flex: none; }
+.tk-k.hero .tk-kh, .tk-k.hero .tk-kv em, .tk-k.hero .tk-ks, .tk-k.hero .tk-kf { color: rgba(255, 255, 255, .88); }
+@media (max-width: 1500px) { .tk-kp { grid-template-columns: repeat(6, minmax(0, 1fr)); } .tk-kp > .tk-k { grid-column: span 2; } .tk-kp > .tk-k:nth-child(n+4) { grid-column: span 3; } }
+@media (max-width: 760px) { .tk-kp { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .tk-kp > .tk-k, .tk-kp > .tk-k:nth-child(n+4) { grid-column: auto; } .tk-kp > .tk-k.hero { grid-column: 1 / -1; order: -1; } .tk-k { padding: 14px; min-height: 0; } .tk-kv b { font-size: 22px; } .tk-ks { white-space: normal; } .tk-kf { flex-wrap: wrap; white-space: normal; } }
+
 </style>
   <script>
     // ตั้งธีมก่อนหน้าโหลด กันจอกระพริบ
@@ -6148,17 +6163,11 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
     var html = '<div class="tk-top"><div class="muted">' + (live ? 'ตั้งแต่ 1 ' + TH_MO[Number(tf.m.slice(5, 7)) - 1] + ' ถึงวันนี้ (' + thBE(td, true) + ') · ' + nDays + ' วัน' : 'ทั้งเดือน ' + mo(tf.m) + ' · ' + nDays + ' วัน') + ' · ค่า Ads = Google + Facebook</div>' +
       '<div class="tk-nav"><button data-tm="-1" aria-label="เดือนก่อน">‹</button><b>' + mo(tf.m) + '</b><button data-tm="1" aria-label="เดือนถัดไป"' + (tf.m >= curM ? ' disabled' : '') + '>›</button></div></div>' +
       '<div class="tk-kp">' +
-        '<div class="tk-k"><span>ค่า Ads</span><b data-n>' + bt(T.a) + '</b>' +
-          '<div class="tk-split"><i style="width:' + gw + '%"></i><u style="width:' + fw + '%"></u></div>' +
-          '<small>Google ' + bt(T.g) + ' · Facebook ' + bt(T.f) + '</small><small>' + chg(T.a, P.a, false) + vsTxt + '</small></div>' +
-        '<div class="tk-k"><span>ยอดรับซื้อ</span><b data-n>' + bt(T.b) + '</b>' +
-          '<small>' + F.int(T.closed) + ' เครื่อง · เฉลี่ย ' + bt(T.closed ? T.b / T.closed : 0) + '/เครื่อง</small><small>' + chg(T.b, P.b, true) + vsTxt + '</small></div>' +
-        '<div class="tk-k"><span>ส่วนต่างสินค้ารับซื้อ</span><b data-n>' + bt(T.m) + '</b>' +
-          '<small>ขายแล้ว ' + F.int(T.sold) + ' · ยังไม่ขาย ' + F.int(T.closed - T.sold) + ' เครื่อง</small><small>' + chg(T.m, P.m, true) + vsTxt + '</small></div>' +
-        '<div class="tk-k hero' + (T.n < 0 ? ' neg' : '') + '"><span>เหลือหลังหักค่า Ads</span><b data-n>' + (T.n < 0 ? '−' : '') + bt(Math.abs(T.n)) + '</b>' +
-          '<small>เฉลี่ยวันละ ' + bt(nDays ? T.n / nDays : 0) + ' บาท</small><small>' + chg(T.n, P.n, true) + vsTxt + '</small></div>' +
-        '<div class="tk-k"><span>ค่า Ads คิดเป็น % ของส่วนต่าง</span><b data-n>' + (pct == null ? '–' : pct.toFixed(1) + '%') + '</b>' +
-          '<small>' + mo(pm).split(' ')[0] + ' ช่วงเดียวกัน ' + (pPct == null ? '–' : pPct.toFixed(1) + '%') + '</small><small>' + (pct != null && pPct != null ? chg(pct, pPct, false) : '') + '</small></div>' +
+        tkCard('', 'ค่า Ads', bt(T.a), 'Google ' + bt(T.g) + ' · Facebook ' + bt(T.f), chg(T.a, P.a, false), vsTxt) +
+        tkCard('', 'ยอดรับซื้อ', bt(T.b), F.int(T.closed) + ' เครื่อง · เฉลี่ย ' + bt(T.closed ? T.b / T.closed : 0) + '/เครื่อง', chg(T.b, P.b, true), vsTxt) +
+        tkCard('', 'ส่วนต่างสินค้ารับซื้อ', bt(T.m), 'ขายแล้ว ' + F.int(T.sold) + ' · ยังไม่ขาย ' + F.int(T.closed - T.sold) + ' เครื่อง', chg(T.m, P.m, true), vsTxt) +
+        tkCard('hero' + (T.n < 0 ? ' neg' : ''), 'เหลือหลังหักค่า Ads', (T.n < 0 ? '−' : '') + bt(Math.abs(T.n)), 'เฉลี่ยวันละ ' + bt(nDays ? T.n / nDays : 0) + ' บาท', chg(T.n, P.n, true), vsTxt) +
+        tkCard('', 'ค่า Ads / ส่วนต่าง', pct == null ? '–' : pct.toFixed(1) + '%', pct == null ? 'ยังไม่มีส่วนต่าง' : 'ส่วนต่าง 100 บาท = ค่า Ads ' + Math.round(pct), pct != null && pPct != null ? chg(pct, pPct, false) : '', pPct == null ? vsTxt : mo(pm).split(' ')[0] + ' ' + pPct.toFixed(1) + '%', true) +
       '</div>';
     html += '<div class="card"><div class="card-head"><div><h2 class="card-title">รายวัน + สะสม ตั้งแต่วันที่ 1</h2><div class="card-sub">แท่ง (แกนซ้าย) = รายวัน · เส้น (แกนขวา) = เหลือหลังหักค่า Ads สะสม</div></div></div>' +
       '<div class="es-lg tk-lg"><span><i class="y"></i>ส่วนต่างรายวัน</span><span><i class="r"></i>ค่า Ads รายวัน</span><span><i class="g"></i>เหลือสะสม</span></div>' +
@@ -6179,6 +6188,11 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
     S.drawCharts();
     Charts.countUp($('#page'));
     $$('[data-tm]').forEach(function (btn) { btn.onclick = function () { tf.m = trkShift(tf.m, Number(btn.dataset.tm)); pageTrack(); }; });
+  }
+  /** การ์ดตัวเลข หน้า Track — ทุกใบโครงเดียวกัน: หัว · ตัวเลข · บรรทัดย่อย · แถบเทียบ (ชิดล่าง) */
+  function tkCard(cls, label, val, sub, chip, vs, noUnit) {
+    return '<div class="tk-k ' + cls + '"><div class="tk-kh">' + label + '</div><div class="tk-kv"><b data-n>' + val + '</b>' + (noUnit ? '' : '<em>บาท</em>') + '</div>' +
+      '<div class="tk-ks">' + sub + '</div><div class="tk-kf">' + chip + '<span>' + vs + '</span></div></div>';
   }
   /** สินค้าที่รับซื้อในช่วง [a,b] แยกหมวดเดียวกับหน้าต้นทุนต่อหมวด (ไม่เข้า 5 หมวด = อื่นๆ) */
   function trkProducts(a, b) {
