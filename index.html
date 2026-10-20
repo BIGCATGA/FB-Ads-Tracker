@@ -1621,7 +1621,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 .tk-nav button { width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; font-size: 18px; cursor: pointer; color: var(--text); }
 .tk-nav button:hover:not(:disabled) { background: var(--bg-soft); } .tk-nav button:disabled { opacity: .3; cursor: default; }
 .tk-nav b { font-size: 14px; padding: 0 8px; min-width: 92px; text-align: center; }
-.tk-kp { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
+.tk-kp { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
 .tk-k { background: var(--card); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); min-width: 0; }
 .tk-k > span { font-size: 13.5px; color: var(--text-2); display: block; }
 .tk-k > b { font-size: 30px; display: block; margin: 4px 0 8px; font-variant-numeric: tabular-nums; line-height: 1.15; }
@@ -1648,7 +1648,23 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 .tk-t tr.td td { background: var(--primary-soft); } .tk-t td small { color: var(--text-3); font-size: 11.5px; margin-left: 4px; }
 .tk-t .neg { color: var(--bad); font-weight: 600; } .tk-t .pos { font-weight: 600; }
 .tk-t tfoot td { background: var(--bg-soft); font-weight: 700; border-top: 2px solid var(--line-strong); }
-@media (max-width: 1100px) { .tk-kp { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1500px) { .tk-kp { grid-template-columns: repeat(6, minmax(0, 1fr)); } .tk-kp > .tk-k { grid-column: span 2; } .tk-kp > .tk-k:nth-child(n+4) { grid-column: span 3; } }
+.tk-kp { gap: 12px; } .tk-k { padding: 16px 18px; } .tk-k > b { font-size: 27px; } .tk-k small { font-size: 11.5px; }
+@media (max-width: 760px) { .tk-kp { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tk-kp > .tk-k, .tk-kp > .tk-k:nth-child(n+4) { grid-column: auto; } .tk-kp > .tk-k.hero { grid-column: 1 / -1; } }
+.tk-pt { min-width: 860px; } .tk-pt td, .tk-pt th { white-space: nowrap; vertical-align: middle; }
+.tk-pt tr.tk-pr { cursor: pointer; } .tk-pt tr.tk-pr:hover td { background: var(--bg-soft); }
+.tk-pt tr.tk-pr.open td, .tk-pt tr.tk-pd td { background: var(--primary-soft); }
+.tk-pt tr.tk-pd td { border-top: 0; padding: 0 8px 12px; }
+.tk-pt .pos { color: var(--good); font-weight: 600; }
+.tk-uns { display: block; width: max-content; font-size: 11.5px; font-weight: 600; background: var(--warn-bg); color: var(--warn); border-radius: 999px; padding: 1px 8px; margin-top: 3px; }
+.tk-sm { display: block; font-size: 11px; color: var(--text-3); }
+.tk-sh { display: flex; align-items: center; gap: 8px; } .tk-sb { width: 110px; height: 10px; border-radius: 5px; background: var(--bg-soft); overflow: hidden; flex: none; } .tk-sb i { display: block; height: 100%; background: var(--tk-grn); border-radius: 5px; }
+.tk-items { background: var(--card); border-radius: 12px; padding: 4px 14px; }
+.tk-it { display: grid; grid-template-columns: minmax(0, 1fr) 100px 110px 110px 110px; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; white-space: normal; }
+.tk-it:last-child { border-bottom: 0; } .tk-it .r { text-align: right; } .tk-it.hd { font-size: 11.5px; color: var(--text-3); }
+.tk-it small { display: block; color: var(--text-3); font-size: 11.5px; } .tk-wait { color: var(--warn); font-size: 12px; font-weight: 600; }
+.tk-more { text-align: center; padding: 8px 0 4px; } .tk-more button { border: 0; background: none; font: inherit; font-size: 13px; color: var(--primary-text); cursor: pointer; text-decoration: underline; }
+.tk-pt tfoot td { background: var(--bg-soft); font-weight: 700; border-top: 2px solid var(--line-strong); }
 @media (max-width: 560px) { .tk-k > b { font-size: 24px; } }
 @media (max-width: 860px) { .bottom-nav { grid-template-columns: repeat(9, minmax(0, 1fr)) !important; } .bottom-nav button span { font-size: 10px; } }
 
@@ -6097,17 +6113,17 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
   function trkShift(m, n) { return C.iso(new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)) - 1 + n, 1)).slice(0, 7); }
   function trkDays(a, b) {
     var map = {}, list = [], d = a, guard = 0;
-    while (d <= b && guard++ < 40) { map[d] = { d: d, g: 0, f: 0, m: 0, n: 0, closed: 0 }; list.push(map[d]); d = C.addDays(d, 1); }
+    while (d <= b && guard++ < 40) { map[d] = { d: d, g: 0, f: 0, m: 0, b: 0, n: 0, closed: 0, sold: 0 }; list.push(map[d]); d = C.addDays(d, 1); }
     (S.data.gads || []).forEach(function (x) { if (map[x.date]) map[x.date].g += Number(x.cost) || 0; });
     C.spendDaily(S.data).forEach(function (x) { if (map[x.date]) map[x.date].f += Number(x.amount) || 0; });
-    sumDeals().forEach(function (x) { var z = map[x.date]; if (z) { z.m += x.diff; z.closed++; } });
+    sumDeals().forEach(function (x) { var z = map[x.date]; if (z) { z.m += x.diff; z.b += x.bought; z.closed++; if (x.sell) z.sold++; } });
     var cum = 0;
     list.forEach(function (z) { z.a = z.g + z.f; z.n = z.m - z.a; cum += z.n; z.cum = cum; });
     return list;
   }
   function trkTot(list) {
-    var o = { g: 0, f: 0, a: 0, m: 0, n: 0, closed: 0 };
-    list.forEach(function (z) { o.g += z.g; o.f += z.f; o.a += z.a; o.m += z.m; o.n += z.n; o.closed += z.closed; });
+    var o = { g: 0, f: 0, a: 0, m: 0, b: 0, n: 0, closed: 0, sold: 0 };
+    list.forEach(function (z) { o.g += z.g; o.f += z.f; o.a += z.a; o.m += z.m; o.b += z.b; o.n += z.n; o.closed += z.closed; o.sold += z.sold; });
     return o;
   }
   function pageTrack() {
@@ -6135,8 +6151,10 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
         '<div class="tk-k"><span>ค่า Ads</span><b data-n>' + bt(T.a) + '</b>' +
           '<div class="tk-split"><i style="width:' + gw + '%"></i><u style="width:' + fw + '%"></u></div>' +
           '<small>Google ' + bt(T.g) + ' · Facebook ' + bt(T.f) + '</small><small>' + chg(T.a, P.a, false) + vsTxt + '</small></div>' +
+        '<div class="tk-k"><span>ยอดรับซื้อ</span><b data-n>' + bt(T.b) + '</b>' +
+          '<small>' + F.int(T.closed) + ' เครื่อง · เฉลี่ย ' + bt(T.closed ? T.b / T.closed : 0) + '/เครื่อง</small><small>' + chg(T.b, P.b, true) + vsTxt + '</small></div>' +
         '<div class="tk-k"><span>ส่วนต่างสินค้ารับซื้อ</span><b data-n>' + bt(T.m) + '</b>' +
-          '<small>ซื้อเข้า ' + F.int(T.closed) + ' เครื่อง</small><small>' + chg(T.m, P.m, true) + vsTxt + '</small></div>' +
+          '<small>ขายแล้ว ' + F.int(T.sold) + ' · ยังไม่ขาย ' + F.int(T.closed - T.sold) + ' เครื่อง</small><small>' + chg(T.m, P.m, true) + vsTxt + '</small></div>' +
         '<div class="tk-k hero' + (T.n < 0 ? ' neg' : '') + '"><span>เหลือหลังหักค่า Ads</span><b data-n>' + (T.n < 0 ? '−' : '') + bt(Math.abs(T.n)) + '</b>' +
           '<small>เฉลี่ยวันละ ' + bt(nDays ? T.n / nDays : 0) + ' บาท</small><small>' + chg(T.n, P.n, true) + vsTxt + '</small></div>' +
         '<div class="tk-k"><span>ค่า Ads คิดเป็น % ของส่วนต่าง</span><b data-n>' + (pct == null ? '–' : pct.toFixed(1) + '%') + '</b>' +
@@ -6151,14 +6169,60 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
         '<td class="r num">' + bt(z.g) + '</td><td class="r num">' + bt(z.f) + '</td><td class="r num"><b>' + bt(z.a) + '</b></td>' +
         '<td class="r num">' + bt(z.m) + '</td><td class="r num ' + (z.n < 0 ? 'neg' : 'pos') + '">' + bt(z.n) + '</td><td class="r num">' + bt(z.cum) + '</td></tr>';
     }).join('');
+    html += '<div class="card" style="margin-top:20px"><div class="card-head"><div><h2 class="card-title">สินค้าที่รับซื้อ' + (live ? 'เดือนนี้' : ' ' + mo(tf.m)) + '</h2><div class="card-sub">' + rng(a, b) + ' · นับตามวันที่รับซื้อ · กดแถวเพื่อดูรายเครื่อง</div></div></div><div id="tkProd"></div></div>';
     html += '<div class="card" style="margin-top:20px"><div class="card-head"><div><h2 class="card-title">ตารางรายวัน</h2><div class="card-sub">เรียงวันที่ 1 → ' + (live ? 'วันนี้' : 'สิ้นเดือน') + '</div></div></div>' +
       '<div class="table-wrap"><table class="t tk-t"><thead><tr><th>วันที่</th><th class="r">Google Ads</th><th class="r">Facebook Ads</th><th class="r">ค่า Ads รวม</th><th class="r">ส่วนต่าง</th><th class="r">เหลือ</th><th class="r">เหลือสะสม</th></tr></thead><tbody>' + rows + '</tbody>' +
       '<tfoot><tr><td>รวม ' + nDays + ' วัน</td><td class="r num">' + bt(T.g) + '</td><td class="r num">' + bt(T.f) + '</td><td class="r num">' + bt(T.a) + '</td><td class="r num">' + bt(T.m) + '</td><td class="r num ' + (T.n < 0 ? 'neg' : 'pos') + '">' + bt(T.n) + '</td><td></td></tr></tfoot></table></div></div>';
     $('#page').innerHTML = html;
     S.drawCharts = function () { trkChart($('#tkCh'), $('#tkTip'), days, live ? C.addDays(b, -4) : null); };
+    trkProdTable($('#tkProd'), trkProducts(a, b));
     S.drawCharts();
     Charts.countUp($('#page'));
     $$('[data-tm]').forEach(function (btn) { btn.onclick = function () { tf.m = trkShift(tf.m, Number(btn.dataset.tm)); pageTrack(); }; });
+  }
+  /** สินค้าที่รับซื้อในช่วง [a,b] แยกหมวดเดียวกับหน้าต้นทุนต่อหมวด (ไม่เข้า 5 หมวด = อื่นๆ) */
+  function trkProducts(a, b) {
+    var map = {}, names = {};
+    C.KPI_CATS.forEach(function (c) { names[c.k] = c.n; }); names.other = 'อื่นๆ';
+    sumDeals().forEach(function (x) {
+      if (x.date < a || x.date > b) return;
+      var pc = C.prodCat(x.cat, x.detail), k = pc.k || 'other';
+      var g = map[k] || (map[k] = { k: k, name: names[k], n: 0, b: 0, m: 0, sold: 0, items: [] });
+      g.n++; g.b += x.bought; g.m += x.diff; if (x.sell) g.sold++; g.items.push(x);
+    });
+    return C.KPI_CATS.map(function (c) { return c.k; }).concat(['other']).filter(function (k) { return map[k]; }).map(function (k) {
+      map[k].items.sort(function (p, q) { return p.date < q.date ? 1 : p.date > q.date ? -1 : 0; }); return map[k];
+    });
+  }
+  function trkProdTable(el, cats) {
+    if (!el) return;
+    var open = S.tkOpen || (S.tkOpen = {}), all = S.tkAll || (S.tkAll = {}), bt = function (v) { return F.int(Math.round(v)); };
+    var TN = 0, TB = 0, TM = 0, TS = 0; cats.forEach(function (c) { TN += c.n; TB += c.b; TM += c.m; TS += c.sold; });
+    if (!cats.length) { el.innerHTML = '<div class="muted" style="padding:12px 0">ยังไม่มีเครื่องที่รับซื้อในช่วงนี้</div>'; return; }
+    var mxP = Math.max.apply(null, cats.map(function (c) { return c.m; }).concat([1]));
+    var rows = cats.map(function (c) {
+      var o = open[c.k], unsold = c.n - c.sold, p = TM > 0 ? c.m / TM * 100 : 0;
+      var h = '<tr class="tk-pr' + (o ? ' open' : '') + '" data-pk="' + c.k + '"><td><b>' + esc(c.name) + '</b>' + (unsold ? '<span class="tk-uns">ยังไม่ขาย ' + unsold + '</span>' : '') + '</td>' +
+        '<td class="r num"><b>' + F.int(c.n) + '</b> เครื่อง</td><td class="r num">' + bt(c.b) + '</td><td class="r num pos">' + bt(c.m) + '</td>' +
+        '<td class="r num">' + (c.sold ? bt(c.m / c.sold) : '–') + '<small class="tk-sm">เฉพาะที่ขายแล้ว</small></td>' +
+        '<td><div class="tk-sh"><div class="tk-sb"><i style="width:' + Math.max(0, c.m / mxP * 100) + '%"></i></div><b class="num">' + p.toFixed(1) + '%</b></div></td>' +
+        '<td class="r"><span class="sm-tog' + (o ? ' on' : '') + '">' + (o ? 'ซ่อน ▴' : 'ดูรายเครื่อง ▾') + '</span></td></tr>';
+      if (o) {
+        var lim = all[c.k] ? c.items.length : 10, list = c.items.slice(0, lim);
+        h += '<tr class="tk-pd"><td colspan="7"><div class="tk-items"><div class="tk-it hd"><span>รุ่น</span><span class="r">วันที่รับซื้อ</span><span class="r">รับซื้อ</span><span class="r">ส่วนต่าง</span><span class="r">ขายได้</span></div>' +
+          list.map(function (x) {
+            return '<div class="tk-it"><span><b>' + esc(x.detail || x.cat || '–') + '</b>' + (c.k === 'other' && x.cat ? '<small>' + esc(x.cat) + '</small>' : '') + '</span><span class="r">' + thBE(x.date, true) + '</span><span class="r num">' + bt(x.bought) + '</span>' +
+              '<span class="r num">' + (x.sell ? '<b class="pos">' + bt(x.diff) + '</b>' : '<span class="tk-wait">ยังไม่ขาย</span>') + '</span><span class="r num">' + (x.sell ? bt(x.sell) : '–') + '</span></div>';
+          }).join('') +
+          (c.items.length > 10 ? '<div class="tk-more"><button class="linkish" data-pa="' + c.k + '">' + (all[c.k] ? 'แสดงแค่ 10 เครื่องล่าสุด' : 'ดูทั้งหมด ' + c.items.length + ' เครื่อง') + '</button></div>' : '') +
+          '</div></td></tr>';
+      }
+      return h;
+    }).join('');
+    el.innerHTML = '<div class="table-wrap"><table class="t tk-pt"><thead><tr><th>หมวด</th><th class="r">จำนวน</th><th class="r">ยอดรับซื้อ</th><th class="r">ส่วนต่าง</th><th class="r">ส่วนต่าง/เครื่อง</th><th>สัดส่วนของส่วนต่าง</th><th></th></tr></thead><tbody>' + rows + '</tbody>' +
+      '<tfoot><tr><td>รวม</td><td class="r num">' + F.int(TN) + ' เครื่อง</td><td class="r num">' + bt(TB) + '</td><td class="r num pos">' + bt(TM) + '</td><td class="r num">' + (TS ? bt(TM / TS) : '–') + '</td><td>100%</td><td></td></tr></tfoot></table></div>';
+    $$('tr.tk-pr', el).forEach(function (tr) { tr.onclick = function () { open[tr.dataset.pk] = !open[tr.dataset.pk]; trkProdTable(el, cats); }; });
+    $$('[data-pa]', el).forEach(function (bn) { bn.onclick = function (e) { e.stopPropagation(); all[bn.dataset.pa] = !all[bn.dataset.pa]; trkProdTable(el, cats); }; });
   }
   /** แท่งคู่ = ส่วนต่าง (เหลือง) + ค่า Ads (แดง) แกนซ้าย · เส้น = เหลือสะสม แกนขวา · fadeFrom = วันที่เริ่มทำแท่งจาง */
   function trkChart(svg, tip, days, fadeFrom) {
