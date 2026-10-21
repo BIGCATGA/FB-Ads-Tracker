@@ -2190,6 +2190,8 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 
   function presetRange(preset, data, today) {
     today = today || iso(new Date());
+    if (preset === 'today') return { from: today, to: today };
+    if (preset === 'yday') return { from: addDays(today, -1), to: addDays(today, -1) };
     if (preset === '7d') return { from: addDays(today, -6), to: today };
     if (preset === '30d') return { from: addDays(today, -29), to: today };
     if (preset === '3m') return { from: addDays(today, -91), to: today };
@@ -3631,7 +3633,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
     var m = C.compute(S.data, f);
     var nDays = C.daysIncl(f.from, f.to);
     var prev = f.preset === 'all' ? null : C.compute(S.data, { from: C.addDays(f.from, -nDays), to: C.addDays(f.from, -1), campaign: f.campaign });
-    var presets = [['7d', '7 วัน'], ['30d', '30 วัน'], ['month', 'เดือนนี้'], ['lastmonth', 'เดือนก่อน'], ['all', 'ทั้งหมด'], ['custom', 'กำหนดเอง']];
+    var presets = [['today', 'วันนี้'], ['yday', 'เมื่อวาน'], ['7d', '7 วัน'], ['30d', '30 วัน'], ['month', 'เดือนนี้'], ['lastmonth', 'เดือนก่อน'], ['all', 'ทั้งหมด'], ['custom', 'กำหนดเอง']];
     var charts = [];
 
     var html = '<div class="filters">' +
@@ -3657,7 +3659,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
       kpi('ยอดรับซื้อ', F.baht(m.amount), m.closed ? 'เฉลี่ย ' + F.baht(m.amount / m.closed) + '/เคส' : 'ยังไม่มีเคสปิด', delta(m.amount, prev && prev.amount, true)) +
       kpi('ค่า Ads', m.spend ? F.baht(m.spend) : '–', m.spend ? (m.adsPct != null ? F.pct(m.adsPct, 1) + ' ของยอดรับซื้อ' : 'ยังไม่มียอดรับซื้อ') : 'ยังไม่ได้กรอกในช่วงนี้', delta(m.spend, prev && prev.spend, false)) +
       kpi('ต้นทุน/เคส', F.baht(m.cpc), '<span class="pill ' + cpcTone + '">เป้า ' + F.baht(m.target) + (m.cpc == null ? '' : m.cpc <= m.target ? ' · ผ่าน' : ' · เกิน') + '</span>', delta(m.cpc, prev && prev.cpc, false)) +
-      '</div>' + (prev ? '<div class="muted small" style="margin:-8px 0 18px">▲▼ เทียบกับ ' + nDays + ' วันก่อนหน้า (' + F.thRange(C.addDays(f.from, -nDays), C.addDays(f.from, -1)) + ') · เขียว = ดีขึ้น</div>' : '');
+      '</div>' + (prev ? '<div class="muted small" style="margin:-8px 0 18px">' + (nDays === 1 ? '▲▼ เทียบกับ' + (f.preset === 'today' ? 'เมื่อวานทั้งวัน' : 'วันก่อนหน้า') + ' (' + F.thRange(C.addDays(f.from, -1), C.addDays(f.from, -1)) + ')' + (f.preset === 'today' ? ' · วันนี้ยังไม่จบวัน ตัวเลขจะเพิ่มขึ้นอีก' + (S.data.config.fb_last_sync ? ' · ค่า Ads อัปเดตล่าสุด ' + new Date(S.data.config.fb_last_sync).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.' : '') : '') : '▲▼ เทียบกับ ' + nDays + ' วันก่อนหน้า (' + F.thRange(C.addDays(f.from, -nDays), C.addDays(f.from, -1)) + ')') + ' · เขียว = ดีขึ้น</div>' : '');
 
     var spendRows = (S.data.spend || []).length;
     if (!m.spend) html += '<div class="nudge" style="margin:0 0 20px">' + (spendRows ? 'มีค่า Ads ที่กรอกไว้ ' + spendRows + ' รายการ แต่ไม่อยู่ในช่วงวันที่/แคมเปญที่เลือก' : 'ยังไม่ได้กรอกค่า Ads — ต้นทุน/Lead และต้นทุน/เคส จะยังคำนวณไม่ได้') + ' · กรอกที่หน้า แคมเปญ → กรอกค่า Ads</div>';
