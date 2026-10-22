@@ -1750,6 +1750,39 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 .cch-w button.more { border-style: dashed; color: var(--primary-text); }
 @media (max-width: 860px) { .cch { flex-direction: column; gap: 6px; } .cch-l { padding-top: 0; } }
 
+/* v77 — Profit ROAS */
+.tk-rg { display: grid; grid-template-columns: 1.15fr 1fr 1fr; gap: 14px; }
+.tk-rc { border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; min-width: 0; }
+.tk-rc.tot { background: var(--bg-soft); }
+.tk-rt { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; } .tk-rt i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; } .tk-rt small { font-weight: 400; color: var(--text-3); font-size: 12px; }
+.tk-rb { margin: 10px 0 6px; } .tk-rb span { display: block; font-size: 12px; color: var(--text-3); }
+.tk-rb b { font-size: 32px; color: var(--good); font-variant-numeric: tabular-nums; line-height: 1.15; } .tk-rb b small { font-size: 14px; color: var(--text-3); font-weight: 500; } .tk-rb b.neg { color: var(--bad); } .tk-rb b.na { color: var(--text-3); }
+.tk-rf { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--text-3); margin-bottom: 8px; }
+.tk-rl { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px dashed var(--line-strong); font-size: 13.5px; color: var(--text-2); } .tk-rl b { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
+.tk-rh { font-weight: 600; margin: 20px 0 6px; } .tk-rh small { display: block; font-weight: 400; font-size: 12.5px; color: var(--text-3); margin-top: 2px; }
+.tk-rn { font-size: 12px; color: var(--text-3); margin-top: 8px; }
+@media (max-width: 1000px) { .tk-rg { grid-template-columns: 1fr; } }
+
+/* v78 — Profit ROAS 3 แบบ */
+.pr-ads { background: var(--bg-soft); border-radius: 12px; padding: 8px 14px; font-size: 13px; color: var(--text-2); white-space: nowrap; } .pr-ads b { color: var(--bad); font-size: 17px; margin-left: 8px; font-variant-numeric: tabular-nums; }
+.pr-g { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.pr-c { border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; min-width: 0; display: flex; flex-direction: column; background: var(--card); }
+.pr-h { display: flex; align-items: center; gap: 9px; } .pr-h i { width: 24px; height: 24px; border-radius: 8px; color: #fff; display: grid; place-items: center; font-style: normal; font-weight: 700; font-size: 13px; flex: none; } .pr-h b { font-size: 15px; font-weight: 600; }
+.pr-d { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+.pr-v { display: flex; align-items: baseline; gap: 6px; margin: 10px 0 2px; } .pr-v b { font-size: 38px; line-height: 1.1; font-variant-numeric: tabular-nums; } .pr-v em { font-style: normal; color: var(--text-3); font-size: 14px; }
+.pr-cmp { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--text-3); margin-bottom: 10px; }
+.pr-l { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px dashed var(--line-strong); font-size: 13.5px; color: var(--text-2); } .pr-l b { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
+.pr-wait { margin-top: auto; background: var(--warn-bg); color: var(--warn); border-radius: 10px; padding: 9px 12px; font-size: 12.5px; line-height: 1.6; }
+.pr-pct { display: flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 12px; padding: 6px 8px 6px 12px; margin-bottom: 8px; }
+.pr-pct span { flex: 1; font-size: 12.5px; color: var(--text-2); }
+.pr-pct button { width: 30px; height: 30px; border-radius: 8px; border: 0; background: var(--bg-soft); color: var(--text); font: inherit; font-size: 17px; font-weight: 600; cursor: pointer; }
+.pr-pct button:hover { background: var(--primary-soft); }
+.pr-pct input { width: 62px; height: 30px; border: 1px solid var(--line); border-radius: 8px; text-align: center; font: inherit; font-size: 15px; font-weight: 600; background: var(--card); color: var(--text); }
+.pr-ch { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin: 22px 0 6px; } .pr-ch b { font-weight: 600; } .pr-ch small { display: block; font-size: 12.5px; color: var(--text-3); margin-top: 2px; }
+@media (max-width: 1100px) { .pr-g { grid-template-columns: 1fr; } }
+
+@media (max-width: 860px) { .sidebar.sb2 { display: none; } }
+
 </style>
   <script>
     // ตั้งธีมก่อนหน้าโหลด กันจอกระพริบ
@@ -3606,7 +3639,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
       '<div class="sb2-nav">' + nav + '</div>' +
       '<div class="sb2-sp"></div>' +
       (lastSync ? '<div class="sb2-sync"><i></i><span><b>อัปเดตอัตโนมัติ</b> · ' + lastSync.toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' · ทุก 1 ชม.</span></div>' : '') +
-      '<div class="sb2-foot"><div class="sb2-av">' + esc(initials(S.data.me)) + '</div><div class="sb2-who"><b>' + esc(S.data.me) + '</b><small>' + (API.isDemo ? 'โหมดตัวอย่าง' : 'แอดมิน') + ' · v76</small></div>' +
+      '<div class="sb2-foot"><div class="sb2-av">' + esc(initials(S.data.me)) + '</div><div class="sb2-who"><b>' + esc(S.data.me) + '</b><small>' + (API.isDemo ? 'โหมดตัวอย่าง' : 'แอดมิน') + ' · v78</small></div>' +
         '<button class="sb2-ib' + (S.page === 'settings' ? ' on' : '') + '" data-nav="settings" title="ตั้งค่า" aria-label="ตั้งค่า">' + I.cog + '</button>' +
         '<button class="sb2-ib" data-theme="' + (dark ? 'light' : 'dark') + '" title="' + (dark ? 'โหมดสว่าง' : 'โหมดมืด') + '" aria-label="' + (dark ? 'โหมดสว่าง' : 'โหมดมืด') + '">' + (dark ? I.sun : I.moon) + '</button>' +
         (API.isDemo ? '' : '<button class="sb2-ib" id="logout" title="ออกจากระบบ" aria-label="ออกจากระบบ">' + I.logout + '</button>') +
@@ -6263,17 +6296,17 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
   function trkShift(m, n) { return C.iso(new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)) - 1 + n, 1)).slice(0, 7); }
   function trkDays(a, b) {
     var map = {}, list = [], d = a, guard = 0;
-    while (d <= b && guard++ < 40) { map[d] = { d: d, g: 0, f: 0, m: 0, b: 0, n: 0, closed: 0, sold: 0 }; list.push(map[d]); d = C.addDays(d, 1); }
+    while (d <= b && guard++ < 40) { map[d] = { d: d, g: 0, f: 0, m: 0, mg: 0, mf: 0, s: 0, b: 0, n: 0, closed: 0, sold: 0 }; list.push(map[d]); d = C.addDays(d, 1); }
     (S.data.gads || []).forEach(function (x) { if (map[x.date]) map[x.date].g += Number(x.cost) || 0; });
     C.spendDaily(S.data).forEach(function (x) { if (map[x.date]) map[x.date].f += Number(x.amount) || 0; });
-    sumDeals().forEach(function (x) { var z = map[x.date]; if (z) { z.m += x.diff; z.b += x.bought; z.closed++; if (x.sell) z.sold++; } });
+    sumDeals().forEach(function (x) { var z = map[x.date]; if (z) { z.m += x.diff; z.s += x.sell; z.b += x.bought; z.closed++; if (x.sell) z.sold++; if (x.p && x.p.fb) z.mf += x.diff; else if (x.p && x.p.line) z.mg += x.diff; } });
     var cum = 0;
     list.forEach(function (z) { z.a = z.g + z.f; z.n = z.m - z.a; cum += z.n; z.cum = cum; });
     return list;
   }
   function trkTot(list) {
-    var o = { g: 0, f: 0, a: 0, m: 0, b: 0, n: 0, closed: 0, sold: 0 };
-    list.forEach(function (z) { o.g += z.g; o.f += z.f; o.a += z.a; o.m += z.m; o.b += z.b; o.n += z.n; o.closed += z.closed; o.sold += z.sold; });
+    var o = { g: 0, f: 0, a: 0, m: 0, mg: 0, mf: 0, s: 0, b: 0, n: 0, closed: 0, sold: 0 };
+    list.forEach(function (z) { o.s += z.s; o.mg += z.mg; o.mf += z.mf; o.g += z.g; o.f += z.f; o.a += z.a; o.m += z.m; o.b += z.b; o.n += z.n; o.closed += z.closed; o.sold += z.sold; });
     return o;
   }
   function pageTrack() {
@@ -6304,6 +6337,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
         tkCard('hero' + (T.n < 0 ? ' neg' : ''), 'เหลือหลังหักค่า Ads', (T.n < 0 ? '−' : '') + bt(Math.abs(T.n)), 'เฉลี่ยวันละ ' + bt(nDays ? T.n / nDays : 0) + ' บาท', chg(T.n, P.n, true), vsTxt) +
         tkCard('', 'ค่า Ads / ส่วนต่าง', pct == null ? '–' : pct.toFixed(1) + '%', pct == null ? 'ยังไม่มีส่วนต่าง' : 'ส่วนต่าง 100 บาท = ค่า Ads ' + Math.round(pct), pct != null && pPct != null ? chg(pct, pPct, false) : '', pPct == null ? vsTxt : mo(pm).split(' ')[0] + ' ' + pPct.toFixed(1) + '%', true) +
       '</div>';
+    html += trkRoasCard(T, P, rng(a, b), rng(pa, pb));
     html += '<div class="card"><div class="card-head"><div><h2 class="card-title">รายวัน + สะสม ตั้งแต่วันที่ 1</h2><div class="card-sub">แท่ง (แกนซ้าย) = รายวัน · เส้น (แกนขวา) = เหลือหลังหักค่า Ads สะสม</div></div></div>' +
       '<div class="es-lg tk-lg"><span><i class="y"></i>ส่วนต่างรายวัน</span><span><i class="r"></i>ค่า Ads รายวัน</span><span><i class="g"></i>เหลือสะสม</span></div>' +
       '<div class="es-cw tk-cw"><div class="tk-sc"><svg class="es-svg tk-svg" id="tkCh"></svg></div><div class="es-tip" id="tkTip"></div></div>' +
@@ -6318,11 +6352,98 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
       '<div class="table-wrap"><table class="t tk-t"><thead><tr><th>วันที่</th><th class="r">Google Ads</th><th class="r">Facebook Ads</th><th class="r">ค่า Ads รวม</th><th class="r">ส่วนต่าง</th><th class="r">เหลือ</th><th class="r">เหลือสะสม</th></tr></thead><tbody>' + rows + '</tbody>' +
       '<tfoot><tr><td>รวม ' + nDays + ' วัน</td><td class="r num">' + bt(T.g) + '</td><td class="r num">' + bt(T.f) + '</td><td class="r num">' + bt(T.a) + '</td><td class="r num">' + bt(T.m) + '</td><td class="r num ' + (T.n < 0 ? 'neg' : 'pos') + '">' + bt(T.n) + '</td><td></td></tr></tfoot></table></div></div>';
     $('#page').innerHTML = html;
-    S.drawCharts = function () { trkChart($('#tkCh'), $('#tkTip'), days, live ? C.addDays(b, -4) : null); };
+    S.drawCharts = function () { trkChart($('#tkCh'), $('#tkTip'), days, live ? C.addDays(b, -4) : null); trkRoasChart($('#tkRc'), $('#tkRt'), days); };
     trkProdTable($('#tkProd'), trkProducts(a, b));
+    trkRoasBind();
     S.drawCharts();
     Charts.countUp($('#page'));
     $$('[data-tm]').forEach(function (btn) { btn.onclick = function () { tf.m = trkShift(tf.m, Number(btn.dataset.tm)); pageTrack(); }; });
+  }
+  /** Profit ROAS (สรุปกับ TK Ple / MOD) — ทุกตัว = กำไร ÷ ค่า Ads (Google + Facebook) รวมทุกช่องทาง
+   *  ① กำไรขั้นต้นจากการประเมินราคา = SellPrice − BoughtPrice (คอลัมน์ในแท็บ Orders)
+   *  ② กำไรจากการขายจริง = ยังไม่มีแหล่งข้อมูลราคาขายจริง → แสดง "รอข้อมูล"
+   *  ③ กำไรสุทธิตามสมมติฐาน = ยอดขาย × net_rule% (Config · ค่าเริ่มต้น 5%) ปรับได้ที่หน้าเว็บ */
+  var PR_COL = ['#7a5af8', '#12b76a', '#2f6bff'];
+  function trkNetPct() { var r = Number(S.data.config.net_rule); if (!(r > 0)) r = 5; if (r < 1) r = r * 100; return Math.round(r * 10) / 10; }
+  function trkRoasCard(T, P, curTxt, prevTxt) {
+    var pct = trkNetPct(), bt = function (v) { return F.int(Math.round(v)); }, fx = function (v) { return v == null ? '–' : v.toFixed(2); };
+    var r1 = T.a > 0 ? T.m / T.a : null, p1 = P.a > 0 ? P.m / P.a : null;
+    var r3 = T.a > 0 ? T.s * pct / 100 / T.a : null, p3 = P.a > 0 ? P.s * pct / 100 / P.a : null;
+    function cmp(c, p) {
+      if (c == null || p == null || !(p > 0)) return '<div class="pr-cmp">' + prevTxt + ' · –</div>';
+      var v = (c - p) / p * 100, up = v >= 0;
+      return '<div class="pr-cmp"><span class="tk-chip ' + (up ? 'up' : 'dn') + '">' + (up ? '▲' : '▼') + ' ' + Math.abs(v).toFixed(1) + '% ' + (up ? 'เพิ่มขึ้น' : 'ลดลง') + '</span>' + prevTxt + ' = ' + fx(p) + ' เท่า</div>';
+    }
+    function val(r, i) { return '<div class="pr-v"><b style="color:' + (r != null && r < 1 ? 'var(--bad)' : PR_COL[i]) + '">' + fx(r) + '</b><em>เท่า</em></div>'; }
+    function head(i, t, d) { return '<div class="pr-h"><i style="background:' + PR_COL[i] + '">' + (i + 1) + '</i><b>' + t + '</b></div><div class="pr-d">' + d + '</div>'; }
+    var c1 = '<div class="pr-c">' + head(0, 'กำไรขั้นต้นจากการประเมินราคา', 'ราคาขายที่ประเมิน − ราคารับซื้อ') + val(r1, 0) + cmp(r1, p1) +
+      '<div class="pr-l"><span>กำไรขั้นต้นจากการประเมิน</span><b>' + bt(T.m) + '</b></div><div class="pr-l"><span>รับซื้อ</span><b>' + F.int(T.closed) + ' เครื่อง</b></div></div>';
+    var c2 = '<div class="pr-c">' + head(1, 'กำไรจากการขายจริง', 'ราคาขายได้จริง − ราคารับซื้อ ของเครื่องที่ขายออกแล้ว') +
+      '<div class="pr-v"><b style="color:var(--text-3)">–</b><em>เท่า</em></div><div class="pr-cmp">รอข้อมูลขายจริง</div>' +
+      '<div class="pr-wait">ยังไม่มีข้อมูลราคาขายได้จริงและสถานะ "ขายแล้ว" ในระบบ · ต่อข้อมูลเมื่อไหร่ ช่องนี้จะคำนวณให้เอง พร้อมบอกยอดสินค้าที่ยังไม่ขาย</div></div>';
+    var c3 = '<div class="pr-c">' + head(2, 'กำไรสุทธิตามสมมติฐาน', 'ยอดขาย × ' + pct + '%') + val(r3, 2) + cmp(r3, p3) +
+      '<div class="pr-pct"><span>กำไรสุทธิ = ยอดขาย ×</span><button type="button" data-np="-1" aria-label="ลด">−</button><input id="prPct" type="number" min="0.5" max="100" step="0.5" value="' + pct + '"><b>%</b><button type="button" data-np="1" aria-label="เพิ่ม">+</button></div>' +
+      '<div class="pr-l"><span>ยอดขาย (ราคาขายประเมิน)</span><b>' + bt(T.s) + '</b></div><div class="pr-l"><span>กำไรสุทธิตามสมมติฐาน</span><b>' + bt(T.s * pct / 100) + '</b></div></div>';
+    var tab = S.prLine || 'all';
+    return '<div class="card" style="margin-bottom:20px"><div class="card-head"><div><h2 class="card-title">Profit ROAS</h2><div class="card-sub">' + curTxt + ' · รวมทุกช่องทาง · Profit ROAS = กำไร ÷ ค่า Ads (ค่า Ads 1 บาท ได้กำไรกี่บาท)</div></div>' +
+      '<div class="pr-ads">ค่า Ads (Google + Facebook)<b>' + bt(T.a) + '</b></div></div>' +
+      '<div class="pr-g">' + c1 + c2 + c3 + '</div>' +
+      '<div class="pr-ch"><div><b>Profit ROAS สะสมรายวัน</b><small>แท่ง = ค่า Ads รายวัน · เส้น = Profit ROAS สะสมตั้งแต่วันที่ 1 · เส้นประ = 1 เท่า (คุ้มทุนค่าแอด)</small></div>' +
+        '<div class="chip-group">' + [['all', 'ทั้งหมด'], ['0', '① ประเมินราคา'], ['2', '③ กำไรสุทธิ']].map(function (t) { return '<button type="button" data-prl="' + t[0] + '" class="' + (tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</div></div>' +
+      '<div class="es-cw tk-cw" style="min-height:270px"><div class="tk-sc"><svg class="es-svg tk-svg" id="tkRc"></svg></div><div class="es-tip" id="tkRt"></div></div>' +
+      '<div class="tk-rn">* กำไรสุทธิตามสมมติฐาน = ' + pct + '% ของยอดขาย (ปรับได้ที่ช่อง ③ · ทุกคนเห็นค่าเดียวกัน) · ยอดขาย = ราคาขายที่ประเมินไว้ในแท็บ Orders</div></div>';
+  }
+  function trkRoasBind() {
+    function setPct(v) {
+      v = Math.round(Number(v) * 10) / 10; if (!(v > 0)) return; v = Math.min(100, v);
+      S.data.config.net_rule = v; pageTrack();
+      clearTimeout(S._npT); S._npT = setTimeout(function () { API.call('saveConfig', { key: 'net_rule', value: v }).catch(fail); }, 700);
+    }
+    $$('[data-np]').forEach(function (b) { b.onclick = function () { setPct(trkNetPct() + Number(b.dataset.np) * 0.5); }; });
+    if ($('#prPct')) $('#prPct').onchange = function () { setPct(this.value); };
+    $$('[data-prl]').forEach(function (b) { b.onclick = function () { S.prLine = b.dataset.prl; $$('[data-prl]').forEach(function (x) { x.classList.toggle('on', x === b); }); if (S.drawCharts) S.drawCharts(); }; });
+  }
+  function trkRoasChart(svg, tip, days) {
+    if (!svg) return;
+    var pct = trkNetPct() / 100, box = svg.parentNode, W = Math.max(box.clientWidth || 800, days.length * 30), H = 260, L = 46, R2 = 46, T = 24, B = 26, pw = W - L - R2, ph = H - T - B, base = T + ph, n = Math.max(days.length, 1), gw = pw / n, bw = Math.max(5, Math.min(18, gw * 0.42));
+    var ca = 0, cm = 0, cs = 0, pts = days.map(function (z) { ca += z.a; cm += z.m; cs += z.s; return { z: z, ca: ca, cm: cm, cs: cs, r1: ca > 0 ? cm / ca : null, r3: ca > 0 ? cs * pct / ca : null }; });
+    var tab = S.prLine || 'all', show1 = tab === 'all' || tab === '0', show3 = tab === 'all' || tab === '2';
+    var vals = []; pts.forEach(function (p) { if (show1 && p.r1 != null) vals.push(p.r1); if (show3 && p.r3 != null) vals.push(p.r3); });
+    var mxR = Math.max(2, Math.ceil(Math.max.apply(null, vals.concat([1])) * 1.15 / 2) * 2);
+    var mxA = Math.max.apply(null, days.map(function (z) { return z.a; }).concat([1])) * 1.15;
+    function k(v) { return v >= 1000 ? Math.round(v / 1000) + 'k' : Math.round(v); }
+    function y(v) { return base - v / mxA * ph; } function y2(v) { return base - Math.min(v, mxR) / mxR * ph; } function cx(i) { return L + i * gw + gw / 2; }
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.style.height = H + 'px'; svg.style.width = W + 'px';
+    var o = '<defs><linearGradient id="tkR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff6b5b"/><stop offset="1" stop-color="#e0352b"/></linearGradient></defs>';
+    for (var i = 0; i <= 4; i++) { var yy = base - ph * i / 4; o += '<line class="es-grid" x1="' + L + '" x2="' + (W - R2) + '" y1="' + yy + '" y2="' + yy + '"' + (i ? ' stroke-dasharray="2 6"' : '') + '/><text class="es-x" x="' + (L - 8) + '" y="' + (yy + 4) + '" text-anchor="end">' + k(mxA * i / 4) + '</text><text class="es-x" x="' + (W - R2 + 8) + '" y="' + (yy + 4) + '">' + (mxR * i / 4).toFixed(1) + '</text>'; }
+    o += '<line x1="' + L + '" x2="' + (W - R2) + '" y1="' + y2(1) + '" y2="' + y2(1) + '" stroke="var(--text-3)" stroke-dasharray="5 5"/><text class="tk-pv" x="' + (W - R2 - 6) + '" y="' + (y2(1) + 15) + '" text-anchor="end" style="fill:var(--text-3);font-weight:500">1 เท่า = คุ้มทุนค่าแอด</text>';
+    var lstep = gw < 22 ? 2 : 1;
+    pts.forEach(function (p, i) { var h = base - y(p.z.a);
+      o += '<g class="eh" data-i="' + i + '"><rect class="eh-hit" x="' + (cx(i) - gw / 2) + '" y="' + T + '" width="' + gw + '" height="' + ph + '"/>' + (h > 0 ? '<rect class="ehb" x="' + (cx(i) - bw / 2) + '" y="' + (base - h) + '" width="' + bw + '" height="' + h + '" rx="' + Math.min(4, bw / 3) + '" fill="url(#tkR)" style="opacity:.55;animation-delay:' + Math.min(i * 20, 400) + 'ms"/>' : '') + '</g>' +
+        (i % lstep === 0 ? '<text class="es-x" x="' + cx(i) + '" y="' + (H - 8) + '" text-anchor="middle">' + Number(p.z.d.slice(8)) + '</text>' : ''); });
+    function line(key, col) {
+      var lp = []; pts.forEach(function (p, i) { if (p[key] != null) lp.push([cx(i), y2(p[key])]); });
+      if (lp.length < 2) return '';
+      var q = lp[lp.length - 1], last = pts[pts.length - 1][key];
+      return '<path class="tk-ln" pathLength="1" d="' + esSmooth(lp) + '" fill="none" stroke="' + col + '" stroke-width="3" stroke-linecap="round" pointer-events="none"/>' +
+        '<circle cx="' + q[0] + '" cy="' + q[1] + '" r="5" fill="' + col + '" stroke="var(--card)" stroke-width="2" pointer-events="none"/><text class="tk-pv" x="' + (q[0] - 8) + '" y="' + (q[1] - 11) + '" text-anchor="end" style="fill:' + col + '" pointer-events="none">' + (last == null ? '' : last.toFixed(2) + ' เท่า') + '</text>';
+    }
+    if (show1) o += line('r1', PR_COL[0]);
+    if (show3) o += line('r3', PR_COL[2]);
+    svg.innerHTML = o; svg.classList.toggle('es-anim', !esReduced());
+    var cur = -1;
+    function show(i) {
+      if (i === cur) return; cur = i;
+      $$('g.eh', svg).forEach(function (g) { g.classList.toggle('on', Number(g.dataset.i) === i); }); svg.classList.toggle('hov', i >= 0);
+      if (i < 0) { tip.style.opacity = 0; return; }
+      var p = pts[i], f = function (v) { return F.int(Math.round(v)); }, fx = function (v) { return v == null ? '–' : v.toFixed(2) + ' เท่า'; };
+      esTipAt(tip, svg, cx(i), Math.min(y(p.z.a), p.r1 != null ? y2(p.r1) : base) - 4, W, H,
+        '<b>วัน' + DOW[dowOf(p.z.d)] + ' ' + thBE(p.z.d) + '</b><div><span><i style="background:#f04438"></i>ค่า Ads วันนี้</span><span>' + f(p.z.a) + '</span></div><div><span>ค่า Ads สะสม</span><span>' + f(p.ca) + '</span></div>' +
+        (show1 ? '<div><span><i style="background:' + PR_COL[0] + '"></i>① ประเมินราคา</span><span>' + fx(p.r1) + '</span></div>' : '') +
+        (show3 ? '<div><span><i style="background:' + PR_COL[2] + '"></i>③ กำไรสุทธิ ' + Math.round(pct * 1000) / 10 + '%</span><span>' + fx(p.r3) + '</span></div>' : ''));
+    }
+    $$('g.eh', svg).forEach(function (g) { var i = Number(g.dataset.i); g.onmouseenter = g.onclick = function () { show(i); }; });
+    svg.onmouseleave = function () { show(-1); };
   }
   /** การ์ดตัวเลข หน้า Track — ทุกใบโครงเดียวกัน: หัว · ตัวเลข · บรรทัดย่อย · แถบเทียบ (ชิดล่าง) */
   function tkCard(cls, label, val, sub, chip, vs, noUnit) {
