@@ -1740,6 +1740,16 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 
 .cpk-err { background: var(--bad-bg); color: var(--bad); border-radius: 14px; padding: 14px 16px; margin-bottom: 16px; font-size: 14px; display: grid; gap: 4px; } .cpk-err small { font-size: 11.5px; opacity: .8; word-break: break-all; }
 
+/* v76 — เลือกแคมเปญด้วยปุ่ม (แทนช่องเลือก) */
+.cch { display: flex; align-items: flex-start; gap: 12px; margin: -6px 0 18px; }
+.cch-l { font-size: 13px; color: var(--text-3); padding-top: 8px; flex: none; }
+.cch-w { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.cch-w button { border: 1px solid var(--line); background: var(--card); color: var(--text-2); font: inherit; font-size: 13px; padding: 6px 14px; border-radius: 999px; cursor: pointer; max-width: 340px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; z-index: 2; }
+.cch-w button:hover { border-color: var(--primary); color: var(--text); }
+.cch-w button.on { background: var(--primary); border-color: var(--primary); color: var(--on-primary); font-weight: 600; }
+.cch-w button.more { border-style: dashed; color: var(--primary-text); }
+@media (max-width: 860px) { .cch { flex-direction: column; gap: 6px; } .cch-l { padding-top: 0; } }
+
 </style>
   <script>
     // ตั้งธีมก่อนหน้าโหลด กันจอกระพริบ
@@ -3596,7 +3606,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
       '<div class="sb2-nav">' + nav + '</div>' +
       '<div class="sb2-sp"></div>' +
       (lastSync ? '<div class="sb2-sync"><i></i><span><b>อัปเดตอัตโนมัติ</b> · ' + lastSync.toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' · ทุก 1 ชม.</span></div>' : '') +
-      '<div class="sb2-foot"><div class="sb2-av">' + esc(initials(S.data.me)) + '</div><div class="sb2-who"><b>' + esc(S.data.me) + '</b><small>' + (API.isDemo ? 'โหมดตัวอย่าง' : 'แอดมิน') + '</small></div>' +
+      '<div class="sb2-foot"><div class="sb2-av">' + esc(initials(S.data.me)) + '</div><div class="sb2-who"><b>' + esc(S.data.me) + '</b><small>' + (API.isDemo ? 'โหมดตัวอย่าง' : 'แอดมิน') + ' · v76</small></div>' +
         '<button class="sb2-ib' + (S.page === 'settings' ? ' on' : '') + '" data-nav="settings" title="ตั้งค่า" aria-label="ตั้งค่า">' + I.cog + '</button>' +
         '<button class="sb2-ib" data-theme="' + (dark ? 'light' : 'dark') + '" title="' + (dark ? 'โหมดสว่าง' : 'โหมดมืด') + '" aria-label="' + (dark ? 'โหมดสว่าง' : 'โหมดมืด') + '">' + (dark ? I.sun : I.moon) + '</button>' +
         (API.isDemo ? '' : '<button class="sb2-ib" id="logout" title="ออกจากระบบ" aria-label="ออกจากระบบ">' + I.logout + '</button>') +
@@ -3704,8 +3714,17 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
         return '<button data-preset="' + p[0] + '" class="' + (f.preset === p[0] ? 'on' : '') + '">' + p[1] + '</button>';
       }).join('') + '</div>' +
       (f.preset === 'custom' ? '<input type="date" class="field-inline" id="fFrom" value="' + f.from + '"><input type="date" class="field-inline" id="fTo" value="' + f.to + '">' : '<span class="muted">' + F.thRange(f.from, f.to) + '</span>') +
-      campPicker('fCamp', f.campaign) +
       '<span style="flex:1"></span><button class="btn" id="btnSummary">' + I.copy + 'คัดลอกสรุป</button></div>';
+    // แคมเปญ = ปุ่มกดตรงๆ (แบบเดียวกับปุ่มช่วงวันที่) · เรียงตามที่มีแชทล่าสุดก่อน
+    var lastC = {}; S.data.chats.forEach(function (c) { if (c.campaign && (!lastC[c.campaign] || c.date > lastC[c.campaign])) lastC[c.campaign] = c.date || ''; });
+    var campList = campaigns().map(String).sort(function (x, y) { var a = lastC[x] || '', b = lastC[y] || ''; return a === b ? (x < y ? -1 : 1) : a < b ? 1 : -1; });
+    S._campList = campList;
+    var showAllC = S.campAll || campList.length <= 8 || (f.campaign && campList.indexOf(String(f.campaign)) >= 8);
+    html += '<div class="cch"><span class="cch-l">แคมเปญ</span><div class="cch-w">' +
+      '<button type="button" data-ci="-1" class="' + (!f.campaign ? 'on' : '') + '">ทุกแคมเปญ</button>' +
+      campList.map(function (c, i) { return (showAllC || i < 8) ? '<button type="button" data-ci="' + i + '" class="' + (String(f.campaign) === c ? 'on' : '') + '" title="' + esc(c) + '">' + esc(c) + '</button>' : ''; }).join('') +
+      (campList.length > 8 ? '<button type="button" class="more" id="cchMore">' + (showAllC && S.campAll ? 'ย่อ ▴' : 'ดูทั้งหมด ' + campList.length + ' ▾') + '</button>' : '') +
+      '</div></div>';
 
     // ---------- 1) ตัวเลขหลัก ----------
     function delta(cur, old, goodUp) {
@@ -3820,17 +3839,12 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
       $('#fFrom').onchange = function () { f.from = this.value; if (f.from > f.to) f.to = f.from; pageDashboard(); };
       $('#fTo').onchange = function () { f.to = this.value; if (f.to < f.from) f.from = f.to; pageDashboard(); };
     }
-    bindCampPicker('fCamp', campaigns(), f.campaign, function (v) {
-      var old = f.campaign; f.campaign = v;
+    $$('[data-ci]').forEach(function (b) { b.onclick = function () {
+      var i = Number(b.dataset.ci), v = i < 0 ? '' : S._campList[i], old = f.campaign; f.campaign = v;
       try { pageDashboard(); }
-      catch (e) {
-        console.error(e); f.campaign = old;
-        try { pageDashboard(); } catch (e2) {}
-        var box = document.createElement('div'); box.className = 'cpk-err';
-        box.innerHTML = '<b>เลือกแคมเปญ "' + esc(v) + '" แล้วหน้านี้แสดงไม่ได้</b><div>' + esc(e && e.message || e) + '</div><small>' + esc(String(e && e.stack || '').split('\n').slice(1, 4).join(' | ')) + '</small><div class="muted small">แคปกล่องนี้ส่งให้ Claude ดูได้เลย</div>';
-        var pg = $('#page'); if (pg) pg.insertBefore(box, pg.firstChild);
-      }
-    });
+      catch (e) { console.error(e); f.campaign = old; try { pageDashboard(); } catch (e2) {} toast('แสดงแคมเปญนี้ไม่ได้: ' + (e && e.message || e), true); }
+    }; });
+    if ($('#cchMore')) $('#cchMore').onclick = function () { S.campAll = !S.campAll; pageDashboard(); };
     if ($('#btSel')) $('#btSel').onchange = function () { S.btSel = this.value; pageDashboard(); };
     if ($('#btCopy')) $('#btCopy').onclick = function () { copyText(budgetTiersText(f.campaign)); };
     $$('[data-btt]').forEach(function (b) { b.onclick = function () { var p = b.dataset.btt.split('|'); S.btTab = S.btTab || {}; S.btTab[p[0]] = p[1]; pageDashboard(); }; });
