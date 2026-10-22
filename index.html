@@ -3440,7 +3440,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
     function open() {
       S.pickOpen = true; root.classList.add('open');
       var pop = document.createElement('div'); pop.className = 'cpk-pop';
-      pop.innerHTML = '<input class="cpk-q" placeholder="ค้นหาแคมเปญ…" autocomplete="off"><div class="cpk-list"></div>';
+      pop.innerHTML = '<input class="cpk-q" placeholder="ค้นหาแคมเปญ…" autocomplete="off"><div class="cpk-list"></div>' + (S.cpkBlocker ? '<div class="cpk-none">มีบางอย่างบังปุ่มอยู่: ' + esc(S.cpkBlocker) + ' (แคปส่งให้ Claude ได้)</div>' : '');
       root.appendChild(pop);
       var q = pop.querySelector('.cpk-q'), L = pop.querySelector('.cpk-list');
       function draw() {
@@ -3455,6 +3455,20 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
       document.addEventListener('mousedown', outside, true); document.addEventListener('keydown', onKey);
     }
     btn.onclick = function () { try { if (root.querySelector('.cpk-pop')) close(); else open(); } catch (e) { console.error(e); S.pickOpen = false; toast('เปิดรายการแคมเปญไม่ได้: ' + (e && e.message || e), true); } };
+    // กันกรณีมีอะไรโปร่งใสบังปุ่ม/กล่องรายการอยู่: ดักคลิกตั้งแต่ระดับ document แล้วส่งต่อให้ปุ่มที่อยู่ใต้เมาส์เอง
+    if (S._cpkCap) { document.removeEventListener('mousedown', S._cpkCap, true); document.removeEventListener('click', S._cpkCap, true); }
+    S._cpkCap = function (e) {
+      if (!document.body.contains(root) || root.contains(e.target)) return;
+      var under = (document.elementsFromPoint ? document.elementsFromPoint(e.clientX, e.clientY) : []).filter(function (el) { return root.contains(el); })[0];
+      if (!under) return;
+      e.preventDefault(); e.stopPropagation();
+      S.cpkBlocker = (e.target.tagName || '').toLowerCase() + (e.target.id ? '#' + e.target.id : '') + (typeof e.target.className === 'string' && e.target.className ? '.' + e.target.className.trim().split(/\s+/).join('.') : '');
+      console.warn('[campPicker] มีองค์ประกอบบังอยู่:', e.target);
+      if (e.type !== 'click') return;
+      if (/^(INPUT|TEXTAREA)$/.test(under.tagName)) under.focus();
+      else { var t = under.closest('button') || under; if (t.click) t.click(); }
+    };
+    document.addEventListener('mousedown', S._cpkCap, true); document.addEventListener('click', S._cpkCap, true);
   }
   function campaigns() {
     var set = {};
