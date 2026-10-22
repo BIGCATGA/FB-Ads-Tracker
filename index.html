@@ -1738,6 +1738,8 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
 .cpk-list button.on { background: var(--primary-soft); color: var(--primary-text); font-weight: 600; }
 .cpk-none { padding: 10px; font-size: 13px; color: var(--text-3); }
 
+.cpk-err { background: var(--bad-bg); color: var(--bad); border-radius: 14px; padding: 14px 16px; margin-bottom: 16px; font-size: 14px; display: grid; gap: 4px; } .cpk-err small { font-size: 11.5px; opacity: .8; word-break: break-all; }
+
 </style>
   <script>
     // ตั้งธีมก่อนหน้าโหลด กันจอกระพริบ
@@ -3443,7 +3445,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
       var q = pop.querySelector('.cpk-q'), L = pop.querySelector('.cpk-list');
       function draw() {
         var t = q.value.trim().toLowerCase();
-        var items = [''].concat(list).filter(function (c) { return !t || (c || 'ทุกแคมเปญ').toLowerCase().indexOf(t) >= 0; });
+        var items = [''].concat(list.map(String)).filter(function (c) { return !t || (c || 'ทุกแคมเปญ').toLowerCase().indexOf(t) >= 0; });
         L.innerHTML = items.length ? items.map(function (c) { return '<button type="button" data-v="' + esc(c) + '" class="' + (c === (value || '') ? 'on' : '') + '">' + esc(c || 'ทุกแคมเปญ') + '</button>'; }).join('') : '<div class="cpk-none">ไม่พบแคมเปญ</div>';
         $$('button', L).forEach(function (b) { b.onclick = function () { var v = b.dataset.v; close(); if (v !== (value || '')) onPick(v); }; });
       }
@@ -3452,7 +3454,7 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
       draw(); q.focus();
       document.addEventListener('mousedown', outside, true); document.addEventListener('keydown', onKey);
     }
-    btn.onclick = function () { if (root.querySelector('.cpk-pop')) close(); else open(); };
+    btn.onclick = function () { try { if (root.querySelector('.cpk-pop')) close(); else open(); } catch (e) { console.error(e); S.pickOpen = false; toast('เปิดรายการแคมเปญไม่ได้: ' + (e && e.message || e), true); } };
   }
   function campaigns() {
     var set = {};
@@ -3804,7 +3806,17 @@ svg.hbar .rowv.e { fill: #9a5b00; } svg.hbar .rowv.g { fill: var(--good); } svg.
       $('#fFrom').onchange = function () { f.from = this.value; if (f.from > f.to) f.to = f.from; pageDashboard(); };
       $('#fTo').onchange = function () { f.to = this.value; if (f.to < f.from) f.from = f.to; pageDashboard(); };
     }
-    bindCampPicker('fCamp', campaigns(), f.campaign, function (v) { f.campaign = v; pageDashboard(); });
+    bindCampPicker('fCamp', campaigns(), f.campaign, function (v) {
+      var old = f.campaign; f.campaign = v;
+      try { pageDashboard(); }
+      catch (e) {
+        console.error(e); f.campaign = old;
+        try { pageDashboard(); } catch (e2) {}
+        var box = document.createElement('div'); box.className = 'cpk-err';
+        box.innerHTML = '<b>เลือกแคมเปญ "' + esc(v) + '" แล้วหน้านี้แสดงไม่ได้</b><div>' + esc(e && e.message || e) + '</div><small>' + esc(String(e && e.stack || '').split('\n').slice(1, 4).join(' | ')) + '</small><div class="muted small">แคปกล่องนี้ส่งให้ Claude ดูได้เลย</div>';
+        var pg = $('#page'); if (pg) pg.insertBefore(box, pg.firstChild);
+      }
+    });
     if ($('#btSel')) $('#btSel').onchange = function () { S.btSel = this.value; pageDashboard(); };
     if ($('#btCopy')) $('#btCopy').onclick = function () { copyText(budgetTiersText(f.campaign)); };
     $$('[data-btt]').forEach(function (b) { b.onclick = function () { var p = b.dataset.btt.split('|'); S.btTab = S.btTab || {}; S.btTab[p[0]] = p[1]; pageDashboard(); }; });
